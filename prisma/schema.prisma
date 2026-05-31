@@ -1,0 +1,58 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model ContactMessage {
+  id        String   @id @default(uuid())
+  name      String
+  phone     String
+  email     String
+  message   String
+  createdAt DateTime @default(now())
+}
+
+model Booking {
+  id          String   @id @default(uuid())
+  name        String
+  phone       String
+  model       String
+  issue       String
+  date        String
+  time        String
+  status      String   @default("pending")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Product {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  price       Float
+  stock       Int      @default(0)
+  category    String
+  image       String?
+  available   Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Transaction {
+  id          String   @id @default(uuid())
+  type        String
+  amount      Float
+  description String?
+  createdAt   DateTime @default(now())
+}
+
+model User {
+  id       String @id @default(uuid())
+  username String @unique
+  password String
+  role     String @default("admin")
+}
