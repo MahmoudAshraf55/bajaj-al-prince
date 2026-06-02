@@ -10,7 +10,9 @@ const transactionSchema = z.object({
   type: z.enum(['income', 'expense']),
   amount: z.number().positive().refine(
     (n) => {
-      const decimal = n.toString().split('.')[1];
+      const fixed = n.toFixed(10);
+      const trimmed = fixed.replace(/\.?0+$/, '');
+      const decimal = trimmed.split('.')[1];
       return !decimal || decimal.length <= 2;
     },
     { message: 'Amount must have at most 2 decimal places' }

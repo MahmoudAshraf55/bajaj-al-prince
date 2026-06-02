@@ -1,6 +1,7 @@
 import { SignJWT, jwtVerify } from 'jose';
 import bcrypt from 'bcryptjs';
 import { NextRequest } from 'next/server';
+import { prisma } from '@/lib/prisma';
 
 export type UserRole = 'admin' | 'staff' | 'viewer';
 
@@ -14,6 +15,15 @@ function getSecret(): Uint8Array | null {
   const secret = process.env.JWT_SECRET;
   if (!secret) {
     console.error('[auth] JWT_SECRET environment variable is required but not set');
+    return null;
+  }
+  return new TextEncoder().encode(secret);
+}
+
+function getRefreshSecret(): Uint8Array | null {
+  const secret = process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET;
+  if (!secret) {
+    console.error('[auth] JWT_REFRESH_SECRET or JWT_SECRET environment variable is required but not set');
     return null;
   }
   return new TextEncoder().encode(secret);
@@ -58,7 +68,7 @@ export async function verifyToken(token: string): Promise<JWTPayload | null> {
 }
 
 export async function createRefreshToken(userId: string, tokenVersion: number) {
-  const secret = getSecret();
+  const secret = getRefreshSecret();
   if (!secret) {
     throw new Error('JWT_SECRET_NOT_CONFIGURED');
   }
@@ -71,7 +81,7 @@ export async function createRefreshToken(userId: string, tokenVersion: number) {
 
 export async function verifyRefreshToken(token: string): Promise<{ userId: string; tokenVersion: number } | null> {
   try {
-    const secret = getSecret();
+    const secret = getRefreshSecret();
     if (!secret) {
       throw new Error('JWT_SECRET_NOT_CONFIGURED');
     }
@@ -105,6 +115,12 @@ export async function requireAuth(req: NextRequest): Promise<JWTPayload> {
   if (!payload) {
     throw new Error('Invalid token');
   }
+
+  const user = await prisma.user.findUnique({ where: { id: payload.userId } });
+  if (!user || user.isDeleted || (user.lockedUntil && user.lockedUntil > new Date())) {
+    throw new Error('Unauthorized');
+  }
+
   return payload;
 }
 

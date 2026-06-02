@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
     }
 
     const user = await prisma.user.findUnique({ where: { id: payload.userId } });
-    if (!user || user.tokenVersion !== payload.tokenVersion) {
+    if (!user || user.isDeleted || (user.lockedUntil && user.lockedUntil > new Date()) || user.tokenVersion !== payload.tokenVersion) {
       const response = NextResponse.json({ success: false, error: 'Token revoked. Please log in again.' }, { status: 401 });
       response.cookies.set('admin_token', '', { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'strict', maxAge: 0, path: '/' });
       response.cookies.set('refresh_token', '', { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'strict', maxAge: 0, path: '/' });
