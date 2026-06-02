@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from '@/components/useTranslation';
 import type { VehicleModel } from '@/types';
 import {
-  Plus, X, AlertCircle, CheckCircle2, List, Trash2,
+  Plus, X, AlertCircle, CheckCircle2, List, Trash2, Pencil,
 } from 'lucide-react';
 
 interface Toast {
@@ -22,6 +22,7 @@ export default function VehicleModelsPage() {
   const [error, setError] = useState('');
   const [models, setModels] = useState<VehicleModel[]>([]);
   const [showModal, setShowModal] = useState(false);
+  const [editingModel, setEditingModel] = useState<VehicleModel | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [form, setForm] = useState({ name: '', make: 'Bajaj' });
@@ -59,7 +60,21 @@ export default function VehicleModelsPage() {
       .catch(() => router.push('/admin/'));
   }, [router]);
 
-  const handleAdd = async (e: React.FormEvent) => {
+  const openAddModal = () => {
+    setEditingModel(null);
+    setForm({ name: '', make: 'Bajaj' });
+    setFormError('');
+    setShowModal(true);
+  };
+
+  const openEditModal = (m: VehicleModel) => {
+    setEditingModel(m);
+    setForm({ name: m.name, make: m.make });
+    setFormError('');
+    setShowModal(true);
+  };
+
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError('');
     if (!form.name.trim()) {
@@ -68,17 +83,20 @@ export default function VehicleModelsPage() {
     }
     setSubmitting(true);
     try {
-      const res = await fetch('/api/vehicle-models/', {
-        method: 'POST',
+      const url = editingModel ? `/api/vehicle-models/${editingModel.id}/` : '/api/vehicle-models/';
+      const method = editingModel ? 'PATCH' : 'POST';
+      const res = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({ name: form.name.trim(), make: form.make.trim() }),
       });
       const data = await res.json();
       if (data?.success) {
-        addToast('success', t('vmodels_model_added'));
+        addToast('success', editingModel ? t('vmodels_model_updated') : t('vmodels_model_added'));
         setForm({ name: '', make: 'Bajaj' });
         setShowModal(false);
+        setEditingModel(null);
         fetchModels();
       } else {
         setFormError(data?.error || data?.errors?.[0]?.message || t('vmodels_failed_create'));
@@ -166,7 +184,7 @@ export default function VehicleModelsPage() {
             {t('vmodels_title')}
           </h2>
           <button
-            onClick={() => setShowModal(true)}
+            onClick={openAddModal}
             className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
           >
             <Plus className="w-4 h-4" />
@@ -198,7 +216,14 @@ export default function VehicleModelsPage() {
                         {m.isActive ? t('vmodels_active') : t('vmodels_inactive')}
                       </span>
                     </td>
-                    <td className="px-5 py-4 text-right">
+                    <td className="px-5 py-4 text-right flex items-center justify-end gap-1">
+                      <button
+                        onClick={() => openEditModal(m)}
+                        className="p-1.5 rounded-lg hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors"
+                        title={t('crm_edit_vehicle')}
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </button>
                       <button
                         onClick={() => handleDelete(m.id)}
                         className="p-1.5 rounded-lg hover:bg-red-500/10 text-muted-foreground hover:text-red-400 transition-colors"
@@ -240,12 +265,12 @@ export default function VehicleModelsPage() {
               className="glass rounded-2xl p-6 w-full max-w-md border border-border"
             >
               <div className="flex items-center justify-between mb-5">
-                <h3 className="text-lg font-bold">{t('vmodels_add_modal_title')}</h3>
-                <button onClick={() => setShowModal(false)} className="p-1 rounded-lg hover:bg-white/5 text-muted-foreground">
+                <h3 className="text-lg font-bold">{editingModel ? t('vmodels_edit_modal_title') : t('vmodels_add_modal_title')}</h3>
+                <button onClick={() => { setShowModal(false); setEditingModel(null); }} className="p-1 rounded-lg hover:bg-white/5 text-muted-foreground">
                   <X className="w-4 h-4" />
                 </button>
               </div>
-              <form onSubmit={handleAdd} className="space-y-4">
+              <form onSubmit={handleSave} className="space-y-4">
                 <div>
                   <label className="text-xs font-medium text-muted-foreground mb-1.5 block">{t('vmodels_name')}</label>
                   <input
@@ -280,7 +305,7 @@ export default function VehicleModelsPage() {
                   {submitting ? (
                     <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin mx-auto" />
                   ) : (
-                    t('vmodels_create')
+                    editingModel ? t('vmodels_save') : t('vmodels_create')
                   )}
                 </button>
               </form>

@@ -9,6 +9,7 @@ import { z } from 'zod';
 
 const bookingSchema = z.object({
   name: sanitizedString(z.string().min(2).max(100).regex(/^[a-zA-Z\s]+$/, 'Name must contain only letters')),
+  email: z.string().email('Invalid email').max(100).optional().or(z.literal('')),
   phone: z.string().regex(/^\+20\d{10}$/, 'Phone must be +20 followed by exactly 10 digits'),
   model: sanitizedString(z.string().min(1).max(100)),
   issue: sanitizedString(z.string().min(5).max(1000)),
@@ -145,6 +146,7 @@ export async function POST(req: NextRequest) {
       return tx.booking.create({
         data: {
           name: data.name,
+          email: data.email || null,
           phone: data.phone,
           model: data.model,
           issue: data.issue,

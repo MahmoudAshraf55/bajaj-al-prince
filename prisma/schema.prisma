@@ -27,6 +27,7 @@ model ContactMessage {
 model Booking {
   id          String    @id @default(uuid())
   name        String
+  email       String?
   phone       String
   model       String
   issue       String

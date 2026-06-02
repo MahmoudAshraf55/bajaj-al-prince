@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
   Calendar, Clock, Bike, Wrench, Send, CheckCircle, AlertCircle,
-  User, Phone, Hash, Gauge, ChevronDown,
+  User, Phone, Hash, Gauge, ChevronDown, Mail,
 } from 'lucide-react';
 import { useTranslation } from '@/components/useTranslation';
 import type { VehicleModel } from '@/types';
@@ -12,7 +12,7 @@ import type { VehicleModel } from '@/types';
 export default function BookingPage() {
   const { t } = useTranslation();
   const [form, setForm] = useState({
-    name: '', phone: '+20', model: '', issue: '', date: '', time: '',
+    name: '', email: '', phone: '+20', model: '', issue: '', date: '', time: '',
     make: 'Bajaj', year: '', plateNumber: '', chassisNumber: '',
   });
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
@@ -60,6 +60,7 @@ export default function BookingPage() {
         time: form.time,
         make: 'Bajaj',
       };
+      if (form.email.trim()) payload.email = form.email.trim();
       if (form.year.trim()) payload.year = parseInt(form.year, 10);
       if (form.plateNumber.trim()) payload.plateNumber = form.plateNumber.trim();
       if (form.chassisNumber.trim()) payload.chassisNumber = form.chassisNumber.trim();
@@ -73,7 +74,7 @@ export default function BookingPage() {
       if (data?.success) {
         setStatus('success');
         setForm({
-          name: '', phone: '+20', model: '', issue: '', date: '', time: '',
+          name: '', email: '', phone: '+20', model: '', issue: '', date: '', time: '',
           make: 'Bajaj', year: '', plateNumber: '', chassisNumber: '',
         });
         setIsCustomModel(false);
@@ -124,7 +125,7 @@ export default function BookingPage() {
                 onClick={() => {
                   setStatus('idle');
                   setForm({
-                    name: '', phone: '+20', model: '', issue: '', date: '', time: '',
+                    name: '', email: '', phone: '+20', model: '', issue: '', date: '', time: '',
                     make: 'Bajaj', year: '', plateNumber: '', chassisNumber: '',
                   });
                   setIsCustomModel(false);
@@ -176,6 +177,20 @@ export default function BookingPage() {
                     />
                   </div>
                 </div>
+              </div>
+
+              {/* Email */}
+              <div>
+                <label className="text-sm font-medium text-muted-foreground mb-2 flex items-center gap-2">
+                  <Mail className="w-4 h-4" /> {t('booking_email')}
+                </label>
+                <input
+                  type="email"
+                  value={form.email}
+                  onChange={(e) => setForm({ ...form, email: e.target.value })}
+                  className="w-full px-4 py-3 rounded-xl bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                  placeholder={t('booking_email_ph')}
+                />
               </div>
 
               {/* Model Selection */}

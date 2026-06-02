@@ -7,6 +7,7 @@ export interface ContactFormData {
 
 export interface BookingFormData {
   name: string;
+  email?: string;
   phone: string;
   model: string;
   issue: string;
