@@ -32,10 +32,10 @@ export async function createToken(payload: JWTPayload) {
   if (!secret) {
     throw new Error('JWT_SECRET_NOT_CONFIGURED');
   }
-  return new SignJWT({ ...payload } as Record<string, unknown>)
+  return new SignJWT({ ...payload, type: 'access' } as Record<string, unknown>)
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
-    .setExpirationTime('24h')
+    .setExpirationTime('1h')
     .sign(secret);
 }
 
@@ -46,6 +46,7 @@ export async function verifyToken(token: string): Promise<JWTPayload | null> {
       throw new Error('JWT_SECRET_NOT_CONFIGURED');
     }
     const { payload } = await jwtVerify(token, secret, { clockTolerance: 60 });
+    if (payload.type !== 'access') return null;
     return {
       userId: payload.userId as string,
       username: payload.username as string,
@@ -56,8 +57,42 @@ export async function verifyToken(token: string): Promise<JWTPayload | null> {
   }
 }
 
+export async function createRefreshToken(userId: string, tokenVersion: number) {
+  const secret = getSecret();
+  if (!secret) {
+    throw new Error('JWT_SECRET_NOT_CONFIGURED');
+  }
+  return new SignJWT({ userId, tokenVersion, type: 'refresh' } as Record<string, unknown>)
+    .setProtectedHeader({ alg: 'HS256' })
+    .setIssuedAt()
+    .setExpirationTime('7d')
+    .sign(secret);
+}
+
+export async function verifyRefreshToken(token: string): Promise<{ userId: string; tokenVersion: number } | null> {
+  try {
+    const secret = getSecret();
+    if (!secret) {
+      throw new Error('JWT_SECRET_NOT_CONFIGURED');
+    }
+    const { payload } = await jwtVerify(token, secret, { clockTolerance: 60 });
+    if (payload.type !== 'refresh') return null;
+    return {
+      userId: payload.userId as string,
+      tokenVersion: payload.tokenVersion as number,
+    };
+  } catch {
+    return null;
+  }
+}
+
 export function getTokenFromCookie(req: NextRequest): string | null {
   const token = req.cookies.get('admin_token')?.value;
+  return token ?? null;
+}
+
+export function getRefreshTokenFromCookie(req: NextRequest): string | null {
+  const token = req.cookies.get('refresh_token')?.value;
   return token ?? null;
 }
 

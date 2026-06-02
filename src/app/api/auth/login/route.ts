@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { verifyPassword, createToken } from '@/lib/auth';
+import { verifyPassword, createToken, createRefreshToken } from '@/lib/auth';
 import { checkRateLimit } from '@/lib/rate-limit';
 import { logAudit, getClientInfo } from '@/lib/audit';
 import { z } from 'zod';
@@ -77,6 +77,7 @@ export async function POST(req: NextRequest) {
       username: user.username,
       role: user.role,
     });
+    const refreshToken = await createRefreshToken(user.id, user.tokenVersion);
 
     const { ipAddress, userAgent } = getClientInfo(req);
     await logAudit({
@@ -94,7 +95,14 @@ export async function POST(req: NextRequest) {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
-      maxAge: 60 * 60 * 24,
+      maxAge: 60 * 60,
+      path: '/',
+    });
+    response.cookies.set('refresh_token', refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 60 * 60 * 24 * 7,
       path: '/',
     });
     return response;

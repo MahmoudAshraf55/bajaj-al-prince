@@ -105,6 +105,7 @@ model User {
   role           UserRole  @default(viewer)
   failedAttempts Int       @default(0)
   lockedUntil    DateTime? @db.Timestamp(6)
+  tokenVersion   Int       @default(0)
   createdAt      DateTime  @default(now()) @db.Timestamp(6)
   updatedAt      DateTime? @updatedAt @db.Timestamp(6)
   isDeleted      Boolean   @default(false)
