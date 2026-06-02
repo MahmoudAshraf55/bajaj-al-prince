@@ -5,10 +5,10 @@ import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from '@/components/useTranslation';
-import type { Customer, Vehicle } from '@/types';
+import type { Customer, Vehicle, VehicleModel } from '@/types';
 import {
   ArrowLeft, User, Phone, Mail, MapPin, Car, Plus, Calendar,
-  AlertCircle, CheckCircle2, X, Hash, Gauge, Pencil,
+  AlertCircle, CheckCircle2, X, Hash, Gauge, Pencil, ChevronDown,
 } from 'lucide-react';
 
 interface Toast {
@@ -32,9 +32,11 @@ export default function CustomerDetailPage() {
   const [toasts, setToasts] = useState<Toast[]>([]);
 
   const [form, setForm] = useState({
-    make: '', model: '', year: '', chassisNumber: '', plateNumber: '',
+    make: 'Bajaj', model: '', year: '', chassisNumber: '', plateNumber: '',
   });
   const [formError, setFormError] = useState('');
+  const [vehicleModels, setVehicleModels] = useState<VehicleModel[]>([]);
+  const [isCustomModel, setIsCustomModel] = useState(false);
 
   const addToast = (type: 'success' | 'error', message: string) => {
     const id = Date.now();
@@ -62,6 +64,15 @@ export default function CustomerDetailPage() {
   };
 
   useEffect(() => {
+    fetch('/api/vehicle-models/')
+      .then((r) => r.json().catch(() => ({ success: false, data: { models: [] } })))
+      .then((d) => {
+        if (d?.success && Array.isArray(d?.data?.models)) {
+          setVehicleModels(d.data.models);
+        }
+      })
+      .catch(() => setVehicleModels([]));
+
     fetch('/api/auth/me/', { credentials: 'include' })
       .then((r) => r.json().catch(() => ({ success: false, error: 'Invalid auth response' })))
       .then((d) => {
@@ -75,15 +86,18 @@ export default function CustomerDetailPage() {
 
   const openAddModal = () => {
     setEditingVehicle(null);
-    setForm({ make: '', model: '', year: '', chassisNumber: '', plateNumber: '' });
+    setIsCustomModel(false);
+    setForm({ make: 'Bajaj', model: '', year: '', chassisNumber: '', plateNumber: '' });
     setFormError('');
     setShowVehicleModal(true);
   };
 
   const openEditModal = (v: Vehicle) => {
     setEditingVehicle(v);
+    const knownModel = vehicleModels.find((m) => m.name === v.model);
+    setIsCustomModel(!knownModel);
     setForm({
-      make: v.make,
+      make: 'Bajaj',
       model: v.model,
       year: v.year ? String(v.year) : '',
       chassisNumber: v.chassisNumber || '',
@@ -96,7 +110,7 @@ export default function CustomerDetailPage() {
   const handleSaveVehicle = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError('');
-    if (!form.make.trim() || !form.model.trim()) {
+    if (!form.model.trim()) {
       setFormError(t('crm_make_model_required'));
       return;
     }
@@ -104,7 +118,7 @@ export default function CustomerDetailPage() {
     try {
       const yearVal = form.year.trim() ? parseInt(form.year, 10) : undefined;
       const payload = {
-        make: form.make.trim(),
+        make: 'Bajaj',
         model: form.model.trim(),
         year: yearVal || undefined,
         chassisNumber: form.chassisNumber.trim() || undefined,
@@ -122,7 +136,8 @@ export default function CustomerDetailPage() {
       const data = await res.json();
       if (data?.success) {
         addToast('success', editingVehicle ? t('crm_vehicle_updated') : t('crm_vehicle_added'));
-        setForm({ make: '', model: '', year: '', chassisNumber: '', plateNumber: '' });
+        setForm({ make: 'Bajaj', model: '', year: '', chassisNumber: '', plateNumber: '' });
+        setIsCustomModel(false);
         setShowVehicleModal(false);
         setEditingVehicle(null);
         fetchCustomer();
@@ -362,28 +377,57 @@ export default function CustomerDetailPage() {
                 </button>
               </div>
               <form onSubmit={handleSaveVehicle} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-xs font-medium text-muted-foreground mb-1.5 block">{t('crm_vehicle_make')}</label>
-                    <input
+                {/* Make (fixed Bajaj) */}
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground mb-1.5 block">{t('crm_vehicle_make')}</label>
+                  <input
+                    readOnly
+                    value="Bajaj"
+                    className="w-full px-4 py-2.5 rounded-xl bg-muted border border-border text-muted-foreground focus:outline-none cursor-not-allowed text-sm"
+                  />
+                </div>
+                {/* Model dropdown */}
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground mb-1.5 block">{t('crm_vehicle_model')}</label>
+                  <div className="relative">
+                    <select
                       required
-                      value={form.make}
-                      onChange={(e) => setForm((f) => ({ ...f, make: e.target.value }))}
-                      className="w-full px-4 py-2.5 rounded-xl bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm"
-                      placeholder="Bajaj"
-                    />
+                      value={isCustomModel ? '__other__' : form.model}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (val === '__other__') {
+                          setIsCustomModel(true);
+                          setForm((f) => ({ ...f, model: '' }));
+                        } else {
+                          setIsCustomModel(false);
+                          setForm((f) => ({ ...f, model: val }));
+                        }
+                      }}
+                      className="w-full px-4 py-2.5 rounded-xl bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-ring appearance-none pr-10 text-sm"
+                    >
+                      <option value="">{t('booking_select_model')}</option>
+                      {vehicleModels.map((m) => (
+                        <option key={m.id} value={m.name}>{m.name}</option>
+                      ))}
+                      <option value="__other__">{t('booking_model_other')}</option>
+                    </select>
+                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
                   </div>
-                  <div>
-                    <label className="text-xs font-medium text-muted-foreground mb-1.5 block">{t('crm_vehicle_model')}</label>
+                </div>
+                {/* Custom model input */}
+                {isCustomModel && (
+                  <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}>
+                    <label className="text-xs font-medium text-muted-foreground mb-1.5 block">{t('booking_custom_model')}</label>
                     <input
                       required
+                      type="text"
                       value={form.model}
                       onChange={(e) => setForm((f) => ({ ...f, model: e.target.value }))}
                       className="w-full px-4 py-2.5 rounded-xl bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm"
                       placeholder="Pulsar 150"
                     />
-                  </div>
-                </div>
+                  </motion.div>
+                )}
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="text-xs font-medium text-muted-foreground mb-1.5 block">{t('crm_vehicle_year')}</label>

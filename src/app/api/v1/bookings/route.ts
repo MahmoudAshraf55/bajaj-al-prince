@@ -8,8 +8,8 @@ import { sanitizedString } from '@/lib/sanitize';
 import { z } from 'zod';
 
 const bookingSchema = z.object({
-  name: sanitizedString(z.string().min(2).max(100)),
-  phone: z.string().min(5).max(30),
+  name: sanitizedString(z.string().min(2).max(100).regex(/^[a-zA-Z\s]+$/, 'Name must contain only letters')),
+  phone: z.string().regex(/^\+20\d{10}$/, 'Phone must be +20 followed by exactly 10 digits'),
   model: sanitizedString(z.string().min(1).max(100)),
   issue: sanitizedString(z.string().min(5).max(1000)),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),

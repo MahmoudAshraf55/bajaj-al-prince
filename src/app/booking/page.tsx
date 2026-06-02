@@ -12,8 +12,8 @@ import type { VehicleModel } from '@/types';
 export default function BookingPage() {
   const { t } = useTranslation();
   const [form, setForm] = useState({
-    name: '', phone: '', model: '', issue: '', date: '', time: '',
-    make: '', year: '', plateNumber: '', chassisNumber: '',
+    name: '', phone: '+20', model: '', issue: '', date: '', time: '',
+    make: 'Bajaj', year: '', plateNumber: '', chassisNumber: '',
   });
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [errorMsg, setErrorMsg] = useState('');
@@ -34,10 +34,12 @@ export default function BookingPage() {
   }, []);
 
   const generateTimeSlots = () => {
-    const slots = [];
+    const slots: { value: string; label: string }[] = [];
     for (let h = 10; h < 22; h++) {
-      slots.push(`${h.toString().padStart(2, '0')}:00`);
-      slots.push(`${h.toString().padStart(2, '0')}:30`);
+      const period = h < 12 ? 'AM' : 'PM';
+      const displayHour = h > 12 ? h - 12 : h === 12 ? 12 : h;
+      slots.push({ value: `${h.toString().padStart(2, '0')}:00`, label: `${displayHour}:00 ${period}` });
+      slots.push({ value: `${h.toString().padStart(2, '0')}:30`, label: `${displayHour}:30 ${period}` });
     }
     return slots;
   };
@@ -47,15 +49,17 @@ export default function BookingPage() {
     setStatus('loading');
     setErrorMsg('');
     try {
+      const rawDigits = form.phone.replace(/^\+20/, '').replace(/\D/g, '');
+      const normalizedPhone = '+20' + rawDigits.slice(0, 10);
       const payload: Record<string, unknown> = {
-        name: form.name,
-        phone: form.phone,
+        name: form.name.trim(),
+        phone: normalizedPhone,
         model: form.model,
         issue: form.issue,
         date: form.date,
         time: form.time,
+        make: 'Bajaj',
       };
-      if (form.make.trim()) payload.make = form.make.trim();
       if (form.year.trim()) payload.year = parseInt(form.year, 10);
       if (form.plateNumber.trim()) payload.plateNumber = form.plateNumber.trim();
       if (form.chassisNumber.trim()) payload.chassisNumber = form.chassisNumber.trim();
@@ -69,8 +73,8 @@ export default function BookingPage() {
       if (data?.success) {
         setStatus('success');
         setForm({
-          name: '', phone: '', model: '', issue: '', date: '', time: '',
-          make: '', year: '', plateNumber: '', chassisNumber: '',
+          name: '', phone: '+20', model: '', issue: '', date: '', time: '',
+          make: 'Bajaj', year: '', plateNumber: '', chassisNumber: '',
         });
         setIsCustomModel(false);
       } else {
@@ -120,8 +124,8 @@ export default function BookingPage() {
                 onClick={() => {
                   setStatus('idle');
                   setForm({
-                    name: '', phone: '', model: '', issue: '', date: '', time: '',
-                    make: '', year: '', plateNumber: '', chassisNumber: '',
+                    name: '', phone: '+20', model: '', issue: '', date: '', time: '',
+                    make: 'Bajaj', year: '', plateNumber: '', chassisNumber: '',
                   });
                   setIsCustomModel(false);
                 }}
@@ -141,7 +145,10 @@ export default function BookingPage() {
                     required
                     type="text"
                     value={form.name}
-                    onChange={(e) => setForm({ ...form, name: e.target.value })}
+                    onChange={(e) => {
+                      const clean = e.target.value.replace(/[^a-zA-Z\s]/g, '');
+                      setForm({ ...form, name: clean });
+                    }}
                     className="w-full px-4 py-3 rounded-xl bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                     placeholder={t('booking_name_ph')}
                   />
@@ -150,14 +157,24 @@ export default function BookingPage() {
                   <label className="text-sm font-medium text-muted-foreground mb-2 flex items-center gap-2">
                     <Phone className="w-4 h-4" /> {t('booking_phone')}
                   </label>
-                  <input
-                    required
-                    type="tel"
-                    value={form.phone}
-                    onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                    className="w-full px-4 py-3 rounded-xl bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                    placeholder={t('booking_phone_ph')}
-                  />
+                  <div className="relative">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground text-sm font-medium select-none">
+                      +20
+                    </span>
+                    <input
+                      required
+                      type="tel"
+                      inputMode="numeric"
+                      maxLength={10}
+                      value={form.phone.replace(/^\+20/, '')}
+                      onChange={(e) => {
+                        const digits = e.target.value.replace(/\D/g, '').slice(0, 10);
+                        setForm({ ...form, phone: '+20' + digits });
+                      }}
+                      className="w-full pl-12 pr-4 py-3 rounded-xl bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                      placeholder="1234567890"
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -174,15 +191,10 @@ export default function BookingPage() {
                       const val = e.target.value;
                       if (val === '__other__') {
                         setIsCustomModel(true);
-                        setForm({ ...form, model: '', make: '' });
+                        setForm({ ...form, model: '', make: 'Bajaj' });
                       } else {
                         setIsCustomModel(false);
-                        const selected = models.find((m) => m.name === val);
-                        setForm({
-                          ...form,
-                          model: val,
-                          make: selected?.make || '',
-                        });
+                        setForm({ ...form, model: val, make: 'Bajaj' });
                       }
                     }}
                     className="w-full px-4 py-3 rounded-xl bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-ring appearance-none pr-10"
@@ -215,6 +227,7 @@ export default function BookingPage() {
                     className="w-full px-4 py-3 rounded-xl bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                     placeholder={t('booking_model_ph')}
                   />
+                  <input type="hidden" value="Bajaj" />
                 </motion.div>
               )}
 
@@ -226,10 +239,9 @@ export default function BookingPage() {
                   </label>
                   <input
                     type="text"
+                    readOnly
                     value={form.make}
-                    onChange={(e) => setForm({ ...form, make: e.target.value })}
-                    className="w-full px-4 py-3 rounded-xl bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                    placeholder="Bajaj"
+                    className="w-full px-4 py-3 rounded-xl bg-muted border border-border text-muted-foreground focus:outline-none cursor-not-allowed"
                   />
                 </div>
                 <div>
@@ -316,7 +328,7 @@ export default function BookingPage() {
                   >
                     <option value="">{t('booking_select_time')}</option>
                     {generateTimeSlots().map((slot) => (
-                      <option key={slot} value={slot}>{slot}</option>
+                      <option key={slot.value} value={slot.value}>{slot.label}</option>
                     ))}
                   </select>
                 </div>
