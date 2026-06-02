@@ -18,6 +18,12 @@ export function validateOrigin(req: NextRequest): NextResponse | null {
     const originUrl = new URL(origin);
     const allowedUrl = new URL(allowedOrigin);
 
+    // In development, allow any localhost origin regardless of port
+    const isDev = process.env.NODE_ENV !== 'production';
+    if (isDev && originUrl.hostname === 'localhost') {
+      return null;
+    }
+
     if (originUrl.origin !== allowedUrl.origin) {
       if (referer) {
         const refererUrl = new URL(referer);
