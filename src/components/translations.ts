@@ -259,6 +259,9 @@ export const translations = {
     crm_failed_load_customer: 'Failed to load customer',
     crm_failed_remove_vehicle: 'Failed to remove vehicle',
     crm_failed_load_vehicles: 'Failed to load vehicles',
+    crm_error_loading: 'Error loading data',
+    crm_retry: 'Retry',
+    crm_back_to_customers: 'Back to Customers',
 
     // CRM Vehicles
     crm_vehicle_directory: 'Vehicle Directory',
@@ -558,6 +561,11 @@ export const translations = {
     // Pagination
     crm_pagination_showing: 'عرض',
     crm_pagination_of: 'من',
+
+    // CRM Error / Empty States
+    crm_error_loading: 'حدث خطأ أثناء تحميل البيانات',
+    crm_retry: 'إعادة المحاولة',
+    crm_back_to_customers: 'العودة إلى العملاء',
 
     // Footer
     footer_description: 'البرنس بجاج — وجهتك الموثوقة لبيع وصيانة وقطع غيار أصلية وتشخيص دراجات باجاج. نخدم راكبي الدراجات بالشغف منذ 2019.',

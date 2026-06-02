@@ -24,6 +24,7 @@ export default function CustomerDetailPage() {
   const customerId = params.id as string;
 
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [showVehicleModal, setShowVehicleModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -41,26 +42,33 @@ export default function CustomerDetailPage() {
   };
 
   const fetchCustomer = async () => {
+    setError('');
     try {
       const res = await fetch(`/api/customers/${customerId}/`, { credentials: 'include' });
       const data = await res.json();
-      if (data.success) {
+      if (data?.success && data?.data?.customer) {
         setCustomer(data.data.customer);
       } else {
-        addToast('error', data.error || t('crm_customer_not_found'));
-        router.push('/admin/customers/');
+        const msg = data?.error || t('crm_customer_not_found');
+        setError(msg);
+        addToast('error', msg);
       }
-    } catch {
-      addToast('error', t('crm_failed_load_customer'));
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : t('crm_failed_load_customer');
+      setError(msg);
+      addToast('error', msg);
     }
   };
 
   useEffect(() => {
     fetch('/api/auth/me/', { credentials: 'include' })
-      .then((r) => r.json())
+      .then((r) => r.json().catch(() => ({ success: false, error: 'Invalid auth response' })))
       .then((d) => {
-        if (!d.success) router.push('/admin/');
+        if (!d?.success) router.push('/admin/');
         else { setLoading(false); fetchCustomer(); }
+      })
+      .catch(() => {
+        router.push('/admin/');
       });
   }, [router, customerId]);
 
@@ -129,7 +137,29 @@ export default function CustomerDetailPage() {
     );
   }
 
-  if (!customer) return null;
+  if (!customer) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-6">
+        <div className="glass rounded-2xl p-8 text-center max-w-md">
+          <AlertCircle className="w-10 h-10 text-red-400 mx-auto mb-3" />
+          <p className="text-red-400 font-medium mb-2">{t('crm_error_loading')}</p>
+          <p className="text-muted-foreground text-sm">{error || t('crm_customer_not_found')}</p>
+          <button
+            onClick={() => { setError(''); fetchCustomer(); }}
+            className="mt-4 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
+          >
+            {t('crm_retry')}
+          </button>
+          <Link
+            href="/admin/customers/"
+            className="block mt-2 text-sm text-primary hover:underline"
+          >
+            {t('crm_back_to_customers')}
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen p-6 sm:p-8">
@@ -203,7 +233,7 @@ export default function CustomerDetailPage() {
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-bold flex items-center gap-2">
               <Car className="w-5 h-5 text-primary" />
-              {t('crm_garage')} ({customer.vehicles?.length || 0})
+              {t('crm_garage')} ({customer?.vehicles?.length ?? 0})
             </h3>
             <button
               onClick={() => setShowVehicleModal(true)}
@@ -214,9 +244,9 @@ export default function CustomerDetailPage() {
             </button>
           </div>
 
-          {customer.vehicles && customer.vehicles.length > 0 ? (
+          {customer?.vehicles && customer.vehicles.length > 0 ? (
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {customer.vehicles.map((v: Vehicle) => (
+              {customer?.vehicles?.map((v: Vehicle) => (
                 <motion.div
                   key={v.id}
                   initial={{ opacity: 0, scale: 0.95 }}

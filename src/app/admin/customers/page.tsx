@@ -21,6 +21,7 @@ export default function CustomersPage() {
   const { t } = useTranslation();
   const router = useRouter();
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [meta, setMeta] = useState({ total: 0, page: 1, limit: 10, totalPages: 1 });
   const [search, setSearch] = useState('');
@@ -39,6 +40,7 @@ export default function CustomersPage() {
   };
 
   const fetchCustomers = async (p: number, q?: string) => {
+    setError('');
     try {
       const url = new URL('/api/customers/', window.location.origin);
       url.searchParams.set('page', String(p));
@@ -46,21 +48,29 @@ export default function CustomersPage() {
       if (q) url.searchParams.set('search', q);
       const res = await fetch(url.toString(), { credentials: 'include' });
       const data = await res.json();
-      if (data.success) {
+      if (data?.success && Array.isArray(data?.data?.customers)) {
         setCustomers(data.data.customers);
-        setMeta(data.data.meta);
+        setMeta(data.data.meta ?? { total: 0, page: 1, limit: 10, totalPages: 1 });
+      } else {
+        setError(data?.error || t('crm_failed_load_customers'));
+        addToast('error', data?.error || t('crm_failed_load_customers'));
       }
-    } catch {
-      addToast('error', t('crm_failed_load_customers'));
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : t('crm_failed_load_customers');
+      setError(msg);
+      addToast('error', msg);
     }
   };
 
   useEffect(() => {
     fetch('/api/auth/me/', { credentials: 'include' })
-      .then((r) => r.json())
+      .then((r) => r.json().catch(() => ({ success: false, error: 'Invalid auth response' })))
       .then((d) => {
-        if (!d.success) router.push('/admin/');
+        if (!d?.success) router.push('/admin/');
         else { setLoading(false); fetchCustomers(1); }
+      })
+      .catch(() => {
+        router.push('/admin/');
       });
   }, [router]);
 
@@ -114,6 +124,24 @@ export default function CustomersPage() {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (error && !customers.length) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-6">
+        <div className="glass rounded-2xl p-8 text-center max-w-md">
+          <AlertCircle className="w-10 h-10 text-red-400 mx-auto mb-3" />
+          <p className="text-red-400 font-medium mb-2">{t('crm_error_loading')}</p>
+          <p className="text-muted-foreground text-sm">{error}</p>
+          <button
+            onClick={() => { setError(''); fetchCustomers(page, search); }}
+            className="mt-4 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
+          >
+            {t('crm_retry')}
+          </button>
+        </div>
       </div>
     );
   }
@@ -180,7 +208,7 @@ export default function CustomersPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {customers.map((c) => (
+                {customers?.map((c) => (
                   <tr key={c.id} className="hover:bg-white/5 transition-colors">
                     <td className="px-5 py-4">
                       <div className="flex items-center gap-3">
@@ -208,7 +236,7 @@ export default function CustomersPage() {
                     </td>
                   </tr>
                 ))}
-                {customers.length === 0 && (
+                {(!customers || customers.length === 0) && (
                   <tr>
                     <td colSpan={5} className="px-5 py-8 text-center text-muted-foreground">
                       {t('crm_no_customers')}
