@@ -67,7 +67,7 @@ export default function CustomersPage() {
       .then((r) => r.json().catch(() => ({ success: false, error: 'Invalid auth response' })))
       .then((d) => {
         if (!d?.success) router.push('/admin/');
-        else { setLoading(false); fetchCustomers(1); }
+        else { setLoading(false); }
       })
       .catch(() => {
         router.push('/admin/');
