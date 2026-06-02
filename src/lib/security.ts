@@ -9,29 +9,28 @@ export function validateOrigin(req: NextRequest): NextResponse | null {
   const referer = req.headers.get('referer');
   const allowedOrigin = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 
-  // If no origin header (e.g., same-origin fetch or mobile app), allow it
-  if (!origin) {
+  // In development, skip origin validation — CSRF is a production threat,
+  // and dev environments use proxies, tunnels, and various local IPs.
+  const isDev = process.env.NODE_ENV !== 'production';
+  if (isDev) {
     return null;
   }
 
+  // Production: require either Origin or Referer header for CSRF protection.
+  // Same-origin fetch sends Origin header. If missing, check Referer as fallback.
+  const source = origin || referer;
+  if (!source) {
+    return NextResponse.json(
+      { success: false, error: 'Missing origin or referer header' },
+      { status: 403 }
+    );
+  }
+
   try {
-    const originUrl = new URL(origin);
+    const sourceUrl = new URL(source);
     const allowedUrl = new URL(allowedOrigin);
 
-    // In development, skip origin validation — CSRF is a production threat,
-    // and dev environments use proxies, tunnels, and various local IPs.
-    const isDev = process.env.NODE_ENV !== 'production';
-    if (isDev) {
-      return null;
-    }
-
-    if (originUrl.origin !== allowedUrl.origin) {
-      if (referer) {
-        const refererUrl = new URL(referer);
-        if (refererUrl.origin === allowedUrl.origin) {
-          return null;
-        }
-      }
+    if (sourceUrl.origin !== allowedUrl.origin) {
       return NextResponse.json(
         { success: false, error: 'Invalid origin' },
         { status: 403 }
