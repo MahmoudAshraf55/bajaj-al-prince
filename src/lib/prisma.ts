@@ -8,7 +8,7 @@ const prismaClientSingleton = () => {
       $allModels: {
         softDelete<T>(this: T, where: Record<string, unknown>) {
           const context = Prisma.getExtensionContext(this);
-          return (context as any).update({
+          return (context as unknown as { update: (args: { where: Record<string, unknown>; data: { isDeleted: boolean; deletedAt: Date } }) => Promise<unknown> }).update({
             where,
             data: { isDeleted: true, deletedAt: new Date() },
           });
@@ -17,15 +17,18 @@ const prismaClientSingleton = () => {
     },
     query: {
       $allModels: {
-        async findMany({ model, args, query }) {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        async findMany({ model: _model, args, query }) {
           args.where = { isDeleted: false, ...(args.where ?? {}) } as unknown as typeof args.where;
           return query(args);
         },
-        async findFirst({ model, args, query }) {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        async findFirst({ model: _model, args, query }) {
           args.where = { isDeleted: false, ...(args.where ?? {}) } as unknown as typeof args.where;
           return query(args);
         },
-        async count({ model, args, query }) {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        async count({ model: _model, args, query }) {
           args.where = { isDeleted: false, ...(args.where ?? {}) } as unknown as typeof args.where;
           return query(args);
         },

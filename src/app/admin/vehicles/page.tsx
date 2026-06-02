@@ -1,14 +1,14 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from '@/components/useTranslation';
 import type { Vehicle } from '@/types';
 import {
-  Search, Car, ChevronLeft, ChevronRight, Hash, Calendar,
-  AlertCircle, CheckCircle2, User, Gauge,
+  Search, Car, ChevronLeft, ChevronRight, Hash,
+  AlertCircle, CheckCircle2, User,
 } from 'lucide-react';
 
 interface Toast {
@@ -34,7 +34,7 @@ export default function VehiclesPage() {
     setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 4000);
   };
 
-  const fetchVehicles = async (p: number, q?: string) => {
+  const fetchVehicles = useCallback(async (p: number, q?: string) => {
     setError('');
     try {
       const url = new URL('/api/vehicles/', window.location.origin);
@@ -55,7 +55,7 @@ export default function VehiclesPage() {
       setError(msg);
       addToast('error', msg);
     }
-  };
+  }, [t]);
 
   useEffect(() => {
     fetch('/api/auth/me/', { credentials: 'include' })
@@ -67,11 +67,11 @@ export default function VehiclesPage() {
       .catch(() => {
         router.push('/admin/');
       });
-  }, [router]);
+  }, [router, fetchVehicles]);
 
   useEffect(() => {
     if (!loading) fetchVehicles(page, search);
-  }, [page, loading]);
+  }, [page, loading, search, fetchVehicles]);
 
   const handleSearch = (val: string) => {
     setSearch(val);

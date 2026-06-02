@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from '@/components/useTranslation';
@@ -34,7 +34,7 @@ export default function VehicleModelsPage() {
     setTimeout(() => setToasts((prev) => prev.filter((toast) => toast.id !== id)), 4000);
   };
 
-  const fetchModels = async () => {
+  const fetchModels = useCallback(async () => {
     setError('');
     try {
       const res = await fetch('/api/vehicle-models/?all=true', { credentials: 'include' });
@@ -48,7 +48,7 @@ export default function VehicleModelsPage() {
       const msg = err instanceof Error ? err.message : t('vmodels_failed_load');
       setError(msg);
     }
-  };
+  }, [t]);
 
   useEffect(() => {
     fetch('/api/auth/me/', { credentials: 'include' })
@@ -58,7 +58,7 @@ export default function VehicleModelsPage() {
         else { setLoading(false); fetchModels(); }
       })
       .catch(() => router.push('/admin/'));
-  }, [router]);
+  }, [router, fetchModels]);
 
   const openAddModal = () => {
     setEditingModel(null);

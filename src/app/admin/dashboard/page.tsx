@@ -16,7 +16,7 @@ interface ContactMessage {
   id: string; name: string; phone: string; email: string; message: string; createdAt: string;
 }
 interface Booking {
-  id: string; name: string; phone: string; model: string; issue: string; date: string; time: string; status: string; createdAt: string;
+  id: string; name: string; email?: string; phone: string; model: string; issue: string; date: string; time: string; status: string; createdAt: string;
 }
 interface Product {
   id: string; name: string; description: string | null; price: number; stock: number; category: string; available: boolean;

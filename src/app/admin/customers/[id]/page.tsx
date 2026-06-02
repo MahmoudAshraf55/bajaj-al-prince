@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -44,7 +44,7 @@ export default function CustomerDetailPage() {
     setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 4000);
   };
 
-  const fetchCustomer = async () => {
+  const fetchCustomer = useCallback(async () => {
     setError('');
     try {
       const res = await fetch(`/api/customers/${customerId}/`, { credentials: 'include' });
@@ -61,7 +61,7 @@ export default function CustomerDetailPage() {
       setError(msg);
       addToast('error', msg);
     }
-  };
+  }, [customerId, t]);
 
   useEffect(() => {
     fetch('/api/vehicle-models/')
@@ -82,7 +82,7 @@ export default function CustomerDetailPage() {
       .catch(() => {
         router.push('/admin/');
       });
-  }, [router, customerId]);
+  }, [router, customerId, fetchCustomer]);
 
   const openAddModal = () => {
     setEditingVehicle(null);

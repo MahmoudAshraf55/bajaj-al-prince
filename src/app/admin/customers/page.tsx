@@ -1,13 +1,13 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from '@/components/useTranslation';
 import type { Customer } from '@/types';
 import {
-  Search, Plus, ChevronLeft, ChevronRight, User, Phone, Mail, MapPin,
+  Search, Plus, ChevronLeft, ChevronRight, User,
   AlertCircle, CheckCircle2, Car, X,
 } from 'lucide-react';
 
@@ -39,7 +39,7 @@ export default function CustomersPage() {
     setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 4000);
   };
 
-  const fetchCustomers = async (p: number, q?: string) => {
+  const fetchCustomers = useCallback(async (p: number, q?: string) => {
     setError('');
     try {
       const url = new URL('/api/customers/', window.location.origin);
@@ -60,7 +60,7 @@ export default function CustomersPage() {
       setError(msg);
       addToast('error', msg);
     }
-  };
+  }, [t]);
 
   useEffect(() => {
     fetch('/api/auth/me/', { credentials: 'include' })
@@ -72,11 +72,11 @@ export default function CustomersPage() {
       .catch(() => {
         router.push('/admin/');
       });
-  }, [router]);
+  }, [router, fetchCustomers]);
 
   useEffect(() => {
     if (!loading) fetchCustomers(page, search);
-  }, [page, loading]);
+  }, [page, loading, search, fetchCustomers]);
 
   const handleSearch = (val: string) => {
     setSearch(val);

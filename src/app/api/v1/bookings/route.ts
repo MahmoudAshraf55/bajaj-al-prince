@@ -89,6 +89,7 @@ export async function POST(req: NextRequest) {
       return withSecurityHeaders(NextResponse.json({ success: false, error: 'Working hours are 10:00 AM - 10:00 PM' }, { status: 400 }));
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const booking = await prisma.$transaction(async (tx: any) => {
       const existing = await tx.booking.findFirst({
         where: { date: data.date, time: data.time, status: { not: 'rejected' } },
