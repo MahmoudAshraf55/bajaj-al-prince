@@ -3,56 +3,151 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
 model ContactMessage {
-  id        String   @id @default(uuid())
+  id        String    @id @default(uuid())
   name      String
   phone     String
   email     String
   message   String
-  createdAt DateTime @default(now())
+  createdAt DateTime  @default(now()) @db.Timestamp(6)
+  updatedAt DateTime? @updatedAt @db.Timestamp(6)
+  isDeleted Boolean   @default(false)
+  deletedAt DateTime? @db.Timestamp(6)
+  tenantId  String?
+
+  @@index([createdAt])
+  @@index([isDeleted])
+  @@index([tenantId])
 }
 
 model Booking {
-  id          String   @id @default(uuid())
-  name        String
-  phone       String
-  model       String
-  issue       String
-  date        String
-  time        String
-  status      String   @default("pending")
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id        String    @id @default(uuid())
+  name      String
+  phone     String
+  model     String
+  issue     String
+  date      String
+  time      String
+  status    String    @default("pending")
+  createdAt DateTime  @default(now()) @db.Timestamp(6)
+  updatedAt DateTime  @updatedAt @db.Timestamp(6)
+  isDeleted Boolean   @default(false)
+  deletedAt DateTime? @db.Timestamp(6)
+  tenantId  String?
+
+  @@unique([date, time], name: "Booking_date_time_unique")
+  @@index([date, status])
+  @@index([createdAt])
+  @@index([isDeleted])
+  @@index([tenantId])
 }
 
 model Product {
-  id          String   @id @default(uuid())
+  id          String    @id @default(uuid())
   name        String
   description String?
-  price       Float
-  stock       Int      @default(0)
+  price       Decimal   @db.Decimal(10, 2)
+  stock       Int       @default(0)
   category    String
   image       String?
-  available   Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  available   Boolean   @default(true)
+  createdAt   DateTime  @default(now()) @db.Timestamp(6)
+  updatedAt   DateTime  @updatedAt @db.Timestamp(6)
+  isDeleted   Boolean   @default(false)
+  deletedAt   DateTime? @db.Timestamp(6)
+  tenantId    String?
+
+  @@index([category])
+  @@index([available])
+  @@index([createdAt])
+  @@index([isDeleted])
+  @@index([tenantId])
 }
 
 model Transaction {
-  id          String   @id @default(uuid())
+  id          String    @id @default(uuid())
   type        String
-  amount      Float
+  amount      Decimal   @db.Decimal(10, 2)
   description String?
-  createdAt   DateTime @default(now())
+  createdBy   String?
+  createdAt   DateTime  @default(now()) @db.Timestamp(6)
+  updatedAt   DateTime? @updatedAt @db.Timestamp(6)
+  isDeleted   Boolean   @default(false)
+  deletedAt   DateTime? @db.Timestamp(6)
+  tenantId    String?
+
+  @@index([type])
+  @@index([createdAt])
+  @@index([isDeleted])
+  @@index([tenantId])
+}
+
+enum UserRole {
+  admin
+  staff
+  viewer
 }
 
 model User {
-  id       String @id @default(uuid())
-  username String @unique
-  password String
-  role     String @default("admin")
+  id             String    @id @default(uuid())
+  username       String    @unique
+  password       String
+  role           UserRole  @default(viewer)
+  failedAttempts Int       @default(0)
+  lockedUntil    DateTime? @db.Timestamp(6)
+  createdAt      DateTime  @default(now()) @db.Timestamp(6)
+  updatedAt      DateTime? @updatedAt @db.Timestamp(6)
+  isDeleted      Boolean   @default(false)
+  deletedAt      DateTime? @db.Timestamp(6)
+  tenantId       String?
+
+  @@index([username])
+  @@index([isDeleted])
+  @@index([tenantId])
+}
+
+model Customer {
+  id        String    @id @default(uuid())
+  name      String
+  phone     String
+  email     String?
+  address   String?
+  vehicles  Vehicle[]
+  createdAt DateTime  @default(now()) @db.Timestamp(6)
+  updatedAt DateTime? @updatedAt @db.Timestamp(6)
+  isDeleted Boolean   @default(false)
+  deletedAt DateTime? @db.Timestamp(6)
+  tenantId  String?
+
+  @@index([name])
+  @@index([phone])
+  @@index([isDeleted])
+  @@index([tenantId])
+}
+
+model Vehicle {
+  id            String    @id @default(uuid())
+  make          String
+  model         String
+  year          Int?
+  chassisNumber String?
+  plateNumber   String?
+  customerId    String
+  customer      Customer  @relation(fields: [customerId], references: [id])
+  createdAt     DateTime  @default(now()) @db.Timestamp(6)
+  updatedAt     DateTime? @updatedAt @db.Timestamp(6)
+  isDeleted     Boolean   @default(false)
+  deletedAt     DateTime? @db.Timestamp(6)
+  tenantId      String?
+
+  @@unique([chassisNumber, tenantId])
+  @@index([make])
+  @@index([model])
+  @@index([customerId])
+  @@index([isDeleted])
+  @@index([tenantId])
 }

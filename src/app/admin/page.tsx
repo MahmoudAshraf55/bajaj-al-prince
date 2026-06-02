@@ -1,26 +1,21 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { LogIn, AlertCircle } from 'lucide-react';
 import Logo from '@/components/ui/Logo';
+import { useTranslation } from '@/components/useTranslation';
 
 export default function AdminLogin() {
+  const { t } = useTranslation();
   const router = useRouter();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    const token = localStorage.getItem('admin_token');
-    if (token) {
-      fetch('/api/auth/me/', { headers: { Authorization: `Bearer ${token}` } })
-        .then((r) => r.json())
-        .then((d) => { if (d.success) router.push('/admin/dashboard/'); });
-    }
-  }, [router]);
+  // Always show login form — admins must enter credentials every time
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,16 +26,16 @@ export default function AdminLogin() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password }),
+        credentials: 'include',
       });
       const data = await res.json();
       if (data.success) {
-        localStorage.setItem('admin_token', data.token);
         router.push('/admin/dashboard/');
       } else {
-        setError(data.error || 'Invalid credentials');
+        setError(data.error || t('admin_invalid'));
       }
-    } catch {
-      setError('Network error');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Network error. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -58,24 +53,24 @@ export default function AdminLogin() {
             <div className="mb-4">
               <Logo size="lg" />
             </div>
-            <h1 className="text-2xl font-bold">Admin Portal</h1>
-            <p className="text-muted-foreground text-sm mt-1">BAJAJ AL PRINCE Dashboard</p>
+            <h1 className="text-2xl font-bold">{t('admin_title')}</h1>
+            <p className="text-muted-foreground text-sm mt-1">{t('admin_subtitle')}</p>
           </div>
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <div>
-              <label className="text-sm font-medium text-muted-foreground mb-2 block">Username</label>
+              <label className="text-sm font-medium text-muted-foreground mb-2 block">{t('admin_username')}</label>
               <input
                 type="text"
                 required
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 className="w-full px-4 py-3 rounded-xl bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                placeholder="admin"
+                placeholder={t('admin_username')}
               />
             </div>
             <div>
-              <label className="text-sm font-medium text-muted-foreground mb-2 block">Password</label>
+              <label className="text-sm font-medium text-muted-foreground mb-2 block">{t('admin_password')}</label>
               <input
                 type="password"
                 required
@@ -103,15 +98,12 @@ export default function AdminLogin() {
               ) : (
                 <>
                   <LogIn className="w-4 h-4" />
-                  Sign In
+                  {t('admin_sign_in')}
                 </>
               )}
             </button>
           </form>
 
-          <p className="text-center text-muted-foreground text-xs mt-6">
-            Default: admin / admin123
-          </p>
         </div>
       </motion.div>
     </div>

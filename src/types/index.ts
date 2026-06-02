@@ -32,3 +32,28 @@ export interface TransactionData {
   description: string | null;
   createdAt: Date;
 }
+
+export interface Customer {
+  id: string;
+  name: string;
+  phone: string;
+  email: string | null;
+  address: string | null;
+  vehicles: Vehicle[];
+  createdAt: string;
+  updatedAt: string | null;
+  _count?: { vehicles: number };
+}
+
+export interface Vehicle {
+  id: string;
+  make: string;
+  model: string;
+  year: number | null;
+  chassisNumber: string | null;
+  plateNumber: string | null;
+  customerId: string;
+  customer?: Customer;
+  createdAt: string;
+  updatedAt: string | null;
+}

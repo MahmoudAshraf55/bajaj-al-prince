@@ -3,6 +3,7 @@
 import { motion } from 'framer-motion';
 import { AlertTriangle, Package, Search, Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { useTranslation } from '@/components/useTranslation';
 
 interface Product {
   id: string;
@@ -15,22 +16,30 @@ interface Product {
   available: boolean;
 }
 
-const categories = ['All', 'Motorcycles', 'Spare Parts', 'Accessories'];
+const categoryKeys = ['All', 'Motorcycles', 'Spare Parts', 'Accessories'];
 
 export default function MarketPage() {
+  const { t } = useTranslation();
   const [activeCategory, setActiveCategory] = useState('All');
   const [search, setSearch] = useState('');
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
+  const categoryLabels: Record<string, string> = {
+    All: t('market_cat_all'),
+    Motorcycles: t('market_cat_motorcycles'),
+    'Spare Parts': t('market_cat_spareparts'),
+    Accessories: t('market_cat_accessories'),
+  };
+
   useEffect(() => {
     async function load() {
       try {
-        const res = await fetch('/api/products/');
+        const res = await fetch('/api/products/?limit=1000');
         const data = await res.json();
         if (data.success) {
-          setProducts(data.products.filter((p: Product) => p.available));
+          setProducts(data.data.products.filter((p: Product) => p.available));
         } else {
           setError(data.error || 'Failed to load products');
         }
@@ -59,17 +68,17 @@ export default function MarketPage() {
         >
           <div className="flex items-center justify-center gap-3 mb-6">
             <div className="h-px w-12 bg-primary" />
-            <span className="text-primary text-xs font-semibold tracking-[0.3em] uppercase">Marketplace</span>
+            <span className="text-primary text-xs font-semibold tracking-[0.3em] uppercase">{t('market_tag')}</span>
             <div className="h-px w-12 bg-primary" />
           </div>
-          <h1 className="text-4xl sm:text-5xl font-black mb-4">Product <span className="gradient-text-cyan">Market</span></h1>
-          <p className="text-muted-foreground max-w-xl mx-auto">Explore BAJAJ AL PRINCE range of motorcycles, spare parts, and accessories.</p>
+          <h1 className="text-4xl sm:text-5xl font-black mb-4">{t('market_title')}</h1>
+          <p className="text-muted-foreground max-w-xl mx-auto">{t('market_desc')}</p>
         </motion.div>
 
         <div className="glass rounded-2xl p-4 mb-8 flex items-center gap-3 border border-primary/20">
           <AlertTriangle className="w-5 h-5 text-primary flex-shrink-0" />
           <p className="text-sm text-muted-foreground">
-            <span className="text-primary font-medium">Notice:</span> Prices are subject to market fluctuations. Please contact us for the most current pricing.
+            <span className="text-primary font-medium">{t('market_notice')}</span> {t('market_notice_text')}
           </p>
         </div>
 
@@ -78,24 +87,24 @@ export default function MarketPage() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <input
               type="text"
-              placeholder="Search products..."
+              placeholder={t('market_search_placeholder')}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-input border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
             />
           </div>
           <div className="flex gap-2 overflow-x-auto w-full sm:w-auto scrollbar-hide pb-2 sm:pb-0">
-            {categories.map((cat) => (
+            {categoryKeys.map((key) => (
               <button
-                key={cat}
-                onClick={() => setActiveCategory(cat)}
+                key={key}
+                onClick={() => setActiveCategory(key)}
                 className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
-                  activeCategory === cat
+                  activeCategory === key
                     ? 'bg-primary text-primary-foreground'
                     : 'bg-input border border-border text-muted-foreground hover:text-foreground'
                 }`}
               >
-                {cat}
+                {categoryLabels[key]}
               </button>
             ))}
           </div>
@@ -129,7 +138,7 @@ export default function MarketPage() {
                     <Package className="w-12 h-12 text-muted-foreground/30" />
                     {!product.stock && (
                       <div className="absolute top-3 right-3 px-2 py-1 rounded-lg bg-red-500/20 border border-red-500/30 text-red-400 text-xs font-medium">
-                        Out of Stock
+                        {t('market_out_of_stock')}
                       </div>
                     )}
                   </div>
@@ -137,15 +146,15 @@ export default function MarketPage() {
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-xs text-primary font-medium uppercase tracking-wider">{product.category}</span>
                       <span className={`text-xs px-2 py-0.5 rounded-full ${product.stock > 0 ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}`}>
-                        {product.stock > 0 ? `${product.stock} in stock` : 'Unavailable'}
+                        {product.stock > 0 ? `${product.stock} ${t('market_in_stock')}` : t('market_unavailable')}
                       </span>
                     </div>
                     <h3 className="text-foreground font-semibold mb-1">{product.name}</h3>
-                    <p className="text-muted-foreground text-sm mb-4">{product.description || 'No description available.'}</p>
+                    <p className="text-muted-foreground text-sm mb-4">{product.description || t('market_no_description')}</p>
                     <div className="flex items-center justify-between">
                       <span className="text-xl font-bold text-primary">{product.price.toLocaleString()} EGP</span>
                       <button className="px-4 py-2 rounded-lg bg-primary/10 border border-primary/20 text-primary text-sm font-medium hover:bg-primary/20 transition-colors">
-                        Inquire
+                        {t('market_inquire')}
                       </button>
                     </div>
                   </div>
@@ -156,7 +165,7 @@ export default function MarketPage() {
             {filtered.length === 0 && (
               <div className="text-center py-16">
                 <Package className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
-                <p className="text-muted-foreground">No products found.</p>
+                <p className="text-muted-foreground">{t('market_no_products')}</p>
               </div>
             )}
           </>

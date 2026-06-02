@@ -97,11 +97,11 @@ The following features are **STABLE** and must not be modified unless explicitly
 
 ### Authentication
 - JWT tokens created with `jose` (HS256), 24h expiry.
-- Tokens stored in `localStorage` (client-side admin only).
-- Token verification via `Bearer` header on every admin API call.
+- Tokens stored in `admin_token` HttpOnly cookie (Secure, SameSite=Strict).
+- Token verification via cookie on every admin API call.
 
 ### Authorization
-- Admin API routes **must** verify `Authorization: Bearer <token>` header.
+- Admin API routes **must** verify `admin_token` cookie via `requireAuth` / `requireRole`.
 - Admin pages **must** gate access with token check + `/api/auth/me` validation.
 
 ### Input Validation

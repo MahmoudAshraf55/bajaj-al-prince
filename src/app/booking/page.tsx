@@ -1,15 +1,20 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Calendar, Clock, Bike, Wrench, Send, CheckCircle, AlertCircle, User, Phone } from 'lucide-react';
+import { useTranslation } from '@/components/useTranslation';
 
 export default function BookingPage() {
+  const { t } = useTranslation();
   const [form, setForm] = useState({ name: '', phone: '', model: '', issue: '', date: '', time: '' });
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [errorMsg, setErrorMsg] = useState('');
+  const [today, setToday] = useState('');
 
-  const today = new Date().toISOString().split('T')[0];
+  useEffect(() => {
+    setToday(new Date().toISOString().split('T')[0]);
+  }, []);
 
   const generateTimeSlots = () => {
     const slots = [];
@@ -38,12 +43,12 @@ export default function BookingPage() {
         setStatus('error');
         const msg = data.error
           || (data.errors?.length ? data.errors.map((e: { message: string }) => e.message).join('. ') : undefined)
-          || 'Booking failed';
+          || t('booking_failed');
         setErrorMsg(msg);
       }
-    } catch {
+    } catch (err) {
       setStatus('error');
-      setErrorMsg('Network error. Please try again.');
+      setErrorMsg(err instanceof Error ? err.message : t('booking_network_error'));
     }
   };
 
@@ -57,11 +62,11 @@ export default function BookingPage() {
         >
           <div className="flex items-center justify-center gap-3 mb-6">
             <div className="h-px w-12 bg-primary" />
-            <span className="text-primary text-xs font-semibold tracking-[0.3em] uppercase">Service Booking</span>
+            <span className="text-primary text-xs font-semibold tracking-[0.3em] uppercase">{t('booking_tag')}</span>
             <div className="h-px w-12 bg-primary" />
           </div>
-          <h1 className="text-4xl sm:text-5xl font-black mb-4">Book <span className="gradient-text">Service</span></h1>
-          <p className="text-muted-foreground max-w-xl mx-auto">Schedule your motorcycle service with BAJAJ AL PRINCE expert technicians.</p>
+          <h1 className="text-4xl sm:text-5xl font-black mb-4">{t('booking_title')}</h1>
+          <p className="text-muted-foreground max-w-xl mx-auto">{t('booking_desc')}</p>
         </motion.div>
 
         <motion.div
@@ -75,13 +80,13 @@ export default function BookingPage() {
               <div className="w-16 h-16 rounded-full bg-green-500/10 border border-green-500/30 flex items-center justify-center mx-auto mb-6">
                 <CheckCircle className="w-8 h-8 text-green-400" />
               </div>
-              <h2 className="text-2xl font-bold mb-2">Booking Requested!</h2>
-              <p className="text-muted-foreground mb-6">We will contact you shortly to confirm your appointment.</p>
+              <h2 className="text-2xl font-bold mb-2">{t('booking_success_title')}</h2>
+              <p className="text-muted-foreground mb-6">{t('booking_success_desc')}</p>
               <button
                 onClick={() => setStatus('idle')}
                 className="px-6 py-2.5 bg-primary text-primary-foreground rounded-xl font-medium hover:bg-primary/90 transition-colors"
               >
-                Book Another
+                {t('booking_book_another')}
               </button>
             </div>
           ) : (
@@ -89,7 +94,7 @@ export default function BookingPage() {
               <div className="grid sm:grid-cols-2 gap-5">
                 <div>
                   <label className="text-sm font-medium text-muted-foreground mb-2 flex items-center gap-2">
-                    <User className="w-4 h-4" /> Customer Name
+                    <User className="w-4 h-4" /> {t('booking_name')}
                   </label>
                   <input
                     required
@@ -97,12 +102,12 @@ export default function BookingPage() {
                     value={form.name}
                     onChange={(e) => setForm({ ...form, name: e.target.value })}
                     className="w-full px-4 py-3 rounded-xl bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                    placeholder="Your full name"
+                    placeholder={t('booking_name_ph')}
                   />
                 </div>
                 <div>
                   <label className="text-sm font-medium text-muted-foreground mb-2 flex items-center gap-2">
-                    <Phone className="w-4 h-4" /> Phone Number
+                    <Phone className="w-4 h-4" /> {t('booking_phone')}
                   </label>
                   <input
                     required
@@ -110,14 +115,14 @@ export default function BookingPage() {
                     value={form.phone}
                     onChange={(e) => setForm({ ...form, phone: e.target.value })}
                     className="w-full px-4 py-3 rounded-xl bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                    placeholder="+20 123 456 789"
+                    placeholder={t('booking_phone_ph')}
                   />
                 </div>
               </div>
 
               <div>
                 <label className="text-sm font-medium text-muted-foreground mb-2 flex items-center gap-2">
-                  <Bike className="w-4 h-4" /> Motorcycle Model
+                  <Bike className="w-4 h-4" /> {t('booking_model')}
                 </label>
                 <input
                   required
@@ -125,13 +130,13 @@ export default function BookingPage() {
                   value={form.model}
                   onChange={(e) => setForm({ ...form, model: e.target.value })}
                   className="w-full px-4 py-3 rounded-xl bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                  placeholder="e.g. Bajaj Pulsar 180"
+                  placeholder={t('booking_model_ph')}
                 />
               </div>
 
               <div>
                 <label className="text-sm font-medium text-muted-foreground mb-2 flex items-center gap-2">
-                  <Wrench className="w-4 h-4" /> Issue Description
+                  <Wrench className="w-4 h-4" /> {t('booking_issue')}
                 </label>
                 <textarea
                   required
@@ -139,14 +144,14 @@ export default function BookingPage() {
                   value={form.issue}
                   onChange={(e) => setForm({ ...form, issue: e.target.value })}
                   className="w-full px-4 py-3 rounded-xl bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none"
-                  placeholder="Describe the issue or service needed..."
+                  placeholder={t('booking_issue_ph')}
                 />
               </div>
 
               <div className="grid sm:grid-cols-2 gap-5">
                 <div>
                   <label className="text-sm font-medium text-muted-foreground mb-2 flex items-center gap-2">
-                    <Calendar className="w-4 h-4" /> Preferred Date
+                    <Calendar className="w-4 h-4" /> {t('booking_date')}
                   </label>
                   <input
                     required
@@ -159,7 +164,7 @@ export default function BookingPage() {
                 </div>
                 <div>
                   <label className="text-sm font-medium text-muted-foreground mb-2 flex items-center gap-2">
-                    <Clock className="w-4 h-4" /> Preferred Time
+                    <Clock className="w-4 h-4" /> {t('booking_time')}
                   </label>
                   <select
                     required
@@ -167,7 +172,7 @@ export default function BookingPage() {
                     onChange={(e) => setForm({ ...form, time: e.target.value })}
                     className="w-full px-4 py-3 rounded-xl bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-ring appearance-none"
                   >
-                    <option value="">Select time</option>
+                    <option value="">{t('booking_select_time')}</option>
                     {generateTimeSlots().map((slot) => (
                       <option key={slot} value={slot}>{slot}</option>
                     ))}
@@ -177,7 +182,7 @@ export default function BookingPage() {
 
               <div className="flex items-center gap-2 text-xs text-muted-foreground bg-secondary/50 rounded-xl p-3">
                 <AlertCircle className="w-4 h-4 flex-shrink-0" />
-                <span>Working hours: 10:00 AM - 10:00 PM. Friday is closed. Official holidays are unavailable.</span>
+                <span>{t('booking_working_hours')}</span>
               </div>
 
               {status === 'error' && (
@@ -195,12 +200,12 @@ export default function BookingPage() {
                 {status === 'loading' ? (
                   <>
                     <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
-                    Processing...
+                    {t('booking_processing')}
                   </>
                 ) : (
                   <>
                     <Send className="w-4 h-4" />
-                    Request Booking
+                    {t('booking_request')}
                   </>
                 )}
               </button>

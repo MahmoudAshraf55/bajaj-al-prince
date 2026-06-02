@@ -33,13 +33,24 @@
 
 **BAJAJ AL PRINCE** is a comprehensive management platform designed for authorized Bajaj motorcycle service centers. It combines a stunning public-facing website with a powerful back-office system for managing every aspect of the service center business.
 
-### Current Capabilities (v0.1.0)
+### Current Capabilities (v0.2.0)
 
 - **Public Website** — Product showcase with immersive 3D motorcycle experience
 - **Service Booking** — Online appointment scheduling for customers
 - **Product Marketplace** — Parts and accessories catalog
-- **Admin Portal** — Secure dashboard for staff management
+- **Admin Portal** — Secure dashboard with CRM, inventory, cashier, and booking management
 - **Contact Management** — Customer inquiry tracking
+- **CRM & Vehicle Tracking** — Customer profiles with garage/vehicle ownership
+- **Financial Management** — Income/expense tracking with Decimal precision
+
+### Foundation Hardening (Phase 0 — Complete)
+
+- **Financial Precision** — All monetary fields use `Decimal` instead of `Float`
+- **Soft Delete** — Global `isDeleted`/`deletedAt` filtering via Prisma client extension
+- **Multi-Tenancy Prep** — `tenantId` on all main models with composite indexes
+- **API Versioning** — Routes under `/api/v1/` with Next.js rewrites for backward compatibility
+- **XSS Protection** — `isomorphic-dompurify` integrated with Zod schemas via `sanitizedString()`
+- **Pagination** — Consistent `page`/`limit`/`meta` pattern on all list endpoints
 
 ### Target Vision (v1.0.0)
 
@@ -59,19 +70,23 @@ Full ERP platform covering: Work Orders, Inventory, POS, Cashier, Customer Porta
 
 ### Admin Portal
 
-- **JWT Authentication** — Secure login with `jose` (HS256)
-- **Dashboard** — Overview of operations
-- **Booking Management** — View and manage service appointments
-- **Product Management** — CRUD for marketplace items
-- **Contact Inbox** — Manage customer inquiries
+- **JWT Authentication** — Secure login with `jose` (HS256), role-based access (`admin`, `staff`, `viewer`)
+- **Dashboard** — Overview with financial metrics, pending bookings, and recent activity
+- **Booking Management** — View and manage service appointments with status controls
+- **Product Management** — CRUD for marketplace items with stock tracking
+- **Contact Inbox** — Manage customer inquiries with soft delete
+- **Customer CRM** — Customer profiles, contact info, and vehicle garage
+- **Vehicle Directory** — Master vehicle list with ownership linking
+- **Cashier** — Income/expense transaction logging with balance tracking
 
 ### Technical Features
 
 - **Strict TypeScript** — Zero `any` types policy (enforced)
-- **API Validation** — Zod schemas on every endpoint
-- **Database ORM** — Prisma with SQLite (dev) / PostgreSQL (prod)
+- **API Validation** — Zod schemas on every endpoint with XSS sanitization
+- **Database ORM** — Prisma with PostgreSQL, soft delete client extension
 - **E2E Testing** — Playwright test suite
 - **CI/CD Ready** — GitHub Actions workflow included
+- **Bilingual UI** — Full English/Arabic localization via custom translation system
 
 ---
 
@@ -99,32 +114,84 @@ Full ERP platform covering: Work Orders, Inventory, POS, Cashier, Customer Porta
 
 ```
 windsurf-project/
-├── prisma/                 # Database schema & migrations
+├── prisma/
+│   ├── schema.prisma       # Database schema (7 models + enum)
+│   └── migrations/         # Migration history
 ├── public/                 # Static assets (3D models, images)
 ├── src/
-│   ├── app/                # Next.js App Router
+│   ├── app/
 │   │   ├── (site)/         # Public site layout + pages
-│   │   ├── admin/          # Admin portal (login + dashboard)
-│   │   ├── api/            # REST API routes
+│   │   ├── admin/          # Admin portal (login, dashboard, CRM)
+│   │   │   ├── customers/      # Customer management + detail/garage
+│   │   │   ├── vehicles/       # Global vehicle directory
+│   │   │   └── dashboard/      # Overview with financial stats
+│   │   ├── api/            # REST API (v1)
+│   │   │   ├── auth/           # Login, logout, me
+│   │   │   └── v1/             # Versioned business endpoints
+│   │   │       ├── bookings/   # Booking CRUD + pagination
+│   │   │       ├── cashier/    # Transaction CRUD + pagination
+│   │   │       ├── contact/    # Contact messages + soft delete
+│   │   │       ├── customers/  # Customer CRUD + pagination
+│   │   │       ├── products/   # Product CRUD + pagination
+│   │   │       └── vehicles/   # Vehicle CRUD + pagination
 │   │   ├── booking/        # Booking page
 │   │   ├── market/         # Product marketplace
-│   │   ├── layout.tsx      # Root layout
+│   │   ├── layout.tsx      # Root layout (LanguageProvider)
 │   │   └── globals.css     # Global styles
 │   ├── components/
 │   │   ├── 3d/             # Three.js / R3F components (PROTECTED)
-│   │   ├── admin/          # Admin UI components
-│   │   ├── layout/         # Header, Footer
+│   │   ├── layout/         # Header, Footer, LanguageSwitcher
 │   │   ├── sections/       # Page sections (Hero, About, etc.)
 │   │   └── ui/             # Reusable UI primitives
-│   ├── hooks/              # Custom React hooks
-│   ├── lib/                # Utilities (auth, prisma, utils)
-│   └── types/              # Shared TypeScript types
+│   ├── lib/
+│   │   ├── prisma.ts       # Prisma client + soft delete extension
+│   │   ├── sanitize.ts     # DOMPurify Zod helper
+│   │   ├── auth.ts         # JWT verification + role guards
+│   │   ├── rate-limit.ts   # API rate limiting
+│   │   └── security.ts   # CORS, CSP, security headers
+│   ├── types/              # Shared TypeScript types
+│   └── app/
 ├── docs/                   # Project documentation
 ├── e2e/                    # Playwright end-to-end tests
 └── .github/workflows/      # CI/CD automation
 ```
 
 **Pattern:** Feature-based grouping with shared `lib/` and `types/` folders. Admin is a separate sub-route. API routes mirror frontend features.
+
+### Database Models
+
+| Model | Purpose | Key Fields |
+|-------|---------|------------|
+| `User` | Admin/staff authentication | `username`, `password`, `role`, `failedAttempts`, `lockedUntil` |
+| `ContactMessage` | Customer inquiries | `name`, `phone`, `email`, `message` |
+| `Booking` | Service appointments | `name`, `phone`, `model`, `issue`, `date`, `time`, `status` |
+| `Product` | Marketplace inventory | `name`, `description`, `price` (Decimal), `stock`, `category` |
+| `Transaction` | Cashier income/expense | `type`, `amount` (Decimal), `description` |
+| `Customer` | CRM customer profiles | `name`, `phone`, `email`, `address` |
+| `Vehicle` | Motorcycle registry | `make`, `model`, `year`, `chassisNumber`, `plateNumber`, `customerId` |
+
+**Foundation fields on every model:** `id` (UUID), `createdAt`, `updatedAt`, `isDeleted`, `deletedAt`, `tenantId`
+
+### API Endpoints (v1)
+
+All business routes are versioned under `/api/v1/` and accessible via `/api/` rewrites.
+
+| Endpoint | Methods | Description |
+|----------|---------|-------------|
+| `/api/v1/contact` | GET, POST | List (paginated) / Create contact message |
+| `/api/v1/contact/[id]` | DELETE | Soft delete contact message |
+| `/api/v1/bookings` | GET, POST | List (paginated) / Create booking |
+| `/api/v1/bookings/[id]` | PATCH | Update booking status |
+| `/api/v1/products` | GET, POST | List (paginated) / Create product |
+| `/api/v1/products/[id]` | PATCH | Update product |
+| `/api/v1/cashier` | GET, POST | List (paginated) / Create transaction |
+| `/api/v1/customers` | GET, POST | List (paginated, with vehicle count) / Create customer |
+| `/api/v1/customers/[id]` | GET, PATCH, DELETE | Profile (with garage), update, soft delete |
+| `/api/v1/vehicles` | GET, POST | List (paginated, with owner) / Create vehicle |
+| `/api/v1/vehicles/[id]` | GET, PATCH, DELETE | Detail (with owner), update, soft delete |
+| `/api/auth/login` | POST | JWT authentication |
+| `/api/auth/logout` | POST | Clear auth cookie |
+| `/api/auth/me` | GET | Verify current session |
 
 ---
 
@@ -282,7 +349,12 @@ See:
 
 - JWT tokens via `jose` (HS256) with 24h expiry
 - Bearer token verification on every admin API call
-- Zod validation on all POST/PUT/PATCH bodies
+- Role-based access control (`admin` | `staff` | `viewer`)
+- Zod validation + XSS sanitization (`isomorphic-dompurify`) on all inputs
+- Soft delete — no hard deletes; records filtered automatically
+- Prisma query middleware adds `isDeleted: false` to all `findMany`/`findFirst`/`count`
+- Rate limiting on sensitive endpoints
+- Security headers (CSP, X-Frame-Options, X-Content-Type-Options, Referrer-Policy)
 - `.env` files excluded from version control
 - No `dangerouslySetInnerHTML` with user input
 
