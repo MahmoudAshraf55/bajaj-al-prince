@@ -14,7 +14,36 @@ const bookingSchema = z.object({
   issue: sanitizedString(z.string().min(5).max(1000)),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   time: z.string().regex(/^\d{2}:\d{2}$/),
+  plateNumber: z.string().min(1).max(30).optional(),
 });
+
+function extractMakeModel(modelStr: string): { make: string; model: string } {
+  const knownMakes = ['bajaj', 'honda', 'yamaha', 'suzuki', 'kawasaki', 'hero', 'tvs', 'ktm', 'ducati', 'bmw', 'kymco', 'sym'];
+  const lower = modelStr.toLowerCase().trim();
+
+  for (const make of knownMakes) {
+    if (lower.startsWith(make + ' ')) {
+      return {
+        make: make.charAt(0).toUpperCase() + make.slice(1),
+        model: modelStr.slice(make.length + 1).trim(),
+      };
+    }
+  }
+
+  for (const make of knownMakes) {
+    const idx = lower.indexOf(make);
+    if (idx !== -1) {
+      const before = modelStr.slice(0, idx).trim();
+      const after = modelStr.slice(idx + make.length).trim();
+      return {
+        make: make.charAt(0).toUpperCase() + make.slice(1),
+        model: (before + ' ' + after).trim() || modelStr,
+      };
+    }
+  }
+
+  return { make: 'Unknown', model: modelStr };
+}
 
 function isFriday(dateStr: string): boolean {
   const date = new Date(dateStr + 'T00:00:00');
@@ -63,7 +92,63 @@ export async function POST(req: NextRequest) {
       if (existing) {
         throw new Error('DOUBLE_BOOKING');
       }
-      return tx.booking.create({ data });
+
+      // 1. Find or create customer by phone
+      let customer = await tx.customer.findFirst({
+        where: { phone: data.phone },
+      });
+
+      if (!customer) {
+        customer = await tx.customer.create({
+          data: { name: data.name, phone: data.phone },
+        });
+      }
+
+      // 2. Find or create vehicle
+      let vehicle = null;
+
+      if (data.plateNumber) {
+        vehicle = await tx.vehicle.findFirst({
+          where: { plateNumber: data.plateNumber, customerId: customer.id },
+        });
+      }
+
+      if (!vehicle) {
+        vehicle = await tx.vehicle.findFirst({
+          where: {
+            customerId: customer.id,
+            model: { equals: data.model, mode: 'insensitive' },
+          },
+        });
+      }
+
+      if (!vehicle) {
+        const { make, model } = extractMakeModel(data.model);
+        vehicle = await tx.vehicle.create({
+          data: {
+            make,
+            model,
+            plateNumber: data.plateNumber || null,
+            customerId: customer.id,
+          },
+        });
+      }
+
+      // 3. Create booking linked to customer and vehicle
+      return tx.booking.create({
+        data: {
+          name: data.name,
+          phone: data.phone,
+          model: data.model,
+          issue: data.issue,
+          date: data.date,
+          time: data.time,
+          plateNumber: data.plateNumber || null,
+          customerId: customer.id,
+          vehicleId: vehicle.id,
+        },
+        include: { customer: true, vehicle: true },
+      });
     });
 
     return withSecurityHeaders(NextResponse.json({ success: true, data: { booking } }, { status: 201 }));
@@ -90,7 +175,12 @@ export async function GET(req: NextRequest) {
     const skip = (page - 1) * limit;
 
     const [bookings, total] = await Promise.all([
-      prisma.booking.findMany({ skip, take: limit, orderBy: { createdAt: 'desc' } }),
+      prisma.booking.findMany({
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+        include: { customer: true, vehicle: true },
+      }),
       prisma.booking.count(),
     ]);
 

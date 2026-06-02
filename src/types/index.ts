@@ -12,6 +12,9 @@ export interface BookingFormData {
   issue: string;
   date: string;
   time: string;
+  plateNumber?: string;
+  customerId?: string;
+  vehicleId?: string;
 }
 
 export interface ProductData {

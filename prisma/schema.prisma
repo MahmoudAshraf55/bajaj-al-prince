@@ -25,19 +25,24 @@ model ContactMessage {
 }
 
 model Booking {
-  id        String    @id @default(uuid())
-  name      String
-  phone     String
-  model     String
-  issue     String
-  date      String
-  time      String
-  status    String    @default("pending")
-  createdAt DateTime  @default(now()) @db.Timestamp(6)
-  updatedAt DateTime  @updatedAt @db.Timestamp(6)
-  isDeleted Boolean   @default(false)
-  deletedAt DateTime? @db.Timestamp(6)
-  tenantId  String?
+  id          String    @id @default(uuid())
+  name        String
+  phone       String
+  model       String
+  issue       String
+  date        String
+  time        String
+  status      String    @default("pending")
+  plateNumber String?
+  customerId  String?
+  customer    Customer? @relation(fields: [customerId], references: [id])
+  vehicleId   String?
+  vehicle     Vehicle?  @relation(fields: [vehicleId], references: [id])
+  createdAt   DateTime  @default(now()) @db.Timestamp(6)
+  updatedAt   DateTime  @updatedAt @db.Timestamp(6)
+  isDeleted   Boolean   @default(false)
+  deletedAt   DateTime? @db.Timestamp(6)
+  tenantId    String?
 
   @@unique([date, time], name: "Booking_date_time_unique")
   @@index([date, status])
@@ -117,6 +122,7 @@ model Customer {
   email     String?
   address   String?
   vehicles  Vehicle[]
+  bookings  Booking[]
   createdAt DateTime  @default(now()) @db.Timestamp(6)
   updatedAt DateTime? @updatedAt @db.Timestamp(6)
   isDeleted Boolean   @default(false)
@@ -130,24 +136,45 @@ model Customer {
 }
 
 model Vehicle {
-  id            String    @id @default(uuid())
+  id            String      @id @default(uuid())
   make          String
   model         String
   year          Int?
   chassisNumber String?
   plateNumber   String?
   customerId    String
-  customer      Customer  @relation(fields: [customerId], references: [id])
-  createdAt     DateTime  @default(now()) @db.Timestamp(6)
-  updatedAt     DateTime? @updatedAt @db.Timestamp(6)
-  isDeleted     Boolean   @default(false)
-  deletedAt     DateTime? @db.Timestamp(6)
+  customer      Customer    @relation(fields: [customerId], references: [id])
+  bookings      Booking[]
+  workOrders    WorkOrder[]
+  createdAt     DateTime    @default(now()) @db.Timestamp(6)
+  updatedAt     DateTime?   @updatedAt @db.Timestamp(6)
+  isDeleted     Boolean     @default(false)
+  deletedAt     DateTime?   @db.Timestamp(6)
   tenantId      String?
 
   @@unique([chassisNumber, tenantId])
   @@index([make])
   @@index([model])
   @@index([customerId])
+  @@index([isDeleted])
+  @@index([tenantId])
+}
+
+model WorkOrder {
+  id          String    @id @default(uuid())
+  description String
+  status      String    @default("pending")
+  cost        Decimal?  @db.Decimal(10, 2)
+  vehicleId   String
+  vehicle     Vehicle   @relation(fields: [vehicleId], references: [id])
+  createdAt   DateTime  @default(now()) @db.Timestamp(6)
+  updatedAt   DateTime? @updatedAt @db.Timestamp(6)
+  isDeleted   Boolean   @default(false)
+  deletedAt   DateTime? @db.Timestamp(6)
+  tenantId    String?
+
+  @@index([status])
+  @@index([vehicleId])
   @@index([isDeleted])
   @@index([tenantId])
 }
