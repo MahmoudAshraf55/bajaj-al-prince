@@ -46,6 +46,8 @@ export function validateOrigin(req: NextRequest): NextResponse | null {
   return null;
 }
 
+const allowedOrigin = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+
 /**
  * Security headers to append to API responses.
  */
@@ -53,6 +55,10 @@ export const apiSecurityHeaders = {
   'X-Content-Type-Options': 'nosniff',
   'X-Frame-Options': 'DENY',
   'Referrer-Policy': 'strict-origin-when-cross-origin',
+  'Access-Control-Allow-Origin': allowedOrigin,
+  'Access-Control-Allow-Credentials': 'true',
+  'Access-Control-Allow-Methods': 'GET, POST, PATCH, DELETE, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
 };
 
 /**

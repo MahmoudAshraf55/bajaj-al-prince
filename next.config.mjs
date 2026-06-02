@@ -1,4 +1,6 @@
 /** @type {import('next').NextConfig} */
+const isDev = process.env.NODE_ENV !== 'production';
+
 const nextConfig = {
   images: {
     unoptimized: true,
@@ -42,7 +44,7 @@ const nextConfig = {
           },
           {
             key: 'Content-Security-Policy',
-            value: "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' blob: https://raw.githack.com https://raw.githubusercontent.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self';",
+            value: `default-src 'self'; script-src 'self' 'unsafe-eval'${isDev ? " 'unsafe-inline'" : ''}; style-src 'self'${isDev ? " 'unsafe-inline'" : ''}; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' blob: https://raw.githack.com https://raw.githubusercontent.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self';`,
           },
         ],
       },

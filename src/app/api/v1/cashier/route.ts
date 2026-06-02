@@ -8,7 +8,13 @@ import { z } from 'zod';
 
 const transactionSchema = z.object({
   type: z.enum(['income', 'expense']),
-  amount: z.number().positive(),
+  amount: z.number().positive().refine(
+    (n) => {
+      const decimal = n.toString().split('.')[1];
+      return !decimal || decimal.length <= 2;
+    },
+    { message: 'Amount must have at most 2 decimal places' }
+  ),
   description: sanitizedString(z.string().max(500)).optional(),
 });
 
