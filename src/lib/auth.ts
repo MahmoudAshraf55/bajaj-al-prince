@@ -56,7 +56,7 @@ export async function verifyToken(token: string): Promise<JWTPayload | null> {
   }
 }
 
-function getTokenFromCookie(req: NextRequest): string | null {
+export function getTokenFromCookie(req: NextRequest): string | null {
   const token = req.cookies.get('admin_token')?.value;
   return token ?? null;
 }

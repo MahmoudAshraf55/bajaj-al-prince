@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { requireRole } from '@/lib/auth';
 import { checkRateLimit } from '@/lib/rate-limit';
 import { sanitizedString } from '@/lib/sanitize';
+import { logAudit, getClientInfo } from '@/lib/audit';
 import { z } from 'zod';
 
 const productSchema = z.object({
@@ -44,10 +45,20 @@ export async function POST(req: NextRequest) {
   if (!limit.allowed) return limit.response!;
 
   try {
-    await requireRole(req, ['admin', 'staff']);
+    const payload = await requireRole(req, ['admin', 'staff']);
     const body = await req.json();
     const data = productSchema.parse(body);
     const product = await prisma.product.create({ data });
+    const { ipAddress, userAgent } = getClientInfo(req);
+    await logAudit({
+      userId: payload.userId,
+      action: 'create',
+      entity: 'Product',
+      entityId: product.id,
+      newValue: data as Record<string, unknown>,
+      ipAddress,
+      userAgent,
+    });
     return NextResponse.json({ success: true, data: { product: { ...product, price: Number(product.price) } } }, { status: 201 });
   } catch (error) {
     if (error instanceof z.ZodError) {

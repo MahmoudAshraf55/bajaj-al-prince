@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { requireRole } from '@/lib/auth';
 import { checkRateLimit } from '@/lib/rate-limit';
 import { sanitizedString } from '@/lib/sanitize';
+import { logAudit, getClientInfo } from '@/lib/audit';
 import { z } from 'zod';
 
 const transactionSchema = z.object({
@@ -48,6 +49,16 @@ export async function POST(req: NextRequest) {
     const data = transactionSchema.parse(body);
     const transaction = await prisma.transaction.create({
       data: { ...data, createdBy: payload.userId },
+    });
+    const { ipAddress, userAgent } = getClientInfo(req);
+    await logAudit({
+      userId: payload.userId,
+      action: 'payment',
+      entity: 'Transaction',
+      entityId: transaction.id,
+      newValue: { ...data, createdBy: payload.userId } as Record<string, unknown>,
+      ipAddress,
+      userAgent,
     });
     return NextResponse.json({ success: true, data: { transaction: { ...transaction, amount: Number(transaction.amount) } } }, { status: 201 });
   } catch (error) {

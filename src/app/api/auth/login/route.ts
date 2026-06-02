@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { verifyPassword, createToken } from '@/lib/auth';
 import { checkRateLimit } from '@/lib/rate-limit';
+import { logAudit, getClientInfo } from '@/lib/audit';
 import { z } from 'zod';
 
 const loginSchema = z.object({
@@ -45,6 +46,17 @@ export async function POST(req: NextRequest) {
         data: { failedAttempts: newFailed, lockedUntil },
       });
 
+      const { ipAddress, userAgent } = getClientInfo(req);
+      await logAudit({
+        userId: user.id,
+        action: 'login',
+        entity: 'User',
+        entityId: user.id,
+        newValue: { status: lockedUntil ? 'locked' : 'failed', failedAttempts: newFailed },
+        ipAddress,
+        userAgent,
+      });
+
       if (lockedUntil) {
         return NextResponse.json(
           { success: false, error: `Too many failed attempts. Account locked for ${LOCKOUT_MINUTES} minutes.` },
@@ -64,6 +76,17 @@ export async function POST(req: NextRequest) {
       userId: user.id,
       username: user.username,
       role: user.role,
+    });
+
+    const { ipAddress, userAgent } = getClientInfo(req);
+    await logAudit({
+      userId: user.id,
+      action: 'login',
+      entity: 'User',
+      entityId: user.id,
+      newValue: { status: 'success', username: user.username, role: user.role },
+      ipAddress,
+      userAgent,
     });
 
     const response = NextResponse.json({ success: true });

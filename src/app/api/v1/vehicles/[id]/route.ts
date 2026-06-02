@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { requireRole } from '@/lib/auth';
 import { checkRateLimit } from '@/lib/rate-limit';
 import { sanitizedString } from '@/lib/sanitize';
+import { logAudit, getClientInfo } from '@/lib/audit';
 import { Prisma } from '@prisma/client';
 import { z } from 'zod';
 
@@ -39,11 +40,23 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (!limit.allowed) return limit.response!;
 
   try {
-    await requireRole(req, ['admin', 'staff']);
+    const payload = await requireRole(req, ['admin', 'staff']);
     const { id } = await params;
     const body = await req.json();
     const data = vehicleUpdateSchema.parse(body);
+    const oldVehicle = await prisma.vehicle.findUnique({ where: { id } });
     const vehicle = await prisma.vehicle.update({ where: { id }, data });
+    const { ipAddress, userAgent } = getClientInfo(req);
+    await logAudit({
+      userId: payload.userId,
+      action: 'update',
+      entity: 'Vehicle',
+      entityId: id,
+      oldValue: oldVehicle ? { make: oldVehicle.make, model: oldVehicle.model, year: oldVehicle.year, plateNumber: oldVehicle.plateNumber, chassisNumber: oldVehicle.chassisNumber } as Record<string, unknown> : undefined,
+      newValue: data as Record<string, unknown>,
+      ipAddress,
+      userAgent,
+    });
     return NextResponse.json({ success: true, data: { vehicle } });
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -63,9 +76,20 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   if (!limit.allowed) return limit.response!;
 
   try {
-    await requireRole(req, ['admin', 'staff']);
+    const payload = await requireRole(req, ['admin', 'staff']);
     const { id } = await params;
+    const oldVehicle = await prisma.vehicle.findUnique({ where: { id } });
     await prisma.vehicle.softDelete({ id });
+    const { ipAddress, userAgent } = getClientInfo(req);
+    await logAudit({
+      userId: payload.userId,
+      action: 'softDelete',
+      entity: 'Vehicle',
+      entityId: id,
+      oldValue: oldVehicle ? { make: oldVehicle.make, model: oldVehicle.model, year: oldVehicle.year, plateNumber: oldVehicle.plateNumber, chassisNumber: oldVehicle.chassisNumber } as Record<string, unknown> : undefined,
+      ipAddress,
+      userAgent,
+    });
     return NextResponse.json({ success: true });
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {

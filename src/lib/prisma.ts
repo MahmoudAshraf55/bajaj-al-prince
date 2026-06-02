@@ -19,18 +19,15 @@ const prismaClientSingleton = () => {
       $allModels: {
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         async findMany({ model: _model, args, query }) {
-          args.where = { isDeleted: false, ...(args.where ?? {}) } as unknown as typeof args.where;
-          return query(args);
+          return query({ ...args, where: { isDeleted: false, ...(args.where ?? {}) } } as typeof args);
         },
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         async findFirst({ model: _model, args, query }) {
-          args.where = { isDeleted: false, ...(args.where ?? {}) } as unknown as typeof args.where;
-          return query(args);
+          return query({ ...args, where: { isDeleted: false, ...(args.where ?? {}) } } as typeof args);
         },
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         async count({ model: _model, args, query }) {
-          args.where = { isDeleted: false, ...(args.where ?? {}) } as unknown as typeof args.where;
-          return query(args);
+          return query({ ...args, where: { isDeleted: false, ...(args.where ?? {}) } } as typeof args);
         },
       },
     },

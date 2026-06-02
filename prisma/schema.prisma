@@ -195,3 +195,20 @@ model WorkOrder {
   @@index([isDeleted])
   @@index([tenantId])
 }
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  userId      String?
+  action      String
+  entity      String
+  entityId    String?
+  oldValue    String?
+  newValue    String?
+  ipAddress   String?
+  userAgent   String?
+  createdAt   DateTime @default(now()) @db.Timestamp(6)
+
+  @@index([entity, entityId])
+  @@index([createdAt])
+  @@index([userId])
+}

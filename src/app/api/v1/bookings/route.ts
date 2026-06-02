@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { requireAuth } from '@/lib/auth';
 import { checkRateLimit } from '@/lib/rate-limit';
 import { validateOrigin, withSecurityHeaders } from '@/lib/security';
+import { logAudit, getClientInfo } from '@/lib/audit';
 import { Prisma } from '@prisma/client';
 import { sanitizedString } from '@/lib/sanitize';
 import { z } from 'zod';
@@ -105,7 +106,12 @@ export async function POST(req: NextRequest) {
 
       if (!customer) {
         customer = await tx.customer.create({
-          data: { name: data.name, phone: data.phone },
+          data: { name: data.name, phone: data.phone, email: data.email || null },
+        });
+      } else if (data.email && !customer.email) {
+        customer = await tx.customer.update({
+          where: { id: customer.id },
+          data: { email: data.email },
         });
       }
 
@@ -159,6 +165,16 @@ export async function POST(req: NextRequest) {
         },
         include: { customer: true, vehicle: true },
       });
+    });
+
+    const { ipAddress, userAgent } = getClientInfo(req);
+    await logAudit({
+      action: 'create',
+      entity: 'Booking',
+      entityId: booking.id,
+      newValue: { name: data.name, phone: data.phone, model: data.model, date: data.date, time: data.time } as Record<string, unknown>,
+      ipAddress,
+      userAgent,
     });
 
     return withSecurityHeaders(NextResponse.json({ success: true, data: { booking } }, { status: 201 }));

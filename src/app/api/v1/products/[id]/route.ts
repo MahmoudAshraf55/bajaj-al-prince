@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { requireRole } from '@/lib/auth';
 import { checkRateLimit } from '@/lib/rate-limit';
 import { sanitizedString } from '@/lib/sanitize';
+import { logAudit, getClientInfo } from '@/lib/audit';
 import { z } from 'zod';
 
 const productUpdateSchema = z.object({
@@ -20,16 +21,28 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (!limit.allowed) return limit.response!;
 
   try {
-    await requireRole(req, ['admin', 'staff']);
+    const payload = await requireRole(req, ['admin', 'staff']);
     const { id } = await params;
     const body = await req.json();
     const data = productUpdateSchema.parse(body);
+    const oldProduct = await prisma.product.findUnique({ where: { id } });
     const product = await prisma.$transaction(async (tx) => {
       if (data.stock !== undefined) {
         const current = await tx.product.findUnique({ where: { id }, select: { stock: true } });
         if (!current) throw new Error('Product not found');
       }
       return tx.product.update({ where: { id }, data });
+    });
+    const { ipAddress, userAgent } = getClientInfo(req);
+    await logAudit({
+      userId: payload.userId,
+      action: 'update',
+      entity: 'Product',
+      entityId: id,
+      oldValue: oldProduct ? { name: oldProduct.name, price: Number(oldProduct.price), stock: oldProduct.stock, category: oldProduct.category } as Record<string, unknown> : undefined,
+      newValue: data as Record<string, unknown>,
+      ipAddress,
+      userAgent,
     });
     return NextResponse.json({ success: true, data: { product: { ...product, price: Number(product.price) } } });
   } catch (error) {

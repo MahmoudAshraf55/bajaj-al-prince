@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireRole } from '@/lib/auth';
 import { checkRateLimit } from '@/lib/rate-limit';
+import { logAudit, getClientInfo } from '@/lib/audit';
 import { z } from 'zod';
 
 const bookingUpdateSchema = z.object({
@@ -13,11 +14,24 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (!limit.allowed) return limit.response!;
 
   try {
-    await requireRole(req, ['admin', 'staff']);
+    const payload = await requireRole(req, ['admin', 'staff']);
     const { id } = await params;
     const body = await req.json();
     const data = bookingUpdateSchema.parse(body);
+    const oldBooking = await prisma.booking.findUnique({ where: { id } });
     const booking = await prisma.booking.update({ where: { id }, data });
+    const { ipAddress, userAgent } = getClientInfo(req);
+    const action = data.status === 'accepted' ? 'approve' : data.status === 'rejected' ? 'reject' : 'update';
+    await logAudit({
+      userId: payload.userId,
+      action,
+      entity: 'Booking',
+      entityId: id,
+      oldValue: oldBooking ? { status: oldBooking.status } as Record<string, unknown> : undefined,
+      newValue: { status: data.status } as Record<string, unknown>,
+      ipAddress,
+      userAgent,
+    });
     return NextResponse.json({ success: true, data: { booking } });
   } catch (error) {
     if (error instanceof z.ZodError) {
