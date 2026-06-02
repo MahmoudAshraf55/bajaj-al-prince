@@ -85,69 +85,70 @@ export async function POST(req: NextRequest) {
       return withSecurityHeaders(NextResponse.json({ success: false, error: 'Working hours are 10:00 AM - 10:00 PM' }, { status: 400 }));
     }
 
-    // Check for double booking first
-    const existing = await prisma.booking.findFirst({
-      where: { date: data.date, time: data.time, status: { not: 'rejected' } },
-    });
-    if (existing) {
-      return withSecurityHeaders(NextResponse.json({ success: false, error: 'This time slot is already booked' }, { status: 409 }));
-    }
-
-    // 1. Find or create customer by phone
-    let customer = await prisma.customer.findFirst({
-      where: { phone: data.phone },
-    });
-
-    if (!customer) {
-      customer = await prisma.customer.create({
-        data: { name: data.name, phone: data.phone },
+    const booking = await prisma.$transaction(async (tx: any) => {
+      const existing = await tx.booking.findFirst({
+        where: { date: data.date, time: data.time, status: { not: 'rejected' } },
       });
-    }
+      if (existing) {
+        throw new Error('DOUBLE_BOOKING');
+      }
 
-    // 2. Find or create vehicle
-    let vehicle = null;
-
-    if (data.plateNumber) {
-      vehicle = await prisma.vehicle.findFirst({
-        where: { plateNumber: data.plateNumber, customerId: customer.id },
+      // 1. Find or create customer by phone
+      let customer = await tx.customer.findFirst({
+        where: { phone: data.phone },
       });
-    }
 
-    if (!vehicle) {
-      vehicle = await prisma.vehicle.findFirst({
-        where: {
-          customerId: customer.id,
-          model: { equals: data.model, mode: 'insensitive' },
-        },
-      });
-    }
+      if (!customer) {
+        customer = await tx.customer.create({
+          data: { name: data.name, phone: data.phone },
+        });
+      }
 
-    if (!vehicle) {
-      const { make, model } = extractMakeModel(data.model);
-      vehicle = await prisma.vehicle.create({
+      // 2. Find or create vehicle
+      let vehicle = null;
+
+      if (data.plateNumber) {
+        vehicle = await tx.vehicle.findFirst({
+          where: { plateNumber: data.plateNumber, customerId: customer.id },
+        });
+      }
+
+      if (!vehicle) {
+        vehicle = await tx.vehicle.findFirst({
+          where: {
+            customerId: customer.id,
+            model: { equals: data.model, mode: 'insensitive' },
+          },
+        });
+      }
+
+      if (!vehicle) {
+        const { make, model } = extractMakeModel(data.model);
+        vehicle = await tx.vehicle.create({
+          data: {
+            make,
+            model,
+            plateNumber: data.plateNumber || null,
+            customerId: customer.id,
+          },
+        });
+      }
+
+      // 3. Create booking linked to customer and vehicle
+      return tx.booking.create({
         data: {
-          make,
-          model,
+          name: data.name,
+          phone: data.phone,
+          model: data.model,
+          issue: data.issue,
+          date: data.date,
+          time: data.time,
           plateNumber: data.plateNumber || null,
           customerId: customer.id,
+          vehicleId: vehicle.id,
         },
+        include: { customer: true, vehicle: true },
       });
-    }
-
-    // 3. Create booking linked to customer and vehicle
-    const booking = await prisma.booking.create({
-      data: {
-        name: data.name,
-        phone: data.phone,
-        model: data.model,
-        issue: data.issue,
-        date: data.date,
-        time: data.time,
-        plateNumber: data.plateNumber || null,
-        customerId: customer.id,
-        vehicleId: vehicle.id,
-      },
-      include: { customer: true, vehicle: true },
     });
 
     return withSecurityHeaders(NextResponse.json({ success: true, data: { booking } }, { status: 201 }));
