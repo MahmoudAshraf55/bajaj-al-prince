@@ -8,7 +8,7 @@ import { useTranslation } from '@/components/useTranslation';
 import type { Customer, Vehicle } from '@/types';
 import {
   ArrowLeft, User, Phone, Mail, MapPin, Car, Plus, Calendar,
-  AlertCircle, CheckCircle2, X, Hash, Gauge,
+  AlertCircle, CheckCircle2, X, Hash, Gauge, Pencil,
 } from 'lucide-react';
 
 interface Toast {
@@ -27,6 +27,7 @@ export default function CustomerDetailPage() {
   const [error, setError] = useState('');
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [showVehicleModal, setShowVehicleModal] = useState(false);
+  const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [toasts, setToasts] = useState<Toast[]>([]);
 
@@ -72,7 +73,27 @@ export default function CustomerDetailPage() {
       });
   }, [router, customerId]);
 
-  const handleAddVehicle = async (e: React.FormEvent) => {
+  const openAddModal = () => {
+    setEditingVehicle(null);
+    setForm({ make: '', model: '', year: '', chassisNumber: '', plateNumber: '' });
+    setFormError('');
+    setShowVehicleModal(true);
+  };
+
+  const openEditModal = (v: Vehicle) => {
+    setEditingVehicle(v);
+    setForm({
+      make: v.make,
+      model: v.model,
+      year: v.year ? String(v.year) : '',
+      chassisNumber: v.chassisNumber || '',
+      plateNumber: v.plateNumber || '',
+    });
+    setFormError('');
+    setShowVehicleModal(true);
+  };
+
+  const handleSaveVehicle = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError('');
     if (!form.make.trim() || !form.model.trim()) {
@@ -82,27 +103,31 @@ export default function CustomerDetailPage() {
     setSubmitting(true);
     try {
       const yearVal = form.year.trim() ? parseInt(form.year, 10) : undefined;
-      const res = await fetch('/api/vehicles/', {
-        method: 'POST',
+      const payload = {
+        make: form.make.trim(),
+        model: form.model.trim(),
+        year: yearVal || undefined,
+        chassisNumber: form.chassisNumber.trim() || undefined,
+        plateNumber: form.plateNumber.trim() || undefined,
+        customerId,
+      };
+      const url = editingVehicle ? `/api/vehicles/${editingVehicle.id}/` : '/api/vehicles/';
+      const method = editingVehicle ? 'PATCH' : 'POST';
+      const res = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({
-          make: form.make.trim(),
-          model: form.model.trim(),
-          year: yearVal || undefined,
-          chassisNumber: form.chassisNumber.trim() || undefined,
-          plateNumber: form.plateNumber.trim() || undefined,
-          customerId,
-        }),
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
-      if (data.success) {
-        addToast('success', t('crm_vehicle_added'));
+      if (data?.success) {
+        addToast('success', editingVehicle ? t('crm_vehicle_updated') : t('crm_vehicle_added'));
         setForm({ make: '', model: '', year: '', chassisNumber: '', plateNumber: '' });
         setShowVehicleModal(false);
+        setEditingVehicle(null);
         fetchCustomer();
       } else {
-        setFormError(data.error || data.errors?.[0]?.message || t('crm_failed_create'));
+        setFormError(data?.error || data?.errors?.[0]?.message || t('crm_failed_create'));
       }
     } catch {
       setFormError(t('crm_network_error'));
@@ -236,7 +261,7 @@ export default function CustomerDetailPage() {
               {t('crm_garage')} ({customer?.vehicles?.length ?? 0})
             </h3>
             <button
-              onClick={() => setShowVehicleModal(true)}
+              onClick={openAddModal}
               className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
             >
               <Plus className="w-4 h-4" />
@@ -253,12 +278,22 @@ export default function CustomerDetailPage() {
                   animate={{ opacity: 1, scale: 1 }}
                   className="glass rounded-2xl p-5 relative group"
                 >
-                  <button
-                    onClick={() => handleDeleteVehicle(v.id)}
-                    className="absolute top-3 right-3 p-1.5 rounded-lg hover:bg-red-500/10 text-muted-foreground hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
+                  <div className="absolute top-3 right-3 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button
+                      onClick={() => openEditModal(v)}
+                      className="p-1.5 rounded-lg hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors"
+                      title={t('crm_edit_vehicle')}
+                    >
+                      <Pencil className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={() => handleDeleteVehicle(v.id)}
+                      className="p-1.5 rounded-lg hover:bg-red-500/10 text-muted-foreground hover:text-red-400 transition-colors"
+                      title={t('crm_remove_vehicle')}
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                   <div className="flex items-center gap-3 mb-4">
                     <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
                       <Car className="w-5 h-5 text-primary" />
@@ -318,12 +353,15 @@ export default function CustomerDetailPage() {
               className="glass rounded-2xl p-6 w-full max-w-md border border-border"
             >
               <div className="flex items-center justify-between mb-5">
-                <h3 className="text-lg font-bold">{t('crm_add_vehicle')}</h3>
-                <button onClick={() => setShowVehicleModal(false)} className="p-1 rounded-lg hover:bg-white/5 text-muted-foreground">
+                <h3 className="text-lg font-bold">{editingVehicle ? t('crm_edit_vehicle') : t('crm_add_vehicle')}</h3>
+                <button
+                  onClick={() => { setShowVehicleModal(false); setEditingVehicle(null); }}
+                  className="p-1 rounded-lg hover:bg-white/5 text-muted-foreground"
+                >
                   <X className="w-4 h-4" />
                 </button>
               </div>
-              <form onSubmit={handleAddVehicle} className="space-y-4">
+              <form onSubmit={handleSaveVehicle} className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="text-xs font-medium text-muted-foreground mb-1.5 block">{t('crm_vehicle_make')}</label>
@@ -392,7 +430,7 @@ export default function CustomerDetailPage() {
                   {submitting ? (
                     <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin mx-auto" />
                   ) : (
-                    t('crm_add_vehicle_btn')
+                    editingVehicle ? t('crm_update_vehicle_btn') : t('crm_add_vehicle_btn')
                   )}
                 </button>
               </form>

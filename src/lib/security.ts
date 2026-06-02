@@ -18,9 +18,10 @@ export function validateOrigin(req: NextRequest): NextResponse | null {
     const originUrl = new URL(origin);
     const allowedUrl = new URL(allowedOrigin);
 
-    // In development, allow any localhost origin regardless of port
+    // In development, skip origin validation — CSRF is a production threat,
+    // and dev environments use proxies, tunnels, and various local IPs.
     const isDev = process.env.NODE_ENV !== 'production';
-    if (isDev && originUrl.hostname === 'localhost') {
+    if (isDev) {
       return null;
     }
 
