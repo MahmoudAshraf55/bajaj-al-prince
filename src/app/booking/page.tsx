@@ -2,18 +2,35 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Calendar, Clock, Bike, Wrench, Send, CheckCircle, AlertCircle, User, Phone } from 'lucide-react';
+import {
+  Calendar, Clock, Bike, Wrench, Send, CheckCircle, AlertCircle,
+  User, Phone, Hash, Gauge, ChevronDown,
+} from 'lucide-react';
 import { useTranslation } from '@/components/useTranslation';
+import type { VehicleModel } from '@/types';
 
 export default function BookingPage() {
   const { t } = useTranslation();
-  const [form, setForm] = useState({ name: '', phone: '', model: '', issue: '', date: '', time: '' });
+  const [form, setForm] = useState({
+    name: '', phone: '', model: '', issue: '', date: '', time: '',
+    make: '', year: '', plateNumber: '', chassisNumber: '',
+  });
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [errorMsg, setErrorMsg] = useState('');
   const [today, setToday] = useState('');
+  const [models, setModels] = useState<VehicleModel[]>([]);
+  const [isCustomModel, setIsCustomModel] = useState(false);
 
   useEffect(() => {
     setToday(new Date().toISOString().split('T')[0]);
+    fetch('/api/vehicle-models/')
+      .then((r) => r.json().catch(() => ({ success: false, data: { models: [] } })))
+      .then((d) => {
+        if (d?.success && Array.isArray(d?.data?.models)) {
+          setModels(d.data.models);
+        }
+      })
+      .catch(() => setModels([]));
   }, []);
 
   const generateTimeSlots = () => {
@@ -30,19 +47,36 @@ export default function BookingPage() {
     setStatus('loading');
     setErrorMsg('');
     try {
+      const payload: Record<string, unknown> = {
+        name: form.name,
+        phone: form.phone,
+        model: form.model,
+        issue: form.issue,
+        date: form.date,
+        time: form.time,
+      };
+      if (form.make.trim()) payload.make = form.make.trim();
+      if (form.year.trim()) payload.year = parseInt(form.year, 10);
+      if (form.plateNumber.trim()) payload.plateNumber = form.plateNumber.trim();
+      if (form.chassisNumber.trim()) payload.chassisNumber = form.chassisNumber.trim();
+
       const res = await fetch('/api/bookings/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
-      if (data.success) {
+      if (data?.success) {
         setStatus('success');
-        setForm({ name: '', phone: '', model: '', issue: '', date: '', time: '' });
+        setForm({
+          name: '', phone: '', model: '', issue: '', date: '', time: '',
+          make: '', year: '', plateNumber: '', chassisNumber: '',
+        });
+        setIsCustomModel(false);
       } else {
         setStatus('error');
-        const msg = data.error
-          || (data.errors?.length ? data.errors.map((e: { message: string }) => e.message).join('. ') : undefined)
+        const msg = data?.error
+          || (data?.errors?.length ? data.errors.map((e: { message: string }) => e.message).join('. ') : undefined)
           || t('booking_failed');
         setErrorMsg(msg);
       }
@@ -83,7 +117,14 @@ export default function BookingPage() {
               <h2 className="text-2xl font-bold mb-2">{t('booking_success_title')}</h2>
               <p className="text-muted-foreground mb-6">{t('booking_success_desc')}</p>
               <button
-                onClick={() => setStatus('idle')}
+                onClick={() => {
+                  setStatus('idle');
+                  setForm({
+                    name: '', phone: '', model: '', issue: '', date: '', time: '',
+                    make: '', year: '', plateNumber: '', chassisNumber: '',
+                  });
+                  setIsCustomModel(false);
+                }}
                 className="px-6 py-2.5 bg-primary text-primary-foreground rounded-xl font-medium hover:bg-primary/90 transition-colors"
               >
                 {t('booking_book_another')}
@@ -120,18 +161,119 @@ export default function BookingPage() {
                 </div>
               </div>
 
+              {/* Model Selection */}
               <div>
                 <label className="text-sm font-medium text-muted-foreground mb-2 flex items-center gap-2">
                   <Bike className="w-4 h-4" /> {t('booking_model')}
                 </label>
-                <input
-                  required
-                  type="text"
-                  value={form.model}
-                  onChange={(e) => setForm({ ...form, model: e.target.value })}
-                  className="w-full px-4 py-3 rounded-xl bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                  placeholder={t('booking_model_ph')}
-                />
+                <div className="relative">
+                  <select
+                    required
+                    value={isCustomModel ? '__other__' : form.model}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val === '__other__') {
+                        setIsCustomModel(true);
+                        setForm({ ...form, model: '', make: '' });
+                      } else {
+                        setIsCustomModel(false);
+                        const selected = models.find((m) => m.name === val);
+                        setForm({
+                          ...form,
+                          model: val,
+                          make: selected?.make || '',
+                        });
+                      }
+                    }}
+                    className="w-full px-4 py-3 rounded-xl bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-ring appearance-none pr-10"
+                  >
+                    <option value="">{t('booking_select_model')}</option>
+                    {models.map((m) => (
+                      <option key={m.id} value={m.name}>{m.name}</option>
+                    ))}
+                    <option value="__other__">{t('booking_model_other')}</option>
+                  </select>
+                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+                </div>
+              </div>
+
+              {/* Custom Model Input */}
+              {isCustomModel && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                >
+                  <label className="text-sm font-medium text-muted-foreground mb-2 flex items-center gap-2">
+                    <Bike className="w-4 h-4" /> {t('booking_custom_model')}
+                  </label>
+                  <input
+                    required
+                    type="text"
+                    value={form.model}
+                    onChange={(e) => setForm({ ...form, model: e.target.value })}
+                    className="w-full px-4 py-3 rounded-xl bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                    placeholder={t('booking_model_ph')}
+                  />
+                </motion.div>
+              )}
+
+              {/* Make + Year */}
+              <div className="grid sm:grid-cols-2 gap-5">
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground mb-2 flex items-center gap-2">
+                    {t('booking_make')}
+                  </label>
+                  <input
+                    type="text"
+                    value={form.make}
+                    onChange={(e) => setForm({ ...form, make: e.target.value })}
+                    className="w-full px-4 py-3 rounded-xl bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                    placeholder="Bajaj"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground mb-2 flex items-center gap-2">
+                    {t('booking_year')}
+                  </label>
+                  <input
+                    type="number"
+                    min="1900"
+                    max={new Date().getFullYear() + 1}
+                    value={form.year}
+                    onChange={(e) => setForm({ ...form, year: e.target.value })}
+                    className="w-full px-4 py-3 rounded-xl bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                    placeholder="2023"
+                  />
+                </div>
+              </div>
+
+              {/* Plate + Chassis */}
+              <div className="grid sm:grid-cols-2 gap-5">
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground mb-2 flex items-center gap-2">
+                    <Hash className="w-4 h-4" /> {t('booking_plate')}
+                  </label>
+                  <input
+                    type="text"
+                    value={form.plateNumber}
+                    onChange={(e) => setForm({ ...form, plateNumber: e.target.value })}
+                    className="w-full px-4 py-3 rounded-xl bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                    placeholder="ABC-1234"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground mb-2 flex items-center gap-2">
+                    <Gauge className="w-4 h-4" /> {t('booking_chassis')}
+                  </label>
+                  <input
+                    type="text"
+                    value={form.chassisNumber}
+                    onChange={(e) => setForm({ ...form, chassisNumber: e.target.value })}
+                    className="w-full px-4 py-3 rounded-xl bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-ring font-mono"
+                    placeholder="MLHJC..."
+                  />
+                </div>
               </div>
 
               <div>

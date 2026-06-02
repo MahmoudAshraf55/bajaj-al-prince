@@ -26,6 +26,27 @@ async function main() {
   } else {
     console.log('Admin user already exists');
   }
+
+  // Seed default Bajaj models
+  const defaultModels = [
+    'Bajaj Pulsar N160',
+    'Bajaj Pulsar N250',
+    'Bajaj Dominar 400',
+    'Bajaj Avenger 220',
+    'Bajaj Discover 125',
+    'Bajaj Pulsar 180',
+    'Bajaj Pulsar NS160',
+    'Bajaj Boxer 150',
+  ];
+
+  for (const name of defaultModels) {
+    await prisma.vehicleModel.upsert({
+      where: { name },
+      update: {},
+      create: { name, make: 'Bajaj' },
+    });
+  }
+  console.log('Default vehicle models seeded');
 }
 
 main()

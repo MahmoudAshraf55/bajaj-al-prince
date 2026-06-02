@@ -12,6 +12,7 @@ const nextConfig = {
       { source: '/api/contact/:path*', destination: '/api/v1/contact/:path*' },
       { source: '/api/customers/:path*', destination: '/api/v1/customers/:path*' },
       { source: '/api/vehicles/:path*', destination: '/api/v1/vehicles/:path*' },
+      { source: '/api/vehicle-models/:path*', destination: '/api/v1/vehicle-models/:path*' },
     ];
   },
   async headers() {

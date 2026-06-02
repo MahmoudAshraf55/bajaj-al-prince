@@ -14,7 +14,10 @@ const bookingSchema = z.object({
   issue: sanitizedString(z.string().min(5).max(1000)),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   time: z.string().regex(/^\d{2}:\d{2}$/),
+  make: sanitizedString(z.string().min(1).max(100)).optional(),
+  year: z.number().int().min(1900).max(new Date().getFullYear() + 1).optional(),
   plateNumber: z.string().min(1).max(30).optional(),
+  chassisNumber: z.string().max(100).optional(),
 });
 
 function extractMakeModel(modelStr: string): { make: string; model: string } {
@@ -123,12 +126,16 @@ export async function POST(req: NextRequest) {
       }
 
       if (!vehicle) {
-        const { make, model } = extractMakeModel(data.model);
+        const extracted = extractMakeModel(data.model);
+        const make = data.make || extracted.make;
+        const model = extracted.model;
         vehicle = await tx.vehicle.create({
           data: {
             make,
             model,
+            year: data.year || null,
             plateNumber: data.plateNumber || null,
+            chassisNumber: data.chassisNumber || null,
             customerId: customer.id,
           },
         });

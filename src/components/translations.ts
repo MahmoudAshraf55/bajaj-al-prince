@@ -169,6 +169,13 @@ export const translations = {
     booking_name_ph: 'Your full name',
     booking_phone_ph: '+20 123 456 7890',
     booking_model_ph: 'e.g. Bajaj Pulsar 180',
+    booking_select_model: 'Select model',
+    booking_model_other: 'Other',
+    booking_custom_model: 'Custom Model',
+    booking_make: 'Make',
+    booking_year: 'Year',
+    booking_plate: 'Plate Number',
+    booking_chassis: 'Chassis Number',
     booking_issue_ph: 'Describe the issue or service needed...',
     booking_failed: 'Booking failed',
     booking_network_error: 'Network error. Please try again.',
@@ -216,6 +223,7 @@ export const translations = {
     admin_description: 'Description',
     admin_customers: 'Customers',
     admin_vehicles: 'Vehicles',
+    admin_vehicle_models: 'Models',
 
     // CRM Customers
     crm_customer_management: 'Customer Management',
@@ -281,6 +289,24 @@ export const translations = {
     // Pagination
     crm_pagination_showing: 'Showing',
     crm_pagination_of: 'of',
+
+    // Vehicle Model Admin
+    vmodels_title: 'Vehicle Models',
+    vmodels_add: 'Add Model',
+    vmodels_name: 'Model Name',
+    vmodels_make: 'Make',
+    vmodels_active: 'Active',
+    vmodels_inactive: 'Inactive',
+    vmodels_actions: 'Actions',
+    vmodels_no_models: 'No models found',
+    vmodels_model_added: 'Model added',
+    vmodels_model_removed: 'Model removed',
+    vmodels_confirm_remove: 'Remove this model?',
+    vmodels_add_modal_title: 'Add Vehicle Model',
+    vmodels_create: 'Create Model',
+    vmodels_failed_load: 'Failed to load models',
+    vmodels_failed_create: 'Failed to create model',
+    vmodels_failed_remove: 'Failed to remove model',
 
     // Footer
     footer_description: 'El Prince Bajaj — your trusted destination for Bajaj motorcycle sales, maintenance, genuine parts, and diagnostics. Serving riders with passion since 2019.',
@@ -458,6 +484,13 @@ export const translations = {
     booking_name_ph: 'اسمك الكامل',
     booking_phone_ph: '+20 123 456 7890',
     booking_model_ph: 'مثال: باجاج بولسار 180',
+    booking_select_model: 'اختر الموديل',
+    booking_model_other: 'آخر',
+    booking_custom_model: 'موديل مخصص',
+    booking_make: 'الشركة المصنعة',
+    booking_year: 'السنة',
+    booking_plate: 'رقم اللوحة',
+    booking_chassis: 'رقم الشاسيه',
     booking_issue_ph: 'صف المشكلة أو الخدمة المطلوبة...',
     booking_failed: 'فشل الحجز',
     booking_network_error: 'خطأ في الشبكة. يرجى المحاولة مرة أخرى.',
@@ -505,6 +538,7 @@ export const translations = {
     admin_description: 'الوصف',
     admin_customers: 'العملاء',
     admin_vehicles: 'المركبات',
+    admin_vehicle_models: 'الموديلات',
 
     // CRM Customers
     crm_customer_management: 'إدارة العملاء',
@@ -567,6 +601,24 @@ export const translations = {
     // Pagination
     crm_pagination_showing: 'عرض',
     crm_pagination_of: 'من',
+
+    // Vehicle Model Admin
+    vmodels_title: 'موديلات المركبات',
+    vmodels_add: 'إضافة موديل',
+    vmodels_name: 'اسم الموديل',
+    vmodels_make: 'الشركة المصنعة',
+    vmodels_active: 'نشط',
+    vmodels_inactive: 'غير نشط',
+    vmodels_actions: 'إجراءات',
+    vmodels_no_models: 'لا توجد موديلات',
+    vmodels_model_added: 'تم إضافة الموديل',
+    vmodels_model_removed: 'تمت إزالة الموديل',
+    vmodels_confirm_remove: 'إزالة هذا الموديل؟',
+    vmodels_add_modal_title: 'إضافة موديل مركبة',
+    vmodels_create: 'إنشاء الموديل',
+    vmodels_failed_load: 'فشل تحميل الموديلات',
+    vmodels_failed_create: 'فشل إنشاء الموديل',
+    vmodels_failed_remove: 'فشل إزالة الموديل',
 
     // CRM Error / Empty States
     crm_error_loading: 'حدث خطأ أثناء تحميل البيانات',

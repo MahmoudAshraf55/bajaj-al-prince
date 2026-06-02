@@ -12,7 +12,10 @@ export interface BookingFormData {
   issue: string;
   date: string;
   time: string;
+  make?: string;
+  year?: number;
   plateNumber?: string;
+  chassisNumber?: string;
   customerId?: string;
   vehicleId?: string;
 }
@@ -57,6 +60,15 @@ export interface Vehicle {
   plateNumber: string | null;
   customerId: string;
   customer?: Customer;
+  createdAt: string;
+  updatedAt: string | null;
+}
+
+export interface VehicleModel {
+  id: string;
+  name: string;
+  make: string;
+  isActive: boolean;
   createdAt: string;
   updatedAt: string | null;
 }

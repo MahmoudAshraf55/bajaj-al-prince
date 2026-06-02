@@ -160,6 +160,22 @@ model Vehicle {
   @@index([tenantId])
 }
 
+model VehicleModel {
+  id        String    @id @default(uuid())
+  name      String    @unique
+  make      String    @default("Bajaj")
+  isActive  Boolean   @default(true)
+  createdAt DateTime  @default(now()) @db.Timestamp(6)
+  updatedAt DateTime? @updatedAt @db.Timestamp(6)
+  isDeleted Boolean   @default(false)
+  deletedAt DateTime? @db.Timestamp(6)
+  tenantId  String?
+
+  @@index([isActive])
+  @@index([isDeleted])
+  @@index([tenantId])
+}
+
 model WorkOrder {
   id          String    @id @default(uuid())
   description String
