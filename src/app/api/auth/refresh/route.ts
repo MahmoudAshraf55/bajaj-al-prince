@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { createToken, verifyRefreshToken, getRefreshTokenFromCookie } from '@/lib/auth';
+import { createToken, createRefreshToken, verifyRefreshToken, getRefreshTokenFromCookie } from '@/lib/auth';
 import { logAudit, getClientInfo } from '@/lib/audit';
 import { withSecurityHeaders } from '@/lib/security';
 
@@ -27,19 +27,28 @@ export async function POST(req: NextRequest) {
       return withSecurityHeaders(response);
     }
 
-    const token = await createToken({
-      userId: user.id,
-      username: user.username,
-      role: user.role,
+    // 1. Rotate the token by incrementing the tokenVersion in DB.
+    // This invalidates all previous refresh tokens and prevents replay attacks.
+    const updatedUser = await prisma.user.update({
+      where: { id: user.id },
+      data: { tokenVersion: { increment: 1 } },
     });
+
+    const token = await createToken({
+      userId: updatedUser.id,
+      username: updatedUser.username,
+      role: updatedUser.role,
+    });
+
+    const newRefreshToken = await createRefreshToken(updatedUser.id, updatedUser.tokenVersion);
 
     const { ipAddress, userAgent } = getClientInfo(req);
     await logAudit({
-      userId: user.id,
+      userId: updatedUser.id,
       action: 'login',
       entity: 'User',
-      entityId: user.id,
-      newValue: { status: 'refresh', username: user.username },
+      entityId: updatedUser.id,
+      newValue: { status: 'refresh_rotated', username: updatedUser.username, tokenVersion: updatedUser.tokenVersion },
       ipAddress,
       userAgent,
     });
@@ -50,6 +59,13 @@ export async function POST(req: NextRequest) {
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
       maxAge: 60 * 60,
+      path: '/',
+    });
+    response.cookies.set('refresh_token', newRefreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 60 * 60 * 24 * 7,
       path: '/',
     });
     return withSecurityHeaders(response);

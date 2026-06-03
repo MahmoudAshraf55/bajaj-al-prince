@@ -22,6 +22,7 @@ export interface AuditLogInput {
   newValue?: Record<string, unknown>;
   ipAddress?: string;
   userAgent?: string;
+  tenantId?: string;
 }
 
 const SENSITIVE_KEYS = new Set([
@@ -74,6 +75,7 @@ export async function logAudit(input: AuditLogInput): Promise<void> {
         newValue: input.newValue ? JSON.stringify(sanitizeValue(input.newValue)) : null,
         ipAddress: input.ipAddress ?? null,
         userAgent: input.userAgent ?? null,
+        tenantId: input.tenantId ?? null,
       },
     });
   } catch {

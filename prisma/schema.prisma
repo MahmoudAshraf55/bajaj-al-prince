@@ -36,9 +36,9 @@ model Booking {
   status      String    @default("pending")
   plateNumber String?
   customerId  String?
-  customer    Customer? @relation(fields: [customerId], references: [id])
+  customer    Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
   vehicleId   String?
-  vehicle     Vehicle?  @relation(fields: [vehicleId], references: [id])
+  vehicle     Vehicle?  @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
   createdAt   DateTime  @default(now()) @db.Timestamp(6)
   updatedAt   DateTime  @updatedAt @db.Timestamp(6)
   isDeleted   Boolean   @default(false)
@@ -145,7 +145,7 @@ model Vehicle {
   chassisNumber String?
   plateNumber   String?
   customerId    String
-  customer      Customer    @relation(fields: [customerId], references: [id])
+  customer      Customer    @relation(fields: [customerId], references: [id], onDelete: Cascade)
   bookings      Booking[]
   workOrders    WorkOrder[]
   createdAt     DateTime    @default(now()) @db.Timestamp(6)
@@ -184,7 +184,7 @@ model WorkOrder {
   status      String    @default("pending")
   cost        Decimal?  @db.Decimal(10, 2)
   vehicleId   String
-  vehicle     Vehicle   @relation(fields: [vehicleId], references: [id])
+  vehicle     Vehicle   @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
   createdAt   DateTime  @default(now()) @db.Timestamp(6)
   updatedAt   DateTime? @updatedAt @db.Timestamp(6)
   isDeleted   Boolean   @default(false)
@@ -208,8 +208,10 @@ model AuditLog {
   ipAddress   String?
   userAgent   String?
   createdAt   DateTime @default(now()) @db.Timestamp(6)
+  tenantId    String?
 
   @@index([entity, entityId])
   @@index([createdAt])
   @@index([userId])
+  @@index([tenantId])
 }
