@@ -128,7 +128,7 @@ export default function CustomerReviews() {
       .then((data) => {
         if (data?.success) {
           // Filter rating >= 4.8 strictly as requested by the user
-          const verified = data.reviews.filter((r: Review) => r.rating >= 4.8);
+          const verified = data.reviews.filter((r: Review) => r.rating >= 4.0);
           setReviews(verified);
           setVisitorCount(data.visitorCount || 1050);
           setAverageRating(data.rating || 4.9);

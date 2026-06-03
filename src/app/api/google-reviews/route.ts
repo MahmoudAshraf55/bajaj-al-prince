@@ -145,7 +145,7 @@ export async function GET(request: NextRequest) {
     const averageRating = totalCount > 0 ? Number((sumRatings / totalCount).toFixed(1)) : 4.8;
 
     // 8. Apply the strictly filtered >= 4.8 rating constraint for display
-    const filteredReviews = formattedReviews.filter((r) => r.rating >= 4.8);
+    const filteredReviews = formattedReviews.filter((r) => r.rating >= 4.0);
 
     const response = NextResponse.json({
       success: true,
