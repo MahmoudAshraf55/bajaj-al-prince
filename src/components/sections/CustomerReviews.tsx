@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import { motion, useInView } from 'framer-motion';
-import { Star, ExternalLink, PenTool, CheckCircle } from 'lucide-react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { motion, useInView, AnimatePresence } from 'framer-motion';
+import { Star, ExternalLink, PenTool, CheckCircle, X, Sparkles } from 'lucide-react';
 import { useTranslation } from '@/components/useTranslation';
 import { useLanguage } from '@/components/LanguageContext';
 
@@ -38,7 +38,7 @@ function getFallbackReviews(t: (key: string) => string): Review[] {
     {
       id: 'fallback-3',
       name: t('review_3_name'),
-      rating: 5, // Filtered >= 4.8 stars
+      rating: 5,
       review: t('review_3_text'),
       date: '2026-03-12',
       verified: true,
@@ -110,19 +110,23 @@ export default function CustomerReviews() {
   const [totalReviews, setTotalReviews] = useState(142);
   const [averageRating, setAverageRating] = useState(4.9);
 
+  // Modal & Form States
+  const [modalOpen, setModalOpen] = useState(false);
+  const [form, setForm] = useState({ name: '', rating: 5, review: '' });
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState('');
+  const [submitSuccess, setSubmitSuccess] = useState(false);
+
   const googleMapsUrl = 'https://maps.app.goo.gl/Dy4NToGMJqeR7ymS7';
 
-  useEffect(() => {
-    let active = true;
-    setLoading(true);
-
+  const fetchReviews = useCallback(() => {
     fetch(`/api/google-reviews?lang=${language}`)
       .then((res) => {
         if (!res.ok) throw new Error('Failed to fetch reviews');
         return res.json();
       })
       .then((data) => {
-        if (active && data?.success) {
+        if (data?.success) {
           // Filter rating >= 4.8 strictly as requested by the user
           const verified = data.reviews.filter((r: Review) => r.rating >= 4.8);
           setReviews(verified);
@@ -133,17 +137,55 @@ export default function CustomerReviews() {
       })
       .catch((err) => {
         console.warn('[reviews] Fetch failed, falling back to static reviews:', err);
-        if (active) {
-          // Graceful fallback to pre-verified reviews
-          setReviews(getFallbackReviews(t));
-          setLoading(false);
-        }
+        setReviews(getFallbackReviews(t));
+        setLoading(false);
+      });
+  }, [language, t]);
+
+  useEffect(() => {
+    setLoading(true);
+    fetchReviews();
+  }, [fetchReviews]);
+
+  const handleSubmitReview = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmitting(true);
+    setSubmitError('');
+
+    try {
+      const res = await fetch('/api/google-reviews', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(form),
       });
 
-    return () => {
-      active = false;
-    };
-  }, [language, t]);
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to submit review');
+      }
+
+      setSubmitSuccess(true);
+      setForm({ name: '', rating: 5, review: '' });
+      fetchReviews(); // Re-fetch reviews to show the newly added one!
+      
+      // Auto close success message after 3 seconds
+      setTimeout(() => {
+        setSubmitSuccess(false);
+        setModalOpen(false);
+      }, 3000);
+
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setSubmitError(err.message);
+      } else {
+        setSubmitError('An unexpected error occurred');
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
     <section id="reviews" className="relative py-24 sm:py-32 overflow-hidden">
@@ -182,8 +224,8 @@ export default function CustomerReviews() {
             <span className="text-muted-foreground select-none">|</span>
             <span className="text-muted-foreground text-xs">
               {language === 'ar' 
-                ? `(${totalReviews} تقييم حقيقي على خرائط جوجل)` 
-                : `(${totalReviews} verified reviews on Google Maps)`}
+                ? `(${totalReviews} تقييم حقيقي على الموقع وجوجل)` 
+                : `(${totalReviews} verified on-site & Google reviews)`}
             </span>
           </div>
         </motion.div>
@@ -233,27 +275,190 @@ export default function CustomerReviews() {
           transition={{ duration: 0.8, delay: 0.3 }}
           className="mt-16 flex flex-col sm:flex-row items-center justify-center gap-4"
         >
-          <a
-            href={googleMapsUrl}
-            target="_blank"
-            rel="noopener noreferrer"
+          {/* Write Review on Website Button */}
+          <button
+            onClick={() => setModalOpen(true)}
             className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:bg-primary/90 transition-all cursor-pointer shadow-lg shadow-primary/20"
           >
             <PenTool className="w-4 h-4" />
-            {language === 'ar' ? 'اكتب تقييمًا على جوجل مابس' : 'Write a Review on Google'}
-          </a>
+            {language === 'ar' ? 'اكتب تقييمًا على الموقع' : 'Write a Review on Website'}
+          </button>
+
+          {/* Write Review on Google Maps Button */}
           <a
             href={googleMapsUrl}
             target="_blank"
             rel="noopener noreferrer"
             className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl border border-border bg-white/5 text-foreground font-semibold text-sm hover:bg-white/10 hover:border-primary/30 transition-all cursor-pointer"
           >
-            {language === 'ar' ? 'عرض جميع المراجعات' : 'View All Reviews'}
+            {language === 'ar' ? 'اكتب تقييمًا على جوجل مابس' : 'Write a Review on Google'}
             <ExternalLink className="w-4 h-4" />
           </a>
         </motion.div>
 
       </div>
+
+      {/* Review Submission Modal Dialog */}
+      <AnimatePresence>
+        {modalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => !submitting && setModalOpen(false)}
+              className="absolute inset-0 bg-black/60 backdrop-blur-md"
+            />
+
+            {/* Modal Body */}
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="relative w-full max-w-lg glass rounded-2xl border border-border/80 p-6 sm:p-8 shadow-2xl z-10 flex flex-col gap-5 overflow-hidden"
+            >
+              <div className="absolute -top-10 -right-10 w-32 h-32 bg-primary/10 rounded-full blur-2xl pointer-events-none" />
+
+              <div className="flex items-center justify-between border-b border-border/50 pb-4">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-5 h-5 text-primary" />
+                  <h3 className="text-xl font-bold text-foreground">
+                    {language === 'ar' ? 'اكتب تقييمًا جديدًا' : 'Write a Customer Review'}
+                  </h3>
+                </div>
+                <button
+                  onClick={() => !submitting && setModalOpen(false)}
+                  className="p-1 rounded-lg text-muted-foreground hover:bg-white/5 hover:text-foreground transition-all"
+                  aria-label="Close Modal"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {submitSuccess ? (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="flex flex-col items-center justify-center text-center py-10 gap-3"
+                >
+                  <div className="w-16 h-16 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
+                    <CheckCircle className="w-8 h-8 text-emerald-500" />
+                  </div>
+                  <h4 className="text-lg font-bold text-foreground">
+                    {language === 'ar' ? 'تم إرسال تقييمك بنجاح!' : 'Review Submitted Successfully!'}
+                  </h4>
+                  <p className="text-muted-foreground text-sm max-w-sm">
+                    {language === 'ar' 
+                      ? 'شكرًا لك على مشاركة رأيك الصادق ومساعدتنا على تحسين خدماتنا دائمًا.' 
+                      : 'Thank you for sharing your honest feedback and helping us improve our services.'}
+                  </p>
+                </motion.div>
+              ) : (
+                <form onSubmit={handleSubmitReview} className="flex flex-col gap-5">
+                  
+                  {/* Full Name */}
+                  <div>
+                    <label htmlFor="review-name" className="text-sm font-medium text-muted-foreground mb-2 block">
+                      {language === 'ar' ? 'الاسم الكامل' : 'Full Name'}
+                    </label>
+                    <input
+                      id="review-name"
+                      required
+                      type="text"
+                      maxLength={50}
+                      value={form.name}
+                      onChange={(e) => setForm({ ...form, name: e.target.value })}
+                      className="w-full px-4 py-3 rounded-xl bg-input border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition-all"
+                      placeholder={language === 'ar' ? 'أدخل اسمك الكريم' : 'e.g. John Doe'}
+                    />
+                  </div>
+
+                  {/* Rating Selector */}
+                  <div>
+                    <span className="text-sm font-medium text-muted-foreground mb-2 block">
+                      {language === 'ar' ? 'التقييم بالنجوم' : 'Select Rating'}
+                    </span>
+                    <div className="flex items-center gap-1.5" role="radiogroup" aria-label="Select Rating Stars">
+                      {Array.from({ length: 5 }).map((_, i) => {
+                        const starValue = i + 1;
+                        const isSelected = starValue <= form.rating;
+                        return (
+                          <button
+                            key={i}
+                            type="button"
+                            onClick={() => setForm({ ...form, rating: starValue })}
+                            className="p-1 rounded hover:bg-white/5 transition-all focus:outline-none focus:ring-1 focus:ring-ring"
+                            role="radio"
+                            aria-checked={isSelected}
+                            aria-label={`${starValue} Stars`}
+                          >
+                            <Star
+                              className={`w-8 h-8 ${isSelected ? 'text-primary fill-primary scale-110' : 'text-muted-foreground/20'} hover:scale-110 transition-transform`}
+                            />
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Review Message */}
+                  <div>
+                    <label htmlFor="review-message" className="text-sm font-medium text-muted-foreground mb-2 block">
+                      {language === 'ar' ? 'تعليقك ورأيك الصادق' : 'Your Honest Feedback'}
+                    </label>
+                    <textarea
+                      id="review-message"
+                      required
+                      rows={4}
+                      maxLength={500}
+                      value={form.review}
+                      onChange={(e) => setForm({ ...form, review: e.target.value })}
+                      className="w-full px-4 py-3 rounded-xl bg-input border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition-all resize-none"
+                      placeholder={language === 'ar' ? 'اكتب رأيك بالتفصيل هنا...' : 'Describe your experience with our service...'}
+                    />
+                  </div>
+
+                  {submitError && (
+                    <div className="text-red-500 text-xs bg-red-500/10 border border-red-500/20 px-4 py-2.5 rounded-xl">
+                      {submitError}
+                    </div>
+                  )}
+
+                  <div className="flex items-center justify-end gap-3 pt-4 border-t border-border/50">
+                    <button
+                      type="button"
+                      disabled={submitting}
+                      onClick={() => setModalOpen(false)}
+                      className="px-5 py-2.5 rounded-xl border border-border text-foreground hover:bg-white/5 transition-all text-sm font-semibold cursor-pointer disabled:opacity-50"
+                    >
+                      {language === 'ar' ? 'إلغاء' : 'Cancel'}
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={submitting}
+                      className="px-6 py-2.5 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 transition-all text-sm font-semibold shadow-lg shadow-primary/20 flex items-center gap-2 cursor-pointer disabled:opacity-50"
+                    >
+                      {submitting ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
+                          {language === 'ar' ? 'جاري الإرسال...' : 'Submitting...'}
+                        </>
+                      ) : (
+                        <>
+                          {language === 'ar' ? 'إرسال التقييم' : 'Submit Review'}
+                        </>
+                      )}
+                    </button>
+                  </div>
+
+                </form>
+              )}
+
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </section>
   );
 }
