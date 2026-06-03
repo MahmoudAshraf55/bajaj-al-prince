@@ -242,7 +242,7 @@ export default function CustomerReviews() {
           {loading ? (
             Array.from({ length: 3 }).map((_, i) => <SkeletonCard key={i} />)
           ) : (
-            reviews.map((review: Review, i: number) => (
+            reviews.slice(0, 5).map((review: Review, i: number) => (
               <motion.div
                 key={review.id}
                 initial={{ opacity: 0, y: 30 }}
