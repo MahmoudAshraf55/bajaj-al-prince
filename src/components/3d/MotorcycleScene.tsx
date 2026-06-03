@@ -13,105 +13,119 @@ export interface SceneRef {
 
 const modelRef = { current: null as THREE.Group | null };
 
-function LensFlare({ position, color, size = 1, speed = 1 }: { position: [number, number, number]; color: string; size?: number; speed?: number }) {
-  const groupRef = useRef<THREE.Group>(null);
+function CinematicLightSweep() {
+  const lightRef = useRef<THREE.SpotLight>(null);
   const timeRef = useRef(0);
+
+  useFrame((_, delta) => {
+    timeRef.current += delta;
+    if (lightRef.current) {
+      // Sweep back and forth every 6 seconds
+      const sweepCycle = (timeRef.current % 6) / 6; // 0 to 1
+      // Create a wave that goes -8 to 8
+      const x = Math.sin(sweepCycle * Math.PI * 2) * 8;
+      lightRef.current.position.x = x;
+      // Vary intensity during sweep for dramatic effect
+      lightRef.current.intensity = 2 + Math.sin(sweepCycle * Math.PI * 2) * 1.5;
+    }
+  });
+
+  return (
+    <spotLight
+      ref={lightRef}
+      position={[0, 5, 2]}
+      angle={0.3}
+      penumbra={0.5}
+      intensity={2}
+      color="#ffcc66"
+      castShadow={false}
+      target-position={[0, 0, 0]}
+    />
+  );
+}
+
+function BigFlare({ position, color, size = 1 }: { position: [number, number, number]; color: string; size?: number }) {
+  const spriteRef = useRef<THREE.Sprite>(null);
+  const timeRef = useRef(Math.random() * 100);
 
   const flareTexture = useMemo(() => {
     const canvas = document.createElement('canvas');
-    canvas.width = 128;
-    canvas.height = 128;
-    const ctx = canvas.getContext('2d')!;
-
-    // Create radial gradient for soft glow
-    const gradient = ctx.createRadialGradient(64, 64, 0, 64, 64, 64);
-    gradient.addColorStop(0, color);
-    gradient.addColorStop(0.3, color + '88');
-    gradient.addColorStop(0.6, color + '22');
-    gradient.addColorStop(1, 'transparent');
-
-    ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, 128, 128);
-
-    const texture = new THREE.CanvasTexture(canvas);
-    return texture;
-  }, [color]);
-
-  const streakTexture = useMemo(() => {
-    const canvas = document.createElement('canvas');
     canvas.width = 256;
-    canvas.height = 32;
+    canvas.height = 256;
     const ctx = canvas.getContext('2d')!;
 
-    // Anamorphic streak gradient
-    const gradient = ctx.createLinearGradient(0, 16, 256, 16);
-    gradient.addColorStop(0, 'transparent');
-    gradient.addColorStop(0.2, color + '11');
-    gradient.addColorStop(0.5, color + '66');
-    gradient.addColorStop(0.8, color + '11');
+    // Bright radial glow with starburst center
+    const gradient = ctx.createRadialGradient(128, 128, 0, 128, 128, 128);
+    gradient.addColorStop(0, '#ffffff');
+    gradient.addColorStop(0.05, color);
+    gradient.addColorStop(0.2, color + 'cc');
+    gradient.addColorStop(0.5, color + '44');
     gradient.addColorStop(1, 'transparent');
 
     ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, 256, 32);
+    ctx.fillRect(0, 0, 256, 256);
 
-    // Add bright center line
-    const lineGrad = ctx.createLinearGradient(0, 15, 256, 15);
-    lineGrad.addColorStop(0, 'transparent');
-    lineGrad.addColorStop(0.45, color + 'CC');
-    lineGrad.addColorStop(0.55, color + 'CC');
-    lineGrad.addColorStop(1, 'transparent');
-
-    ctx.fillStyle = lineGrad;
-    ctx.fillRect(0, 14, 256, 4);
+    // Add star spikes
+    ctx.strokeStyle = color + '88';
+    ctx.lineWidth = 2;
+    for (let i = 0; i < 8; i++) {
+      const angle = (i / 8) * Math.PI * 2;
+      ctx.beginPath();
+      ctx.moveTo(128, 128);
+      ctx.lineTo(128 + Math.cos(angle) * 120, 128 + Math.sin(angle) * 120);
+      ctx.stroke();
+    }
 
     const texture = new THREE.CanvasTexture(canvas);
     return texture;
   }, [color]);
 
   useFrame((_, delta) => {
-    timeRef.current += delta * speed;
-    if (groupRef.current) {
-      // Subtle breathing animation
-      groupRef.current.children.forEach((child, i) => {
-        const sprite = child as THREE.Sprite;
-        const breathe = Math.sin(timeRef.current + i * 1.5) * 0.15 + 1;
-        sprite.scale.setScalar((0.5 + i * 0.4) * size * breathe);
-      });
-      // Slow rotation of the streak
-      groupRef.current.rotation.y += delta * 0.1;
+    timeRef.current += delta;
+    if (spriteRef.current) {
+      // Dramatic pulsing
+      const pulse = Math.sin(timeRef.current * 1.5) * 0.4 + 1;
+      spriteRef.current.scale.setScalar(size * pulse);
     }
   });
 
   return (
-    <group position={position} ref={groupRef}>
-      {/* Main glow */}
-      <sprite scale={[size * 2, size * 2, 1]}>
-        <spriteMaterial map={flareTexture} transparent blending={THREE.AdditiveBlending} depthWrite={false} />
-      </sprite>
+    <sprite ref={spriteRef} position={position} scale={[size, size, 1]}>
+      <spriteMaterial
+        map={flareTexture}
+        transparent
+        blending={THREE.AdditiveBlending}
+        depthWrite={false}
+      />
+    </sprite>
+  );
+}
 
-      {/* Inner bright core */}
-      <sprite scale={[size * 0.6, size * 0.6, 1]}>
-        <spriteMaterial map={flareTexture} transparent blending={THREE.AdditiveBlending} depthWrite={false} color="#ffffff" />
-      </sprite>
+function ScreenGlow() {
+  const meshRef = useRef<THREE.Mesh>(null);
+  const timeRef = useRef(0);
 
-      {/* Horizontal anamorphic streak */}
-      <sprite scale={[size * 6, size * 0.3, 1]}>
-        <spriteMaterial map={streakTexture} transparent blending={THREE.AdditiveBlending} depthWrite={false} />
-      </sprite>
+  useFrame((_, delta) => {
+    timeRef.current += delta;
+    if (meshRef.current) {
+      const material = meshRef.current.material as THREE.MeshBasicMaterial;
+      // Subtle warm glow that breathes
+      material.opacity = 0.03 + Math.sin(timeRef.current * 0.5) * 0.015;
+    }
+  });
 
-      {/* Vertical anamorphic streak */}
-      <sprite scale={[size * 0.2, size * 5, 1]} rotation={[0, 0, Math.PI / 2]}>
-        <spriteMaterial map={streakTexture} transparent blending={THREE.AdditiveBlending} depthWrite={false} />
-      </sprite>
-
-      {/* Secondary ghost flares */}
-      <sprite position={[size * 2, size * 0.5, 0]} scale={[size * 0.8, size * 0.8, 1]}>
-        <spriteMaterial map={flareTexture} transparent blending={THREE.AdditiveBlending} depthWrite={false} />
-      </sprite>
-      <sprite position={[-size * 1.5, -size * 0.3, 0]} scale={[size * 0.5, size * 0.5, 1]}>
-        <spriteMaterial map={flareTexture} transparent blending={THREE.AdditiveBlending} depthWrite={false} />
-      </sprite>
-    </group>
+  return (
+    <mesh ref={meshRef} position={[0, 0, -2]}>
+      <planeGeometry args={[20, 20]} />
+      <meshBasicMaterial
+        color="#ffaa44"
+        transparent
+        opacity={0.03}
+        blending={THREE.AdditiveBlending}
+        depthWrite={false}
+        side={THREE.DoubleSide}
+      />
+    </mesh>
   );
 }
 
@@ -254,11 +268,13 @@ const MotorcycleScene = forwardRef<SceneRef>((_, ref) => {
         <Suspense fallback={<LoadingFallback />}>
           <Model />
 
-          {/* Cinematic Anamorphic Lens Flares */}
-          <LensFlare position={[8, 12, 8]} color="#ffaa44" size={0.8} speed={0.5} />
-          <LensFlare position={[-8, 6, -5]} color="#ffdd88" size={0.5} speed={0.7} />
-          <LensFlare position={[0, 4, 6]} color="#ffcc66" size={0.4} speed={0.9} />
-          <LensFlare position={[-4, 2, -4]} color="#88ccff" size={0.3} speed={1.2} />
+          {/* Dramatic Cinematic Light Effects */}
+          <CinematicLightSweep />
+          <ScreenGlow />
+          <BigFlare position={[3, 2, -1]} color="#ffaa44" size={2.5} />
+          <BigFlare position={[-3, 1.5, -2]} color="#ffdd88" size={1.8} />
+          <BigFlare position={[0, 3, 0]} color="#ffcc66" size={2.0} />
+          <BigFlare position={[-2, -1, -3]} color="#88ccff" size={1.2} />
 
           <ContactShadows
             position={[0, -0.8, 0]}
