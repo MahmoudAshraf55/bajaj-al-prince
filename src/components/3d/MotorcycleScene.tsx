@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useRef, useEffect, forwardRef, useImperativeHandle, useMemo } from 'react';
+import { Suspense, useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { Environment, ContactShadows, useGLTF, Html, PerspectiveCamera } from '@react-three/drei';
 import * as THREE from 'three';
@@ -12,122 +12,6 @@ export interface SceneRef {
 }
 
 const modelRef = { current: null as THREE.Group | null };
-
-function CinematicLightSweep() {
-  const lightRef = useRef<THREE.SpotLight>(null);
-  const timeRef = useRef(0);
-
-  useFrame((_, delta) => {
-    timeRef.current += delta;
-    if (lightRef.current) {
-      // Sweep back and forth every 6 seconds
-      const sweepCycle = (timeRef.current % 6) / 6; // 0 to 1
-      // Create a wave that goes -8 to 8
-      const x = Math.sin(sweepCycle * Math.PI * 2) * 8;
-      lightRef.current.position.x = x;
-      // Vary intensity during sweep for dramatic effect
-      lightRef.current.intensity = 2 + Math.sin(sweepCycle * Math.PI * 2) * 1.5;
-    }
-  });
-
-  return (
-    <spotLight
-      ref={lightRef}
-      position={[0, 5, 2]}
-      angle={0.3}
-      penumbra={0.5}
-      intensity={2}
-      color="#ffcc66"
-      castShadow={false}
-      target-position={[0, 0, 0]}
-    />
-  );
-}
-
-function BigFlare({ position, color, size = 1 }: { position: [number, number, number]; color: string; size?: number }) {
-  const spriteRef = useRef<THREE.Sprite>(null);
-  const timeRef = useRef(Math.random() * 100);
-
-  const flareTexture = useMemo(() => {
-    const canvas = document.createElement('canvas');
-    canvas.width = 256;
-    canvas.height = 256;
-    const ctx = canvas.getContext('2d')!;
-
-    // Bright radial glow with starburst center
-    const gradient = ctx.createRadialGradient(128, 128, 0, 128, 128, 128);
-    gradient.addColorStop(0, '#ffffff');
-    gradient.addColorStop(0.05, color);
-    gradient.addColorStop(0.2, color + 'cc');
-    gradient.addColorStop(0.5, color + '44');
-    gradient.addColorStop(1, 'transparent');
-
-    ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, 256, 256);
-
-    // Add star spikes
-    ctx.strokeStyle = color + '88';
-    ctx.lineWidth = 2;
-    for (let i = 0; i < 8; i++) {
-      const angle = (i / 8) * Math.PI * 2;
-      ctx.beginPath();
-      ctx.moveTo(128, 128);
-      ctx.lineTo(128 + Math.cos(angle) * 120, 128 + Math.sin(angle) * 120);
-      ctx.stroke();
-    }
-
-    const texture = new THREE.CanvasTexture(canvas);
-    return texture;
-  }, [color]);
-
-  useFrame((_, delta) => {
-    timeRef.current += delta;
-    if (spriteRef.current) {
-      // Dramatic pulsing
-      const pulse = Math.sin(timeRef.current * 1.5) * 0.4 + 1;
-      spriteRef.current.scale.setScalar(size * pulse);
-    }
-  });
-
-  return (
-    <sprite ref={spriteRef} position={position} scale={[size, size, 1]}>
-      <spriteMaterial
-        map={flareTexture}
-        transparent
-        blending={THREE.AdditiveBlending}
-        depthWrite={false}
-      />
-    </sprite>
-  );
-}
-
-function ScreenGlow() {
-  const meshRef = useRef<THREE.Mesh>(null);
-  const timeRef = useRef(0);
-
-  useFrame((_, delta) => {
-    timeRef.current += delta;
-    if (meshRef.current) {
-      const material = meshRef.current.material as THREE.MeshBasicMaterial;
-      // Subtle warm glow that breathes
-      material.opacity = 0.03 + Math.sin(timeRef.current * 0.5) * 0.015;
-    }
-  });
-
-  return (
-    <mesh ref={meshRef} position={[0, 0, -2]}>
-      <planeGeometry args={[20, 20]} />
-      <meshBasicMaterial
-        color="#ffaa44"
-        transparent
-        opacity={0.03}
-        blending={THREE.AdditiveBlending}
-        depthWrite={false}
-        side={THREE.DoubleSide}
-      />
-    </mesh>
-  );
-}
 
 function Model() {
   const group = useRef<THREE.Group>(null);
@@ -267,14 +151,6 @@ const MotorcycleScene = forwardRef<SceneRef>((_, ref) => {
         <Lights />
         <Suspense fallback={<LoadingFallback />}>
           <Model />
-
-          {/* Dramatic Cinematic Light Effects */}
-          <CinematicLightSweep />
-          <ScreenGlow />
-          <BigFlare position={[3, 2, -1]} color="#ffaa44" size={2.5} />
-          <BigFlare position={[-3, 1.5, -2]} color="#ffdd88" size={1.8} />
-          <BigFlare position={[0, 3, 0]} color="#ffcc66" size={2.0} />
-          <BigFlare position={[-2, -1, -3]} color="#88ccff" size={1.2} />
 
           <ContactShadows
             position={[0, -0.8, 0]}
