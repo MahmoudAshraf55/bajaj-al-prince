@@ -51,7 +51,7 @@ function Model() {
   });
 
   return (
-    <group ref={group} position={[0, -0.3, 0]}>
+    <group ref={group} position={[0, -0.12, 0]}>
       <primitive object={scene} />
     </group>
   );
