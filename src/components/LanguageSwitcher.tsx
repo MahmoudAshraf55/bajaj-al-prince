@@ -2,6 +2,7 @@
 
 import { useLanguage } from './LanguageContext';
 import { cn } from '@/lib/utils';
+import { useTranslation } from './useTranslation';
 
 interface LanguageSwitcherProps {
   className?: string;
@@ -9,6 +10,7 @@ interface LanguageSwitcherProps {
 
 export default function LanguageSwitcher({ className }: LanguageSwitcherProps) {
   const { language, toggleLanguage } = useLanguage();
+  const { t } = useTranslation();
 
   return (
     <button
@@ -17,7 +19,7 @@ export default function LanguageSwitcher({ className }: LanguageSwitcherProps) {
         'relative inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold transition-all duration-300 border border-border/60 hover:border-primary/40',
         className
       )}
-      aria-label="Toggle language"
+      aria-label={t('aria_toggle_language')}
     >
       <span
         className={cn(

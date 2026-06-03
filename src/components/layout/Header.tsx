@@ -71,13 +71,16 @@ export default function Header() {
         <button
           onClick={() => setMobileOpen(!mobileOpen)}
           className="md:hidden p-2 rounded-lg hover:bg-white/5 transition-colors"
+          aria-expanded={mobileOpen}
+          aria-controls="mobile-navigation"
+          aria-label={mobileOpen ? t('aria_close_menu') : t('aria_open_menu')}
         >
           {mobileOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
         </button>
       </div>
 
       {mobileOpen && (
-        <div className="md:hidden glass mt-3 mx-4 rounded-2xl p-4 border border-border depth-2">
+        <div id="mobile-navigation" className="md:hidden glass mt-3 mx-4 rounded-2xl p-4 border border-border depth-2">
           <div className="mb-4 pb-4 border-b border-border flex items-center justify-between">
             <Logo size="sm" />
             <LanguageSwitcher />

@@ -319,6 +319,14 @@ export const translations = {
     footer_contact: 'Contact',
     footer_rights: 'All rights reserved.',
     footer_admin: 'Admin Portal',
+    aria_toggle_menu: 'Toggle navigation menu',
+    aria_open_menu: 'Open navigation menu',
+    aria_close_menu: 'Close navigation menu',
+    aria_toggle_language: 'تغيير اللغة إلى العربية',
+    aria_whatsapp: 'Contact us on WhatsApp',
+    aria_facebook: 'Follow us on Facebook',
+    aria_instagram: 'Follow us on Instagram',
+    aria_tiktok: 'Follow us on TikTok',
   },
 
   ar: {
@@ -641,6 +649,14 @@ export const translations = {
     footer_contact: 'تواصل معنا',
     footer_rights: 'جميع الحقوق محفوظة.',
     footer_admin: 'بوابة الإدارة',
+    aria_toggle_menu: 'تبديل قائمة التنقل',
+    aria_open_menu: 'فتح قائمة التنقل',
+    aria_close_menu: 'إغلاق قائمة التنقل',
+    aria_toggle_language: 'Switch language to English',
+    aria_whatsapp: 'تواصل معنا عبر واتساب',
+    aria_facebook: 'تابعنا على فيسبوك',
+    aria_instagram: 'تابعنا على إنستغرام',
+    aria_tiktok: 'تابعنا على تيك توك',
   },
 } as const;
 

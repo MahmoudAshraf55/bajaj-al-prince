@@ -109,8 +109,9 @@ export default function Contact() {
             <form onSubmit={handleSubmit} className="glass rounded-2xl p-6 sm:p-8 flex flex-col gap-5">
               <div className="grid sm:grid-cols-2 gap-5">
                 <div>
-                  <label className="text-sm font-medium text-muted-foreground mb-2 block">Full Name</label>
+                  <label htmlFor="contact-name" className="text-sm font-medium text-muted-foreground mb-2 block">Full Name</label>
                   <input
+                    id="contact-name"
                     type="text"
                     required
                     value={formData.name}
@@ -120,8 +121,9 @@ export default function Contact() {
                   />
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-muted-foreground mb-2 block">Phone Number</label>
+                  <label htmlFor="contact-phone" className="text-sm font-medium text-muted-foreground mb-2 block">Phone Number</label>
                   <input
+                    id="contact-phone"
                     type="tel"
                     required
                     value={formData.phone}
@@ -132,8 +134,9 @@ export default function Contact() {
                 </div>
               </div>
               <div>
-                <label className="text-sm font-medium text-muted-foreground mb-2 block">Email</label>
+                <label htmlFor="contact-email" className="text-sm font-medium text-muted-foreground mb-2 block">Email</label>
                 <input
+                  id="contact-email"
                   type="email"
                   required
                   value={formData.email}
@@ -143,8 +146,9 @@ export default function Contact() {
                 />
               </div>
               <div>
-                <label className="text-sm font-medium text-muted-foreground mb-2 block">Message</label>
+                <label htmlFor="contact-message" className="text-sm font-medium text-muted-foreground mb-2 block">Message</label>
                 <textarea
+                  id="contact-message"
                   required
                   rows={4}
                   value={formData.message}

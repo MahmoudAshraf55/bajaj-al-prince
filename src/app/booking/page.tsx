@@ -139,10 +139,11 @@ export default function BookingPage() {
             <form onSubmit={handleSubmit} className="flex flex-col gap-5">
               <div className="grid sm:grid-cols-2 gap-5">
                 <div>
-                  <label className="text-sm font-medium text-muted-foreground mb-2 flex items-center gap-2">
+                  <label htmlFor="booking-name" className="text-sm font-medium text-muted-foreground mb-2 flex items-center gap-2">
                     <User className="w-4 h-4" /> {t('booking_name')}
                   </label>
                   <input
+                    id="booking-name"
                     required
                     type="text"
                     value={form.name}
@@ -155,7 +156,7 @@ export default function BookingPage() {
                   />
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-muted-foreground mb-2 flex items-center gap-2">
+                  <label htmlFor="booking-phone" className="text-sm font-medium text-muted-foreground mb-2 flex items-center gap-2">
                     <Phone className="w-4 h-4" /> {t('booking_phone')}
                   </label>
                   <div className="relative">
@@ -163,6 +164,7 @@ export default function BookingPage() {
                       +20
                     </span>
                     <input
+                      id="booking-phone"
                       required
                       type="tel"
                       inputMode="numeric"
@@ -181,10 +183,11 @@ export default function BookingPage() {
 
               {/* Email */}
               <div>
-                <label className="text-sm font-medium text-muted-foreground mb-2 flex items-center gap-2">
+                <label htmlFor="booking-email" className="text-sm font-medium text-muted-foreground mb-2 flex items-center gap-2">
                   <Mail className="w-4 h-4" /> {t('booking_email')}
                 </label>
                 <input
+                  id="booking-email"
                   type="email"
                   value={form.email}
                   onChange={(e) => setForm({ ...form, email: e.target.value })}
@@ -195,11 +198,12 @@ export default function BookingPage() {
 
               {/* Model Selection */}
               <div>
-                <label className="text-sm font-medium text-muted-foreground mb-2 flex items-center gap-2">
+                <label htmlFor="booking-model" className="text-sm font-medium text-muted-foreground mb-2 flex items-center gap-2">
                   <Bike className="w-4 h-4" /> {t('booking_model')}
                 </label>
                 <div className="relative">
                   <select
+                    id="booking-model"
                     required
                     value={isCustomModel ? '__other__' : form.model}
                     onChange={(e) => {
@@ -231,10 +235,11 @@ export default function BookingPage() {
                   animate={{ opacity: 1, height: 'auto' }}
                   exit={{ opacity: 0, height: 0 }}
                 >
-                  <label className="text-sm font-medium text-muted-foreground mb-2 flex items-center gap-2">
+                  <label htmlFor="booking-custom-model" className="text-sm font-medium text-muted-foreground mb-2 flex items-center gap-2">
                     <Bike className="w-4 h-4" /> {t('booking_custom_model')}
                   </label>
                   <input
+                    id="booking-custom-model"
                     required
                     type="text"
                     value={form.model}
@@ -249,10 +254,11 @@ export default function BookingPage() {
               {/* Make + Year */}
               <div className="grid sm:grid-cols-2 gap-5">
                 <div>
-                  <label className="text-sm font-medium text-muted-foreground mb-2 flex items-center gap-2">
+                  <label htmlFor="booking-make" className="text-sm font-medium text-muted-foreground mb-2 flex items-center gap-2">
                     {t('booking_make')}
                   </label>
                   <input
+                    id="booking-make"
                     type="text"
                     readOnly
                     value={form.make}
@@ -260,10 +266,11 @@ export default function BookingPage() {
                   />
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-muted-foreground mb-2 flex items-center gap-2">
+                  <label htmlFor="booking-year" className="text-sm font-medium text-muted-foreground mb-2 flex items-center gap-2">
                     {t('booking_year')}
                   </label>
                   <input
+                    id="booking-year"
                     type="number"
                     min="1900"
                     max={new Date().getFullYear() + 1}
@@ -278,10 +285,11 @@ export default function BookingPage() {
               {/* Plate + Chassis */}
               <div className="grid sm:grid-cols-2 gap-5">
                 <div>
-                  <label className="text-sm font-medium text-muted-foreground mb-2 flex items-center gap-2">
+                  <label htmlFor="booking-plate" className="text-sm font-medium text-muted-foreground mb-2 flex items-center gap-2">
                     <Hash className="w-4 h-4" /> {t('booking_plate')}
                   </label>
                   <input
+                    id="booking-plate"
                     type="text"
                     value={form.plateNumber}
                     onChange={(e) => setForm({ ...form, plateNumber: e.target.value })}
@@ -290,10 +298,11 @@ export default function BookingPage() {
                   />
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-muted-foreground mb-2 flex items-center gap-2">
+                  <label htmlFor="booking-chassis" className="text-sm font-medium text-muted-foreground mb-2 flex items-center gap-2">
                     <Gauge className="w-4 h-4" /> {t('booking_chassis')}
                   </label>
                   <input
+                    id="booking-chassis"
                     type="text"
                     value={form.chassisNumber}
                     onChange={(e) => setForm({ ...form, chassisNumber: e.target.value })}
@@ -304,10 +313,11 @@ export default function BookingPage() {
               </div>
 
               <div>
-                <label className="text-sm font-medium text-muted-foreground mb-2 flex items-center gap-2">
+                <label htmlFor="booking-issue" className="text-sm font-medium text-muted-foreground mb-2 flex items-center gap-2">
                   <Wrench className="w-4 h-4" /> {t('booking_issue')}
                 </label>
                 <textarea
+                  id="booking-issue"
                   required
                   rows={3}
                   value={form.issue}
@@ -319,10 +329,11 @@ export default function BookingPage() {
 
               <div className="grid sm:grid-cols-2 gap-5">
                 <div>
-                  <label className="text-sm font-medium text-muted-foreground mb-2 flex items-center gap-2">
+                  <label htmlFor="booking-date" className="text-sm font-medium text-muted-foreground mb-2 flex items-center gap-2">
                     <Calendar className="w-4 h-4" /> {t('booking_date')}
                   </label>
                   <input
+                    id="booking-date"
                     required
                     type="date"
                     min={today}
@@ -332,10 +343,11 @@ export default function BookingPage() {
                   />
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-muted-foreground mb-2 flex items-center gap-2">
+                  <label htmlFor="booking-time" className="text-sm font-medium text-muted-foreground mb-2 flex items-center gap-2">
                     <Clock className="w-4 h-4" /> {t('booking_time')}
                   </label>
                   <select
+                    id="booking-time"
                     required
                     value={form.time}
                     onChange={(e) => setForm({ ...form, time: e.target.value })}
