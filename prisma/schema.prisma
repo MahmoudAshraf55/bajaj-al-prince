@@ -237,12 +237,15 @@ model Review {
 }
 
 model UniqueVisitor {
-  id        String   @id @default(uuid())
-  ipHash    String   @unique
+  id        String    @id @default(uuid())
+  ipHash    String    @unique
   userAgent String?
-  createdAt DateTime @default(now()) @db.Timestamp(6)
+  createdAt DateTime  @default(now()) @db.Timestamp(6)
+  isDeleted Boolean   @default(false)
+  deletedAt DateTime? @db.Timestamp(6)
   tenantId  String?
 
   @@index([createdAt])
+  @@index([isDeleted])
   @@index([tenantId])
 }
