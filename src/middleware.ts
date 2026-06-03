@@ -2,6 +2,35 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { verifyToken } from '@/lib/auth';
 
+/**
+ * Attempts to silently refresh the access token using the refresh token.
+ * Returns the new token string if successful, null otherwise.
+ */
+async function trySilentRefresh(request: NextRequest): Promise<string | null> {
+  try {
+    const refreshRes = await fetch(new URL('/api/auth/refresh', request.url), {
+      method: 'POST',
+      headers: {
+        cookie: request.headers.get('cookie') || '',
+      },
+    });
+
+    if (refreshRes.ok && refreshRes.status === 200) {
+      // Extract the new admin_token from the Set-Cookie header
+      const setCookie = refreshRes.headers.get('set-cookie');
+      if (setCookie) {
+        const match = setCookie.match(/admin_token=([^;]+)/);
+        if (match && match[1]) {
+          return decodeURIComponent(match[1]);
+        }
+      }
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
@@ -13,10 +42,20 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(new URL('/admin/', request.url));
     }
 
-    const payload = await verifyToken(token);
+    let payload = await verifyToken(token);
+
+    // If token expired, try silent refresh
+    if (!payload) {
+      const newToken = await trySilentRefresh(request);
+      if (newToken) {
+        payload = await verifyToken(newToken);
+      }
+    }
+
     if (!payload) {
       const response = NextResponse.redirect(new URL('/admin/', request.url));
       response.cookies.delete('admin_token');
+      response.cookies.delete('refresh_token');
       return response;
     }
 
@@ -24,6 +63,7 @@ export async function middleware(request: NextRequest) {
     if (!['admin', 'staff', 'viewer'].includes(payload.role)) {
       const response = NextResponse.redirect(new URL('/admin/', request.url));
       response.cookies.delete('admin_token');
+      response.cookies.delete('refresh_token');
       return response;
     }
 

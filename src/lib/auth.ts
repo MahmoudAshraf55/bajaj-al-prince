@@ -2,8 +2,21 @@ import { SignJWT, jwtVerify } from 'jose';
 import bcrypt from 'bcryptjs';
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { z } from 'zod';
 
 export type UserRole = 'admin' | 'staff' | 'viewer';
+
+/**
+ * Password complexity requirements.
+ * Minimum 8 characters, at least one uppercase, one lowercase, one digit.
+ * Enforce this schema on all password creation/change routes.
+ */
+export const passwordSchema = z
+  .string()
+  .min(8, 'Password must be at least 8 characters')
+  .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
+  .regex(/[a-z]/, 'Password must contain at least one lowercase letter')
+  .regex(/\d/, 'Password must contain at least one digit');
 
 export interface JWTPayload {
   userId: string;

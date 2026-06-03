@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { createToken, verifyRefreshToken, getRefreshTokenFromCookie } from '@/lib/auth';
+import { logAudit, getClientInfo } from '@/lib/audit';
 
 export async function POST(req: NextRequest) {
   try {
@@ -29,6 +30,17 @@ export async function POST(req: NextRequest) {
       userId: user.id,
       username: user.username,
       role: user.role,
+    });
+
+    const { ipAddress, userAgent } = getClientInfo(req);
+    await logAudit({
+      userId: user.id,
+      action: 'login',
+      entity: 'User',
+      entityId: user.id,
+      newValue: { status: 'refresh', username: user.username },
+      ipAddress,
+      userAgent,
     });
 
     const response = NextResponse.json({ success: true });

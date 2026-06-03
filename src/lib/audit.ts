@@ -24,6 +24,44 @@ export interface AuditLogInput {
   userAgent?: string;
 }
 
+const SENSITIVE_KEYS = new Set([
+  'password',
+  'token',
+  'refreshToken',
+  'secret',
+  'hash',
+  'salt',
+  'apiKey',
+  'api_key',
+  'privateKey',
+  'private_key',
+  'creditCard',
+  'credit_card',
+  'cvv',
+  'pin',
+]);
+
+/**
+ * Strips sensitive fields from an object before audit logging.
+ * Prevents accidental leakage of passwords, tokens, secrets, etc.
+ */
+function sanitizeValue(value: unknown): unknown {
+  if (typeof value !== 'object' || value === null) {
+    return value;
+  }
+  const sanitized: Record<string, unknown> = {};
+  for (const [key, val] of Object.entries(value)) {
+    if (SENSITIVE_KEYS.has(key.toLowerCase())) {
+      sanitized[key] = '[REDACTED]';
+    } else if (typeof val === 'object' && val !== null) {
+      sanitized[key] = sanitizeValue(val);
+    } else {
+      sanitized[key] = val;
+    }
+  }
+  return sanitized;
+}
+
 export async function logAudit(input: AuditLogInput): Promise<void> {
   try {
     await prisma.auditLog.create({
@@ -32,8 +70,8 @@ export async function logAudit(input: AuditLogInput): Promise<void> {
         action: input.action,
         entity: input.entity,
         entityId: input.entityId ?? null,
-        oldValue: input.oldValue ? JSON.stringify(input.oldValue) : null,
-        newValue: input.newValue ? JSON.stringify(input.newValue) : null,
+        oldValue: input.oldValue ? JSON.stringify(sanitizeValue(input.oldValue)) : null,
+        newValue: input.newValue ? JSON.stringify(sanitizeValue(input.newValue)) : null,
         ipAddress: input.ipAddress ?? null,
         userAgent: input.userAgent ?? null,
       },
@@ -45,6 +83,13 @@ export async function logAudit(input: AuditLogInput): Promise<void> {
   }
 }
 
+/**
+ * Extracts client IP and User-Agent from request headers.
+ *
+ * SECURITY NOTE: If the app is NOT behind a trusted reverse proxy
+ * (nginx, Cloudflare, etc.), the X-Forwarded-For header can be forged
+ * by the client. Always deploy behind a trusted proxy in production.
+ */
 export function getClientInfo(req: NextRequest): { ipAddress: string; userAgent: string } {
   const ipAddress =
     req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
