@@ -14,6 +14,41 @@ const reviewSubmissionSchema = z.object({
   review: z.string().min(5, 'Review must be at least 5 characters').max(500, 'Review is too long'),
 });
 
+const isArabic = (text: string) => /[\u0600-\u06FF]/.test(text);
+
+const translationCache = new Map<string, string>();
+
+async function translateText(text: string, targetLang: string): Promise<string> {
+  // If target is Arabic and text is already Arabic, or target is English and text is already English
+  if (targetLang === 'ar' && isArabic(text)) return text;
+  if (targetLang === 'en' && !isArabic(text)) return text;
+
+  const cacheKey = `${targetLang}:${text}`;
+  if (translationCache.has(cacheKey)) {
+    return translationCache.get(cacheKey)!;
+  }
+
+  try {
+    const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${targetLang}&dt=t&q=${encodeURIComponent(text)}`;
+    const res = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
+      },
+    });
+    if (!res.ok) return text;
+    const data = await res.json();
+    if (data && data[0]) {
+      const translated = data[0].map((x: unknown) => (Array.isArray(x) ? String(x[0]) : '')).join('');
+      translationCache.set(cacheKey, translated);
+      return translated;
+    }
+    return text;
+  } catch (err) {
+    logger.error('Translation failed', err);
+    return text;
+  }
+}
+
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const lang = searchParams.get('lang') === 'ar' ? 'ar' : 'en';
@@ -106,40 +141,68 @@ export async function GET(request: NextRequest) {
     }
 
     // 6. Format/translate the names and reviews on the fly based on requested language
-    const formattedReviews = dbReviews.map((r) => {
-      // If the review is seeded/predefined, we can translate it. Otherwise, return the written content.
-      let name = r.name;
-      let review = r.review;
+    const formattedReviews = await Promise.all(
+      dbReviews.map(async (r) => {
+        let name = r.name;
+        let review = r.review;
 
-      if (lang === 'ar') {
-        if (r.name === 'Ahmed Hassan') {
-          name = 'أحمد حسن';
-          review = 'خدمة احترافية وقطع غيار أصلية. الموتوسيكل بتاعي رجع كأنه جديد بعد الصيانة. أنصح بالتعامل معهم بشدة!';
-        } else if (r.name === 'Mohamed Salah') {
-          name = 'محمد صلاح';
-          review = 'تشخيص سريع للأعطال وأسعار عادلة جداً. الفريق فاهم موتوسيكلات باجاج بالتفصيل.';
-        } else if (r.name === 'Khaled Ibrahim') {
-          name = 'خالد إبراهيم';
-          review = 'تجربة ممتازة مع خدمة الطوارئ والإصلاح السريع. صلحوا دراجتي في نفس اليوم وبأمان تام.';
-        } else if (r.name === 'Omar Farouk') {
-          name = 'عمر فاروق';
-          review = 'بصيانة دراجتي عندهم بقالي ٣ سنين. دايماً راضي عن الصيانة الدورية وقطع الغيار الأصلية.';
-        } else if (r.name === 'Youssef Ali') {
-          name = 'يوسف علي';
-          review = 'خدمة عملاء ممتازة وشفافية تامة في عرض الأسعار. شرحوا لي المشكلة بالتفصيل قبل البدء.';
+        // Static translations for seeded reviews (for perfect translation quality)
+        if (lang === 'ar') {
+          if (r.name === 'Ahmed Hassan' || r.name === 'أحمد حسن') {
+            name = 'أحمد حسن';
+            review = 'خدمة احترافية وقطع غيار أصلية. الموتوسيكل بتاعي رجع كأنه جديد بعد الصيانة. أنصح بالتعامل معهم بشدة!';
+          } else if (r.name === 'Mohamed Salah' || r.name === 'محمد صلاح') {
+            name = 'محمد صلاح';
+            review = 'تشخيص سريع للأعطال وأسعار عادلة جداً. الفريق فاهم موتوسيكلات باجاج بالتفصيل.';
+          } else if (r.name === 'Khaled Ibrahim' || r.name === 'خالد إبراهيم') {
+            name = 'خالد إبراهيم';
+            review = 'تجربة ممتازة مع خدمة الطوارئ والإصلاح السريع. صلحوا دراجتي في نفس اليوم وبأمان تام.';
+          } else if (r.name === 'Omar Farouk' || r.name === 'عمر فاروق') {
+            name = 'عمر فاروق';
+            review = 'بصيانة دراجتي عندهم بقالي ٣ سنين. دايماً راضي عن الصيانة الدورية وقطع الغيار الأصلية.';
+          } else if (r.name === 'Youssef Ali' || r.name === 'يوسف علي') {
+            name = 'يوسف علي';
+            review = 'خدمة عملاء ممتازة وشفافية تامة في عرض الأسعار. شرحوا لي المشكلة بالتفصيل قبل البدء.';
+          } else {
+            // For custom reviews, translate them automatically
+            review = await translateText(review, 'ar');
+            name = await translateText(name, 'ar');
+          }
+        } else {
+          // If lang is en, check if predefined or custom
+          if (r.name === 'Ahmed Hassan' || r.name === 'أحمد حسن') {
+            name = 'Ahmed Hassan';
+            review = 'Professional service and genuine parts. My Bajaj runs like new after the maintenance. Highly recommended!';
+          } else if (r.name === 'Mohamed Salah' || r.name === 'محمد صلاح') {
+            name = 'Mohamed Salah';
+            review = 'Fast diagnostics and fair pricing. The team really knows Bajaj motorcycles inside and out.';
+          } else if (r.name === 'Khaled Ibrahim' || r.name === 'خالد إبراهيم') {
+            name = 'Khaled Ibrahim';
+            review = 'Great experience with the emergency repair service. They fixed my bike the same day and with absolute safety.';
+          } else if (r.name === 'Omar Farouk' || r.name === 'عمر فاروق') {
+            name = 'Omar Farouk';
+            review = 'Been coming here for 3 years. Always satisfied with the periodic maintenance service. Genuine parts only.';
+          } else if (r.name === 'Youssef Ali' || r.name === 'يوسف علي') {
+            name = 'Youssef Ali';
+            review = 'Excellent customer service. They explained everything and gave me options. Very transparent pricing.';
+          } else {
+            // For custom reviews, translate them automatically
+            review = await translateText(review, 'en');
+            name = await translateText(name, 'en');
+          }
         }
-      }
 
-      return {
-        id: r.id,
-        name,
-        rating: r.rating,
-        review,
-        date: r.date,
-        avatar: r.avatar || name.slice(0, 2),
-        verified: r.verified,
-      };
-    });
+        return {
+          id: r.id,
+          name,
+          rating: r.rating,
+          review,
+          date: r.date,
+          avatar: r.avatar || name.slice(0, 2),
+          verified: r.verified,
+        };
+      })
+    );
 
     // 7. Calculate dynamic average rating and total counts
     const totalCount = formattedReviews.length;
