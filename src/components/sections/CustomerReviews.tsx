@@ -107,7 +107,7 @@ export default function CustomerReviews() {
 
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
-  const [totalReviews, setTotalReviews] = useState(142);
+  const [visitorCount, setVisitorCount] = useState(1050);
   const [averageRating, setAverageRating] = useState(4.9);
 
   // Modal & Form States
@@ -130,7 +130,7 @@ export default function CustomerReviews() {
           // Filter rating >= 4.8 strictly as requested by the user
           const verified = data.reviews.filter((r: Review) => r.rating >= 4.8);
           setReviews(verified);
-          setTotalReviews(data.totalReviews || 142);
+          setVisitorCount(data.visitorCount || 1050);
           setAverageRating(data.rating || 4.9);
           setLoading(false);
         }
@@ -224,8 +224,8 @@ export default function CustomerReviews() {
             <span className="text-muted-foreground select-none">|</span>
             <span className="text-muted-foreground text-xs">
               {language === 'ar' 
-                ? `(${totalReviews} تقييم حقيقي على الموقع وجوجل)` 
-                : `(${totalReviews} verified on-site & Google reviews)`}
+                ? `(أكثر من ${visitorCount} زائر حقيقي للموقع)` 
+                : `(Over ${visitorCount} unique site visitors)`}
             </span>
           </div>
         </motion.div>

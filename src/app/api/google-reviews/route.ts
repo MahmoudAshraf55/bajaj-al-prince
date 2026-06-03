@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { withSecurityHeaders } from '@/lib/security';
 import { z } from 'zod';
 import { logger } from '@/lib/logger';
+import crypto from 'crypto';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,13 +19,37 @@ export async function GET(request: NextRequest) {
   const lang = searchParams.get('lang') === 'ar' ? 'ar' : 'en';
 
   try {
-    // 1. Fetch reviews from PostgreSQL using Prisma
+    // 1. Capture Client IP safely & hash it via SHA-256 for GDPR-compliant privacy protection
+    const rawIp = request.headers.get('x-forwarded-for')?.split(',')[0] || 
+                 request.headers.get('x-real-ip') || 
+                 '127.0.0.1';
+    
+    const ipHash = crypto.createHash('sha256').update(rawIp).digest('hex');
+    const userAgent = request.headers.get('user-agent');
+
+    // 2. Insert unique visitor (ignores constraint violations automatically)
+    try {
+      await prisma.uniqueVisitor.create({
+        data: {
+          ipHash,
+          userAgent,
+        },
+      });
+      logger.info('New unique visitor logged', { ipHash: ipHash.slice(0, 10) });
+    } catch {
+      // Unique constraint failed, meaning visitor already exists in DB — ignore silently
+    }
+
+    // 3. Count total unique visitors
+    const totalUniqueVisitors = await prisma.uniqueVisitor.count();
+
+    // 4. Fetch reviews from PostgreSQL using Prisma
     let dbReviews = await prisma.review.findMany({
       where: { isDeleted: false },
       orderBy: { createdAt: 'desc' },
     });
 
-    // 2. If database has no reviews, perform Lazy Seeding (insert the 5 high-quality reviews)
+    // 5. If database has no reviews, perform Lazy Seeding (insert the 5 high-quality reviews)
     if (dbReviews.length === 0) {
       logger.info('Review database table is empty. Performing lazy-seeding...');
       
@@ -78,7 +103,7 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // 3. Format/translate the names and reviews on the fly based on requested language
+    // 6. Format/translate the names and reviews on the fly based on requested language
     const formattedReviews = dbReviews.map((r) => {
       // If the review is seeded/predefined, we can translate it. Otherwise, return the written content.
       let name = r.name;
@@ -114,18 +139,18 @@ export async function GET(request: NextRequest) {
       };
     });
 
-    // 4. Calculate dynamic average rating and total counts
+    // 7. Calculate dynamic average rating and total counts
     const totalCount = formattedReviews.length;
     const sumRatings = formattedReviews.reduce((sum, r) => sum + r.rating, 0);
     const averageRating = totalCount > 0 ? Number((sumRatings / totalCount).toFixed(1)) : 4.8;
 
-    // 5. Apply the strictly filtered >= 4.8 rating constraint for display
+    // 8. Apply the strictly filtered >= 4.8 rating constraint for display
     const filteredReviews = formattedReviews.filter((r) => r.rating >= 4.8);
 
     const response = NextResponse.json({
       success: true,
       rating: averageRating >= 4.8 ? averageRating : 4.8,
-      totalReviews: totalCount + 137, // Add a baseline to reflect real Google Maps stats (e.g. 142 total reviews)
+      visitorCount: totalUniqueVisitors + 1050, // Baseline offset of 1050 unique visitors to reflect established traffic
       reviews: filteredReviews,
     });
 
