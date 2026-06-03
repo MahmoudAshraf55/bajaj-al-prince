@@ -3,10 +3,11 @@ import { prisma } from '@/lib/prisma';
 import { requireRole } from '@/lib/auth';
 import { checkRateLimit } from '@/lib/rate-limit';
 import { logAudit, getClientInfo } from '@/lib/audit';
+import { withSecurityHeaders } from '@/lib/security';
 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const limit = await checkRateLimit(req, 'admin');
-  if (!limit.allowed) return limit.response!;
+  if (!limit.allowed) return withSecurityHeaders(limit.response!);
 
   try {
     const payload = await requireRole(req, ['admin', 'staff']);
@@ -23,10 +24,10 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
       ipAddress,
       userAgent,
     });
-    return NextResponse.json({ success: true });
+    return withSecurityHeaders(NextResponse.json({ success: true }));
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unauthorized';
     const status = message === 'Forbidden' ? 403 : 401;
-    return NextResponse.json({ success: false, error: message }, { status });
+    return withSecurityHeaders(NextResponse.json({ success: false, error: message }, { status }));
   }
 }

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { verifyToken, verifyRefreshToken, getTokenFromCookie, getRefreshTokenFromCookie } from '@/lib/auth';
 import { logAudit, getClientInfo } from '@/lib/audit';
+import { withSecurityHeaders } from '@/lib/security';
 
 export async function POST(req: NextRequest) {
   const token = getTokenFromCookie(req);
@@ -39,7 +40,7 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  const response = NextResponse.json({ success: true });
+  const response = withSecurityHeaders(NextResponse.json({ success: true }));
   response.cookies.set('admin_token', '', {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',

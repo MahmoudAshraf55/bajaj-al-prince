@@ -2,12 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { createToken, verifyRefreshToken, getRefreshTokenFromCookie } from '@/lib/auth';
 import { logAudit, getClientInfo } from '@/lib/audit';
+import { withSecurityHeaders } from '@/lib/security';
 
 export async function POST(req: NextRequest) {
   try {
     const refreshToken = getRefreshTokenFromCookie(req);
     if (!refreshToken) {
-      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+      return withSecurityHeaders(NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 }));
     }
 
     const payload = await verifyRefreshToken(refreshToken);
@@ -15,7 +16,7 @@ export async function POST(req: NextRequest) {
       const response = NextResponse.json({ success: false, error: 'Invalid refresh token' }, { status: 401 });
       response.cookies.set('admin_token', '', { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'strict', maxAge: 0, path: '/' });
       response.cookies.set('refresh_token', '', { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'strict', maxAge: 0, path: '/' });
-      return response;
+      return withSecurityHeaders(response);
     }
 
     const user = await prisma.user.findUnique({ where: { id: payload.userId } });
@@ -23,7 +24,7 @@ export async function POST(req: NextRequest) {
       const response = NextResponse.json({ success: false, error: 'Token revoked. Please log in again.' }, { status: 401 });
       response.cookies.set('admin_token', '', { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'strict', maxAge: 0, path: '/' });
       response.cookies.set('refresh_token', '', { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'strict', maxAge: 0, path: '/' });
-      return response;
+      return withSecurityHeaders(response);
     }
 
     const token = await createToken({
@@ -51,11 +52,11 @@ export async function POST(req: NextRequest) {
       maxAge: 60 * 60,
       path: '/',
     });
-    return response;
+    return withSecurityHeaders(response);
   } catch (error) {
     if (error instanceof Error && error.message === 'JWT_SECRET_NOT_CONFIGURED') {
-      return NextResponse.json({ success: false, error: 'Server authentication is not configured. Contact administrator.' }, { status: 500 });
+      return withSecurityHeaders(NextResponse.json({ success: false, error: 'Server authentication is not configured. Contact administrator.' }, { status: 500 }));
     }
-    return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
+    return withSecurityHeaders(NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 }));
   }
 }

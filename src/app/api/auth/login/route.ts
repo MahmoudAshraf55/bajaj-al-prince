@@ -4,10 +4,11 @@ import { verifyPassword, createToken, createRefreshToken } from '@/lib/auth';
 import { checkRateLimit } from '@/lib/rate-limit';
 import { logAudit, getClientInfo } from '@/lib/audit';
 import { z } from 'zod';
+import { withSecurityHeaders } from '@/lib/security';
 
 const loginSchema = z.object({
-  username: z.string().min(1),
-  password: z.string().min(1),
+  username: z.string().min(1).max(100),
+  password: z.string().min(1).max(128),
 });
 
 const MAX_FAILED_ATTEMPTS = 5;
@@ -23,15 +24,15 @@ export async function POST(req: NextRequest) {
 
     const user = await prisma.user.findUnique({ where: { username } });
     if (!user) {
-      return NextResponse.json({ success: false, error: 'Invalid credentials' }, { status: 401 });
+      return withSecurityHeaders(NextResponse.json({ success: false, error: 'Invalid credentials' }, { status: 401 }));
     }
 
     if (user.lockedUntil && user.lockedUntil > new Date()) {
       const minutesLeft = Math.ceil((user.lockedUntil.getTime() - Date.now()) / 60000);
-      return NextResponse.json(
+      return withSecurityHeaders(NextResponse.json(
         { success: false, error: `Account locked. Try again in ${minutesLeft} minutes.` },
         { status: 423 }
-      );
+      ));
     }
 
     const valid = await verifyPassword(password, user.password);
@@ -58,13 +59,13 @@ export async function POST(req: NextRequest) {
       });
 
       if (lockedUntil) {
-        return NextResponse.json(
+        return withSecurityHeaders(NextResponse.json(
           { success: false, error: `Too many failed attempts. Account locked for ${LOCKOUT_MINUTES} minutes.` },
           { status: 423 }
-        );
+        ));
       }
 
-      return NextResponse.json({ success: false, error: 'Invalid credentials' }, { status: 401 });
+      return withSecurityHeaders(NextResponse.json({ success: false, error: 'Invalid credentials' }, { status: 401 }));
     }
 
     await prisma.user.update({
@@ -90,7 +91,7 @@ export async function POST(req: NextRequest) {
       userAgent,
     });
 
-    const response = NextResponse.json({ success: true });
+    const response = withSecurityHeaders(NextResponse.json({ success: true }));
     response.cookies.set('admin_token', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
@@ -108,11 +109,11 @@ export async function POST(req: NextRequest) {
     return response;
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return NextResponse.json({ success: false, errors: error.issues }, { status: 400 });
+      return withSecurityHeaders(NextResponse.json({ success: false, errors: error.issues }, { status: 400 }));
     }
     if (error instanceof Error && error.message === 'JWT_SECRET_NOT_CONFIGURED') {
-      return NextResponse.json({ success: false, error: 'Server authentication is not configured. Contact administrator.' }, { status: 500 });
+      return withSecurityHeaders(NextResponse.json({ success: false, error: 'Server authentication is not configured. Contact administrator.' }, { status: 500 }));
     }
-    return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
+    return withSecurityHeaders(NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 }));
   }
 }

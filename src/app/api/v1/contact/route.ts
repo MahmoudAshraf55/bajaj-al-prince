@@ -46,16 +46,16 @@ export async function GET(req: NextRequest) {
       prisma.contactMessage.count(),
     ]);
 
-    return NextResponse.json({
+    return withSecurityHeaders(NextResponse.json({
       success: true,
       data: {
         messages,
         meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
       },
-    });
+    }));
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unauthorized';
     const status = message === 'Forbidden' ? 403 : 401;
-    return NextResponse.json({ success: false, error: message }, { status });
+    return withSecurityHeaders(NextResponse.json({ success: false, error: message }, { status }));
   }
 }

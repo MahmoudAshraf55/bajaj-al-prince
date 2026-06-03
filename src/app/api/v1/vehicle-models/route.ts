@@ -5,6 +5,7 @@ import { checkRateLimit } from '@/lib/rate-limit';
 import { sanitizedString } from '@/lib/sanitize';
 import { logAudit, getClientInfo } from '@/lib/audit';
 import { z } from 'zod';
+import { withSecurityHeaders } from '@/lib/security';
 
 const modelSchema = z.object({
   name: sanitizedString(z.string().min(1).max(100)),
@@ -21,16 +22,16 @@ export async function GET(req: NextRequest) {
       orderBy: { name: 'asc' },
     });
 
-    return NextResponse.json({ success: true, data: { models } });
+    return withSecurityHeaders(NextResponse.json({ success: true, data: { models } }));
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Internal server error';
-    return NextResponse.json({ success: false, error: message }, { status: 500 });
+    return withSecurityHeaders(NextResponse.json({ success: false, error: message }, { status: 500 }));
   }
 }
 
 export async function POST(req: NextRequest) {
   const limit = await checkRateLimit(req, 'admin');
-  if (!limit.allowed) return limit.response!;
+  if (!limit.allowed) return withSecurityHeaders(limit.response!);
 
   try {
     const payload = await requireRole(req, ['admin', 'staff']);
@@ -47,16 +48,16 @@ export async function POST(req: NextRequest) {
       ipAddress,
       userAgent,
     });
-    return NextResponse.json({ success: true, data: { model } }, { status: 201 });
+    return withSecurityHeaders(NextResponse.json({ success: true, data: { model } }, { status: 201 }));
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return NextResponse.json({ success: false, errors: error.issues }, { status: 400 });
+      return withSecurityHeaders(NextResponse.json({ success: false, errors: error.issues }, { status: 400 }));
     }
     if (error instanceof Error && error.message.includes('Unique constraint')) {
-      return NextResponse.json({ success: false, error: 'Model name already exists' }, { status: 409 });
+      return withSecurityHeaders(NextResponse.json({ success: false, error: 'Model name already exists' }, { status: 409 }));
     }
     const message = error instanceof Error ? error.message : 'Unauthorized';
     const status = message === 'Forbidden' ? 403 : 401;
-    return NextResponse.json({ success: false, error: message }, { status });
+    return withSecurityHeaders(NextResponse.json({ success: false, error: message }, { status }));
   }
 }

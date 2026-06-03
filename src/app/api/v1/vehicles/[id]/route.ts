@@ -6,6 +6,7 @@ import { sanitizedString } from '@/lib/sanitize';
 import { logAudit, getClientInfo } from '@/lib/audit';
 import { Prisma } from '@prisma/client';
 import { z } from 'zod';
+import { withSecurityHeaders } from '@/lib/security';
 
 const vehicleUpdateSchema = z.object({
   make: sanitizedString(z.string().min(1).max(100)).optional(),
@@ -25,19 +26,19 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       include: { customer: true },
     });
     if (!vehicle) {
-      return NextResponse.json({ success: false, error: 'Vehicle not found' }, { status: 404 });
+      return withSecurityHeaders(NextResponse.json({ success: false, error: 'Vehicle not found' }, { status: 404 }));
     }
-    return NextResponse.json({ success: true, data: { vehicle } });
+    return withSecurityHeaders(NextResponse.json({ success: true, data: { vehicle } }));
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unauthorized';
     const status = message === 'Forbidden' ? 403 : 401;
-    return NextResponse.json({ success: false, error: message }, { status });
+    return withSecurityHeaders(NextResponse.json({ success: false, error: message }, { status }));
   }
 }
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const limit = await checkRateLimit(req, 'admin');
-  if (!limit.allowed) return limit.response!;
+  if (!limit.allowed) return withSecurityHeaders(limit.response!);
 
   try {
     const payload = await requireRole(req, ['admin', 'staff']);
@@ -57,23 +58,23 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       ipAddress,
       userAgent,
     });
-    return NextResponse.json({ success: true, data: { vehicle } });
+    return withSecurityHeaders(NextResponse.json({ success: true, data: { vehicle } }));
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return NextResponse.json({ success: false, errors: error.issues }, { status: 400 });
+      return withSecurityHeaders(NextResponse.json({ success: false, errors: error.issues }, { status: 400 }));
     }
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
-      return NextResponse.json({ success: false, error: 'Chassis number already exists for this tenant' }, { status: 409 });
+      return withSecurityHeaders(NextResponse.json({ success: false, error: 'Chassis number already exists for this tenant' }, { status: 409 }));
     }
     const message = error instanceof Error ? error.message : 'Unauthorized';
     const status = message === 'Forbidden' ? 403 : 401;
-    return NextResponse.json({ success: false, error: message }, { status });
+    return withSecurityHeaders(NextResponse.json({ success: false, error: message }, { status }));
   }
 }
 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const limit = await checkRateLimit(req, 'admin');
-  if (!limit.allowed) return limit.response!;
+  if (!limit.allowed) return withSecurityHeaders(limit.response!);
 
   try {
     const payload = await requireRole(req, ['admin', 'staff']);
@@ -90,13 +91,13 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
       ipAddress,
       userAgent,
     });
-    return NextResponse.json({ success: true });
+    return withSecurityHeaders(NextResponse.json({ success: true }));
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
-      return NextResponse.json({ success: false, error: 'Vehicle not found' }, { status: 404 });
+      return withSecurityHeaders(NextResponse.json({ success: false, error: 'Vehicle not found' }, { status: 404 }));
     }
     const message = error instanceof Error ? error.message : 'Unauthorized';
     const status = message === 'Forbidden' ? 403 : 401;
-    return NextResponse.json({ success: false, error: message }, { status });
+    return withSecurityHeaders(NextResponse.json({ success: false, error: message }, { status }));
   }
 }
