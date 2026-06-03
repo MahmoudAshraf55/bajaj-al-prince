@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
+import Image from 'next/image';
 import { motion, useInView, AnimatePresence } from 'framer-motion';
 import { Star, ExternalLink, PenTool, CheckCircle, X, Sparkles } from 'lucide-react';
 import { useTranslation } from '@/components/useTranslation';
@@ -212,12 +213,18 @@ export default function CustomerReviews() {
             {t('reviews_title')}
           </h2>
 
-          {/* Real-time Google Trust Badge */}
+          {/* Real-time El Prince Bajaj Trust Badge */}
           <div className="flex flex-wrap items-center justify-center gap-3 bg-white/5 border border-border/60 px-5 py-2.5 rounded-full text-sm font-medium text-foreground backdrop-blur-md">
-            <div className="flex items-center gap-1.5">
-              <svg className="w-4 h-4 text-[#4285F4]" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M12.24 10.285V14.4h6.887c-.648 2.41-2.519 4.113-5.111 4.113-3.418 0-6.2-2.782-6.2-6.2 0-3.418 2.782-6.2 6.2-6.2 1.493 0 2.863.535 3.943 1.5l3.056-3.056C19.123 2.115 15.912 1 12.24 1c-6.075 0-11 4.925-11 11s4.925 11 11 11c5.833 0 11.233-4.148 11.233-11 0-.741-.082-1.428-.233-2.715H12.24z" />
-              </svg>
+            <div className="flex items-center gap-2">
+              <div className="relative w-5 h-5 rounded-full overflow-hidden flex items-center justify-center border border-primary/20">
+                <Image
+                  src="/Logo.png"
+                  alt="Bajaj Logo"
+                  width={20}
+                  height={20}
+                  className="object-cover w-full h-full logo-glow"
+                />
+              </div>
               <span className="font-bold">{averageRating.toFixed(1)}</span>
             </div>
             <StarRating rating={averageRating} />

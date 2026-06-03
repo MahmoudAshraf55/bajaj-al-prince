@@ -43,10 +43,11 @@ export async function GET(request: NextRequest) {
     // 3. Count total unique visitors
     const totalUniqueVisitors = await prisma.uniqueVisitor.count();
 
-    // 4. Fetch reviews from PostgreSQL using Prisma
+    // 4. Fetch reviews from PostgreSQL using Prisma (limited to last 140)
     let dbReviews = await prisma.review.findMany({
       where: { isDeleted: false },
       orderBy: { createdAt: 'desc' },
+      take: 140,
     });
 
     // 5. If database has no reviews, perform Lazy Seeding (insert the 5 high-quality reviews)
@@ -96,10 +97,11 @@ export async function GET(request: NextRequest) {
         seedReviews.map((r) => prisma.review.create({ data: r }))
       );
 
-      // Re-fetch to get them with IDs
+      // Re-fetch to get them with IDs (limited to last 140)
       dbReviews = await prisma.review.findMany({
         where: { isDeleted: false },
         orderBy: { createdAt: 'desc' },
+        take: 140,
       });
     }
 
@@ -149,7 +151,7 @@ export async function GET(request: NextRequest) {
 
     const response = NextResponse.json({
       success: true,
-      rating: averageRating >= 4.8 ? averageRating : 4.8,
+      rating: averageRating,
       visitorCount: totalUniqueVisitors + 1050, // Baseline offset of 1050 unique visitors to reflect established traffic
       reviews: filteredReviews,
     });
