@@ -65,13 +65,36 @@ export default function Hero() {
   }, [shouldReduceMotion]);
 
   return (
-    <div ref={scrollContainerRef}>
+    <div ref={scrollContainerRef} className="relative">
       <MotorcycleSceneClient ref={sceneRef} />
 
+      {/* Cinematic Sidebar Progress Tracker */}
+      <div className="fixed right-6 top-1/2 -translate-y-1/2 z-40 hidden lg:flex flex-col gap-4 bg-black/40 backdrop-blur-md py-5 px-3 rounded-full border border-white/5 shadow-2xl">
+        {['overview', 'specs', 'design', 'story', 'services', 'reviews', 'contact'].map((id) => (
+          <a
+            key={id}
+            href={`#${id}`}
+            className="group flex items-center justify-end gap-3 outline-none"
+            title={`Scroll to ${id}`}
+          >
+            <span className="opacity-0 group-hover:opacity-100 text-[9px] text-amber-400/90 uppercase font-black tracking-[0.2em] transition-all duration-300 pointer-events-none select-none bg-black/80 px-2 py-0.5 rounded border border-amber-500/10">
+              {id}
+            </span>
+            <div className="w-2 h-2 rounded-full bg-white/20 group-hover:bg-amber-400 border border-transparent group-hover:border-amber-400/50 group-hover:scale-125 transition-all duration-300" />
+          </a>
+        ))}
+      </div>
+
       {/* Hero Content Section */}
-      <section className="relative min-h-screen flex flex-col items-center justify-center px-6 sm:px-12 pt-32 pb-16 snap-start snap-always">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_rgba(249,115,22,0.08),_transparent_60%)]" />
-        <div className="absolute inset-0 bg-grid-pattern opacity-30 pointer-events-none" />
+      <section className="relative min-h-screen flex flex-col items-center justify-center px-6 sm:px-12 pt-32 pb-16 snap-start snap-always overflow-hidden">
+        {/* Cinematic Backdrop Ambient Smoke & Glimmers */}
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_rgba(230,177,92,0.12),_transparent_65%)] pointer-events-none" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_40%,_rgba(249,115,22,0.06),_transparent_40%)] pointer-events-none" />
+        <div className="absolute inset-0 bg-grid-pattern opacity-10 pointer-events-none" />
+
+        {/* Letterbox Cinema Borders */}
+        <div className="absolute top-0 left-0 right-0 h-16 bg-gradient-to-b from-black/80 to-transparent pointer-events-none z-10" />
+        <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-black/80 to-transparent pointer-events-none z-10" />
 
         <div className="relative z-10 max-w-5xl mx-auto text-center">
           <motion.div
@@ -80,42 +103,42 @@ export default function Hero() {
             transition={{ duration: 0.8 }}
             className="flex items-center justify-center gap-2 mb-8"
           >
-            <Sparkles className="w-4 h-4 text-accent" />
-            <span className="text-accent text-xs font-semibold tracking-[0.3em] uppercase">{t('hero_tag')}</span>
-            <Sparkles className="w-4 h-4 text-accent" />
+            <Sparkles className="w-4 h-4 text-amber-400 animate-pulse-glow" />
+            <span className="text-amber-400/90 text-xs font-black tracking-[0.4em] uppercase select-none">{t('hero_tag')}</span>
+            <Sparkles className="w-4 h-4 text-amber-400 animate-pulse-glow" />
           </motion.div>
 
-          <h1 className="text-4xl sm:text-6xl lg:text-7xl font-black leading-[1.05] tracking-tight mb-6">
-            <span className="text-foreground">{t('hero_title_line1')}</span>
+          <h1 className="text-4xl sm:text-6xl lg:text-8xl font-black leading-[1.02] tracking-tight mb-8">
+            <span className="text-foreground text-glow">{t('hero_title_line1')}</span>
             <br />
-            <span className="gradient-text">{t('hero_title_line2')}</span>
+            <span className="gradient-text-gold">{t('hero_title_line2')}</span>
           </h1>
 
-          <p className="text-muted-foreground text-base sm:text-lg leading-relaxed max-w-2xl mx-auto mb-10">
+          <p className="text-muted-foreground/90 text-base sm:text-lg leading-relaxed max-w-2xl mx-auto mb-12 font-medium">
             {t('hero_description')}
           </p>
 
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-5">
             <Link
               href="tel:01221370120"
-              className="inline-flex items-center gap-2 px-8 py-3.5 rounded-full bg-gradient-to-r from-primary to-secondary text-white font-semibold text-sm hover:opacity-90 transition-all shadow-lg shadow-primary/25 hover:shadow-primary/40 hover:-translate-y-0.5"
+              className="inline-flex items-center gap-2.5 px-9 py-4 rounded-full bg-gradient-to-r from-amber-500 to-orange-600 text-black font-extrabold text-sm hover:brightness-110 hover:-translate-y-0.5 transition-all duration-300 shadow-xl shadow-amber-500/10 hover:shadow-amber-500/25 active:translate-y-0"
             >
               {t('hero_callNow')}
-              <ArrowRight className="w-4 h-4" />
+              <ArrowRight className="w-4 h-4 text-black stroke-[3px]" />
             </Link>
             <Link
               href="/booking/"
-              className="inline-flex items-center gap-2 px-8 py-3.5 rounded-full border border-border text-foreground font-semibold text-sm hover:bg-white/5 hover:border-primary/30 transition-all"
+              className="inline-flex items-center gap-2.5 px-9 py-4 rounded-full border border-amber-500/20 bg-black/40 backdrop-blur-md text-amber-100/90 font-bold text-sm hover:bg-amber-500/10 hover:border-amber-500/40 hover:-translate-y-0.5 transition-all duration-300"
             >
               {t('hero_bookService')}
             </Link>
           </div>
         </div>
 
-        <div className="absolute bottom-12 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 text-muted-foreground">
-          <span className="text-[10px] tracking-[0.3em] uppercase">{t('hero_scroll')}</span>
+        <div className="absolute bottom-12 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 text-amber-500/60 pointer-events-none">
+          <span className="text-[9px] tracking-[0.4em] uppercase font-bold">{t('hero_scroll')}</span>
           <svg className="w-4 h-4 animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
           </svg>
         </div>
       </section>
@@ -134,18 +157,19 @@ export default function Hero() {
           transition={{ duration: 0.8 }}
           className="relative z-10 max-w-md"
         >
-          <div className="glass rounded-2xl p-6 sm:p-8 card-glow depth-2">
+          <div className="glass-premium glass-premium-hover rounded-2xl p-6 sm:p-8 hover:-translate-y-1 transition-all duration-500 depth-3 relative overflow-hidden group">
+            <div className="absolute -right-20 -top-20 w-40 h-40 bg-amber-500/5 rounded-full blur-2xl group-hover:bg-amber-500/10 transition-all duration-700" />
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 flex items-center justify-center">
-                <Wrench className="w-5 h-5 text-primary" />
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500/20 to-amber-900/10 border border-amber-500/20 flex items-center justify-center">
+                <Wrench className="w-5 h-5 text-amber-400" />
               </div>
-              <span className="text-[10px] text-accent uppercase tracking-[0.3em] font-semibold">{t('card_expertise')}</span>
+              <span className="text-[10px] text-amber-400 uppercase tracking-[0.3em] font-bold">{t('card_expertise')}</span>
             </div>
-            <h3 className="text-foreground font-bold text-xl mb-2">{t('card_professionalService')}</h3>
-            <p className="text-muted-foreground text-sm leading-relaxed">{t('card_professionalService_desc')}</p>
+            <h3 className="text-foreground font-black text-xl mb-2 text-glow">{t('card_professionalService')}</h3>
+            <p className="text-muted-foreground/90 text-sm leading-relaxed font-medium">{t('card_professionalService_desc')}</p>
             <div className="mt-4 flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-primary animate-pulse-glow" />
-              <div className="w-16 h-px bg-gradient-to-r from-primary/50 to-transparent" />
+              <div className="w-2 h-2 rounded-full bg-amber-400 animate-pulse-glow" />
+              <div className="w-16 h-px bg-gradient-to-r from-amber-500/40 to-transparent" />
             </div>
           </div>
         </motion.div>
@@ -160,18 +184,19 @@ export default function Hero() {
           transition={{ duration: 0.8 }}
           className="relative z-10 max-w-md"
         >
-          <div className="glass rounded-2xl p-6 sm:p-8 card-glow depth-2">
+          <div className="glass-premium glass-premium-hover rounded-2xl p-6 sm:p-8 hover:-translate-y-1 transition-all duration-500 depth-3 relative overflow-hidden group">
+            <div className="absolute -left-20 -top-20 w-40 h-40 bg-amber-500/5 rounded-full blur-2xl group-hover:bg-amber-500/10 transition-all duration-700" />
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-accent/20 to-accent/5 border border-accent/20 flex items-center justify-center">
-                <Award className="w-5 h-5 text-accent" />
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500/20 to-amber-900/10 border border-amber-500/20 flex items-center justify-center">
+                <Award className="w-5 h-5 text-amber-400" />
               </div>
-              <span className="text-[10px] text-accent uppercase tracking-[0.3em] font-semibold">{t('card_quality')}</span>
+              <span className="text-[10px] text-amber-400 uppercase tracking-[0.3em] font-bold">{t('card_quality')}</span>
             </div>
-            <h3 className="text-foreground font-bold text-xl mb-2">{t('card_genuineParts')}</h3>
-            <p className="text-muted-foreground text-sm leading-relaxed">{t('card_genuineParts_desc')}</p>
+            <h3 className="text-foreground font-black text-xl mb-2 text-glow">{t('card_genuineParts')}</h3>
+            <p className="text-muted-foreground/90 text-sm leading-relaxed font-medium">{t('card_genuineParts_desc')}</p>
             <div className="mt-4 flex items-center gap-2 justify-end">
-              <div className="w-16 h-px bg-gradient-to-l from-accent/50 to-transparent" />
-              <div className="w-2 h-2 rounded-full bg-accent animate-pulse-glow" />
+              <div className="w-16 h-px bg-gradient-to-l from-amber-500/40 to-transparent" />
+              <div className="w-2 h-2 rounded-full bg-amber-400 animate-pulse-glow" />
             </div>
           </div>
         </motion.div>
@@ -186,18 +211,19 @@ export default function Hero() {
           transition={{ duration: 0.8 }}
           className="relative z-10 max-w-md"
         >
-          <div className="glass rounded-2xl p-6 sm:p-8 card-glow depth-2">
+          <div className="glass-premium glass-premium-hover rounded-2xl p-6 sm:p-8 hover:-translate-y-1 transition-all duration-500 depth-3 relative overflow-hidden group">
+            <div className="absolute -right-20 -top-20 w-40 h-40 bg-amber-500/5 rounded-full blur-2xl group-hover:bg-amber-500/10 transition-all duration-700" />
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-secondary/20 to-secondary/5 border border-secondary/20 flex items-center justify-center">
-                <TrendingUp className="w-5 h-5 text-secondary" />
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500/20 to-amber-900/10 border border-amber-500/20 flex items-center justify-center">
+                <TrendingUp className="w-5 h-5 text-amber-400" />
               </div>
-              <span className="text-[10px] text-accent uppercase tracking-[0.3em] font-semibold">{t('card_fullService')}</span>
+              <span className="text-[10px] text-amber-400 uppercase tracking-[0.3em] font-bold">{t('card_fullService')}</span>
             </div>
-            <h3 className="text-foreground font-bold text-xl mb-2">{t('card_completeSolutions')}</h3>
-            <p className="text-muted-foreground text-sm leading-relaxed">{t('card_completeSolutions_desc')}</p>
+            <h3 className="text-foreground font-black text-xl mb-2 text-glow">{t('card_completeSolutions')}</h3>
+            <p className="text-muted-foreground/90 text-sm leading-relaxed font-medium">{t('card_completeSolutions_desc')}</p>
             <div className="mt-4 flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-secondary animate-pulse-glow" />
-              <div className="w-16 h-px bg-gradient-to-r from-secondary/50 to-transparent" />
+              <div className="w-2 h-2 rounded-full bg-amber-400 animate-pulse-glow" />
+              <div className="w-16 h-px bg-gradient-to-r from-amber-500/40 to-transparent" />
             </div>
           </div>
         </motion.div>

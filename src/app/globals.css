@@ -1,40 +1,40 @@
 @import "tailwindcss";
 
 @theme inline {
-  --color-background: #0B1120;
+  --color-background: #04060A;
   --color-foreground: #F8FAFC;
-  --color-card: #111827;
+  --color-card: #080B12;
   --color-card-foreground: #F8FAFC;
   --color-primary: #F97316;
   --color-primary-foreground: #FFFFFF;
   --color-secondary: #EA580C;
-  --color-secondary-foreground: #0B1120;
-  --color-muted: #111827;
+  --color-secondary-foreground: #04060A;
+  --color-muted: #080B12;
   --color-muted-foreground: #94A3B8;
-  --color-accent: #FDBA74;
-  --color-accent-foreground: #0B1120;
-  --color-border: #1E293B;
-  --color-input: #111827;
+  --color-accent: #FFE093;
+  --color-accent-foreground: #04060A;
+  --color-border: #151C2C;
+  --color-input: #080B12;
   --color-ring: #F97316;
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
 :root {
-  --background: #0B1120;
+  --background: #04060A;
   --foreground: #F8FAFC;
-  --card: #111827;
+  --card: #080B12;
   --card-foreground: #F8FAFC;
   --primary: #F97316;
   --primary-foreground: #FFFFFF;
   --secondary: #EA580C;
-  --secondary-foreground: #0B1120;
-  --muted: #111827;
+  --secondary-foreground: #04060A;
+  --muted: #080B12;
   --muted-foreground: #94A3B8;
-  --accent: #FDBA74;
-  --accent-foreground: #0B1120;
-  --border: #1E293B;
-  --input: #111827;
+  --accent: #FFE093;
+  --accent-foreground: #04060A;
+  --border: #151C2C;
+  --input: #080B12;
   --ring: #F97316;
 }
 
@@ -268,4 +268,32 @@ body {
 
 [dir="rtl"] .text-end {
   text-align: left;
+}
+
+/* Premium Cinematic Classes */
+.gradient-text-gold {
+  background: linear-gradient(135deg, #FFF1BE 0%, #E6B15C 50%, #9B6C1A 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.cinematic-glow-gold {
+  box-shadow: 0 0 50px rgba(230, 177, 92, 0.15), 0 0 100px rgba(230, 177, 92, 0.05);
+}
+
+.glass-premium {
+  background: rgba(4, 6, 10, 0.5);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(230, 177, 92, 0.12);
+}
+
+.glass-premium-hover:hover {
+  border-color: rgba(230, 177, 92, 0.3);
+  box-shadow: 0 0 30px rgba(230, 177, 92, 0.08);
+}
+
+.cinematic-ambient {
+  background: radial-gradient(circle at center, rgba(249, 115, 22, 0.08) 0%, transparent 70%);
 }
