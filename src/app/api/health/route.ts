@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { withSecurityHeaders } from '@/lib/security';
+import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,7 +22,7 @@ export async function GET() {
 
     return withSecurityHeaders(response);
   } catch (error) {
-    console.error('[health-check] Database health check failed:', error);
+    logger.error('Database health check failed', error, { service: 'database' });
 
     const response = NextResponse.json({
       success: false,

@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma';
+import { logger } from '@/lib/logger';
 import type { NextRequest } from 'next/server';
 
 export type AuditAction =
@@ -78,10 +79,10 @@ export async function logAudit(input: AuditLogInput): Promise<void> {
         tenantId: input.tenantId ?? null,
       },
     });
-  } catch {
+  } catch (error) {
     // Audit logging should never break the main operation.
-    // Log to console as a fallback for observability.
-    console.error('[audit] Failed to write audit log', input);
+    // Log structured error for observability.
+    logger.error('Failed to write audit log', error, { auditInput: input });
   }
 }
 

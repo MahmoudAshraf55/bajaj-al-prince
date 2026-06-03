@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
+import { logger } from './logger';
 
 export type UserRole = 'admin' | 'staff' | 'viewer';
 
@@ -27,7 +28,7 @@ export interface JWTPayload {
 function getSecret(): Uint8Array | null {
   const secret = process.env.JWT_SECRET;
   if (!secret) {
-    console.error('[auth] JWT_SECRET environment variable is required but not set');
+    logger.error('JWT_SECRET environment variable is required but not set');
     return null;
   }
   return new TextEncoder().encode(secret);
@@ -36,7 +37,7 @@ function getSecret(): Uint8Array | null {
 function getRefreshSecret(): Uint8Array | null {
   const secret = process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET;
   if (!secret) {
-    console.error('[auth] JWT_REFRESH_SECRET or JWT_SECRET environment variable is required but not set');
+    logger.error('JWT_REFRESH_SECRET or JWT_SECRET environment variable is required but not set');
     return null;
   }
   return new TextEncoder().encode(secret);
