@@ -69,18 +69,18 @@ export default function Hero() {
       <MotorcycleSceneClient ref={sceneRef} />
 
       {/* Cinematic Sidebar Progress Tracker */}
-      <div className="fixed right-6 top-1/2 -translate-y-1/2 z-40 hidden lg:flex flex-col gap-4 bg-black/40 backdrop-blur-md py-5 px-3 rounded-full border border-white/5 shadow-2xl">
+      <div className="fixed right-4 top-1/2 -translate-y-1/2 z-40 hidden lg:flex flex-col gap-3 bg-black/40 backdrop-blur-md py-3 px-2 rounded-full border border-white/5 shadow-2xl">
         {['overview', 'specs', 'design', 'story', 'services', 'reviews', 'contact'].map((id) => (
           <a
             key={id}
             href={`#${id}`}
-            className="group flex items-center justify-end gap-3 outline-none"
+            className="group flex items-center justify-end gap-2 outline-none"
             title={`Scroll to ${id}`}
           >
-            <span className="opacity-0 group-hover:opacity-100 text-[9px] text-amber-400/90 uppercase font-black tracking-[0.2em] transition-all duration-300 pointer-events-none select-none bg-black/80 px-2 py-0.5 rounded border border-amber-500/10">
+            <span className="opacity-0 group-hover:opacity-100 text-[8px] text-amber-400/90 uppercase font-bold tracking-[0.15em] transition-all duration-300 pointer-events-none select-none bg-black/80 px-1.5 py-0.5 rounded border border-amber-500/10 whitespace-nowrap">
               {id}
             </span>
-            <div className="w-2 h-2 rounded-full bg-white/20 group-hover:bg-amber-400 border border-transparent group-hover:border-amber-400/50 group-hover:scale-125 transition-all duration-300" />
+            <div className="w-1.5 h-1.5 rounded-full bg-white/20 group-hover:bg-amber-400 border border-transparent group-hover:border-amber-400/50 group-hover:scale-125 transition-all duration-300" />
           </a>
         ))}
       </div>
