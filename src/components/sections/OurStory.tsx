@@ -20,7 +20,7 @@ export default function OurStory() {
   const isInView = useInView(ref, { once: true, margin: '-100px' });
 
   return (
-    <section id="story" className="relative py-24 sm:py-32 overflow-hidden">
+    <section id="story" className="relative py-24 sm:py-32 overflow-hidden snap-start snap-always">
       <div className="absolute inset-0 bg-radial-glow pointer-events-none" />
       <div className="absolute inset-0 bg-grid-pattern opacity-30 pointer-events-none" />
 

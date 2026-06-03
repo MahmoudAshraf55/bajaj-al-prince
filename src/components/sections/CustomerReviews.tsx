@@ -189,7 +189,7 @@ export default function CustomerReviews() {
   };
 
   return (
-    <section id="reviews" className="relative py-24 sm:py-32 overflow-hidden">
+    <section id="reviews" className="relative py-24 sm:py-32 overflow-hidden snap-start snap-always">
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,_rgba(249,115,22,0.04),_transparent_60%)]" />
       <div className="absolute inset-0 bg-grid-pattern opacity-10 pointer-events-none" />
 
