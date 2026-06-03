@@ -69,7 +69,7 @@ export default function Hero() {
       <MotorcycleSceneClient ref={sceneRef} />
 
       {/* Hero Content Section */}
-      <section className="relative min-h-screen flex flex-col items-center justify-center px-6 sm:px-12 pt-32 pb-16">
+      <section className="relative min-h-screen flex flex-col items-center justify-center px-6 sm:px-12 pt-32 pb-16 snap-start snap-always">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_rgba(249,115,22,0.08),_transparent_60%)]" />
         <div className="absolute inset-0 bg-grid-pattern opacity-30 pointer-events-none" />
 
@@ -121,7 +121,7 @@ export default function Hero() {
       </section>
 
       {/* Section 1 - Overview (3D journey starts here) - LEFT CARD */}
-      <section id="overview" className="scroll-section relative min-h-screen flex items-center px-6 sm:px-12">
+      <section id="overview" className="scroll-section relative min-h-screen flex items-center px-6 sm:px-12 snap-start snap-always">
         <div className="absolute top-24 right-6 sm:right-12 text-right space-y-1">
           <p className="text-[10px] tracking-[0.2em] text-muted-foreground uppercase">Authorized Service Center</p>
           <p className="text-[10px] tracking-[0.2em] text-muted-foreground uppercase">Since 2019</p>
@@ -152,7 +152,7 @@ export default function Hero() {
       </section>
 
       {/* Section 2 - Specs - RIGHT CARD */}
-      <section id="specs" className="scroll-section relative min-h-screen flex items-center justify-end px-6 sm:px-12">
+      <section id="specs" className="scroll-section relative min-h-screen flex items-center justify-end px-6 sm:px-12 snap-start snap-always">
         <motion.div
           initial={{ opacity: 0, x: 60 }}
           whileInView={{ opacity: 1, x: 0 }}
@@ -178,7 +178,7 @@ export default function Hero() {
       </section>
 
       {/* Section 3 - Design - LEFT CARD */}
-      <section id="design" className="scroll-section relative min-h-screen flex items-center px-6 sm:px-12">
+      <section id="design" className="scroll-section relative min-h-screen flex items-center px-6 sm:px-12 snap-start snap-always">
         <motion.div
           initial={{ opacity: 0, x: -60 }}
           whileInView={{ opacity: 1, x: 0 }}
