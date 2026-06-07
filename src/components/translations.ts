@@ -261,6 +261,13 @@ export const translations = {
     wa_test_sent: 'Message sent successfully',
     wa_test_failed: 'Failed to send message',
     wa_test_fill_fields: 'Please fill in both phone and message fields',
+    wa_settings_title: 'Anti-Ban Settings',
+    wa_settings_delay_min: 'Min Delay Between Messages',
+    wa_settings_delay_max: 'Max Delay Between Messages',
+    wa_settings_daily_cap: 'Daily Message Cap',
+    wa_settings_batch_size: 'Batch Size Per Run',
+    wa_settings_saved: 'Settings saved',
+    wa_settings_failed: 'Failed to save settings',
 
     // CRM Customers
     crm_customer_management: 'Customer Management',
@@ -644,6 +651,13 @@ export const translations = {
     wa_test_sent: 'تم إرسال الرسالة بنجاح',
     wa_test_failed: 'فشل في إرسال الرسالة',
     wa_test_fill_fields: 'يرجى ملء رقم الهاتف ونص الرسالة',
+    wa_settings_title: 'إعدادات مكافحة الحظر',
+    wa_settings_delay_min: 'أقل تأخير بين الرسائل',
+    wa_settings_delay_max: 'أقصى تأخير بين الرسائل',
+    wa_settings_daily_cap: 'حد الرسائل اليومية',
+    wa_settings_batch_size: 'حجم الدفعة في كل تشغيل',
+    wa_settings_saved: 'تم حفظ الإعدادات',
+    wa_settings_failed: 'فشل في حفظ الإعدادات',
 
     // CRM Customers
     crm_customer_management: 'إدارة العملاء',

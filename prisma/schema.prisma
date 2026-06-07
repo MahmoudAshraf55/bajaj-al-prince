@@ -267,3 +267,15 @@ model ReminderLog {
   @@index([isDeleted])
   @@index([tenantId])
 }
+
+model WhatsAppSettings {
+  id         String   @id @default("default")
+  delayMin   Int      @default(60)
+  delayMax   Int      @default(120)
+  dailyCap   Int      @default(50)
+  batchSize  Int      @default(20)
+  updatedAt  DateTime @updatedAt @db.Timestamp(6)
+  tenantId   String?
+
+  @@index([tenantId])
+}

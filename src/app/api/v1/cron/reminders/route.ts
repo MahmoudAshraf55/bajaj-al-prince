@@ -6,17 +6,22 @@ import { withSecurityHeaders } from '@/lib/security';
 import { sendWhatsAppMessage, getWhatsAppState } from '@/lib/whatsapp';
 import { logAudit, getClientInfo } from '@/lib/audit';
 
-const DAILY_CAP = 50;
-const BATCH_SIZE = 20;
-const MIN_DELAY_MS = 60_000;
-const MAX_DELAY_MS = 120_000;
-
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-function randomDelay(): number {
-  return Math.floor(Math.random() * (MAX_DELAY_MS - MIN_DELAY_MS + 1)) + MIN_DELAY_MS;
+function randomDelay(minMs: number, maxMs: number): number {
+  return Math.floor(Math.random() * (maxMs - minMs + 1)) + minMs;
+}
+
+async function getWhatsAppSettings() {
+  let settings = await prisma.whatsAppSettings.findUnique({ where: { id: 'default' } });
+  if (!settings) {
+    settings = await prisma.whatsAppSettings.create({
+      data: { id: 'default', delayMin: 60, delayMax: 120, dailyCap: 50, batchSize: 20 },
+    });
+  }
+  return settings;
 }
 
 export async function GET(req: NextRequest) {
@@ -30,6 +35,12 @@ export async function GET(req: NextRequest) {
     if (state.status !== 'connected') {
       return withSecurityHeaders(NextResponse.json({ success: false, error: 'WhatsApp not connected' }, { status: 503 }));
     }
+
+    const settings = await getWhatsAppSettings();
+    const MIN_DELAY_MS = settings.delayMin * 1000;
+    const MAX_DELAY_MS = settings.delayMax * 1000;
+    const DAILY_CAP = settings.dailyCap;
+    const BATCH_SIZE = settings.batchSize;
 
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
@@ -84,7 +95,7 @@ export async function GET(req: NextRequest) {
     const results: { customerId: string; phone: string; status: string; error?: string }[] = [];
 
     for (const customer of batch) {
-      const delay = randomDelay();
+      const delay = randomDelay(MIN_DELAY_MS, MAX_DELAY_MS);
       await sleep(delay);
 
       const vehicle = customer.vehicles[0];

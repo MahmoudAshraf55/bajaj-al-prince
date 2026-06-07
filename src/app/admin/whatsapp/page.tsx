@@ -6,7 +6,7 @@ import { useTranslation } from '@/components/useTranslation';
 import Image from 'next/image';
 import {
   MessageCircle, QrCode, Smartphone, Loader2, Unplug,
-  Send, RefreshCw, CheckCircle2, XCircle, AlertCircle,
+  Send, RefreshCw, CheckCircle2, XCircle, AlertCircle, Settings,
 } from 'lucide-react';
 
 interface WhatsAppState {
@@ -24,6 +24,8 @@ export default function WhatsAppAdminPage() {
   const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [testPhone, setTestPhone] = useState('');
   const [testMessage, setTestMessage] = useState('');
+  const [settings, setSettings] = useState<{ delayMin: number; delayMax: number; dailyCap: number; batchSize: number } | null>(null);
+  const [settingsLoading, setSettingsLoading] = useState(false);
 
   const fetchStatus = useCallback(async () => {
     try {
@@ -37,11 +39,22 @@ export default function WhatsAppAdminPage() {
     }
   }, []);
 
+  const fetchSettings = useCallback(async () => {
+    try {
+      const res = await fetch('/api/v1/whatsapp/settings/', { credentials: 'include' });
+      const data = await res.json();
+      if (data.success) setSettings(data.data);
+    } catch {
+      // ignore
+    }
+  }, []);
+
   useEffect(() => {
     fetchStatus();
+    fetchSettings();
     const interval = setInterval(fetchStatus, 5000);
     return () => clearInterval(interval);
-  }, [fetchStatus]);
+  }, [fetchStatus, fetchSettings]);
 
   const showToast = (type: 'success' | 'error', message: string) => {
     setToast({ type, message });
@@ -85,6 +98,30 @@ export default function WhatsAppAdminPage() {
       showToast('error', t('wa_network_error'));
     } finally {
       setActionLoading(false);
+    }
+  };
+
+  const handleSaveSettings = async (updates: Partial<typeof settings>) => {
+    if (!settings) return;
+    setSettingsLoading(true);
+    try {
+      const res = await fetch('/api/v1/whatsapp/settings/', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(updates),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setSettings(data.data);
+        showToast('success', t('wa_settings_saved'));
+      } else {
+        showToast('error', data?.error || t('wa_settings_failed'));
+      }
+    } catch {
+      showToast('error', t('wa_network_error'));
+    } finally {
+      setSettingsLoading(false);
     }
   };
 
@@ -274,6 +311,98 @@ export default function WhatsAppAdminPage() {
                 <Send className="w-4 h-4" />
                 {t('wa_test_send')}
               </button>
+            </div>
+          </motion.div>
+        )}
+
+        {/* Anti-Ban Settings Card */}
+        {settings && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="glass rounded-2xl p-6"
+          >
+            <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+              <Settings className="w-4 h-4" />
+              {t('wa_settings_title')}
+            </h2>
+            <div className="space-y-5">
+              <div>
+                <div className="flex justify-between text-sm mb-1.5">
+                  <span className="text-muted-foreground">{t('wa_settings_delay_min')}</span>
+                  <span className="font-medium">{settings.delayMin}s</span>
+                </div>
+                <input
+                  type="range"
+                  min={10}
+                  max={300}
+                  value={settings.delayMin}
+                  disabled={settingsLoading}
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value);
+                    setSettings((s) => s ? { ...s, delayMin: val } : s);
+                    handleSaveSettings({ delayMin: val });
+                  }}
+                  className="w-full accent-emerald-500"
+                />
+              </div>
+              <div>
+                <div className="flex justify-between text-sm mb-1.5">
+                  <span className="text-muted-foreground">{t('wa_settings_delay_max')}</span>
+                  <span className="font-medium">{settings.delayMax}s</span>
+                </div>
+                <input
+                  type="range"
+                  min={10}
+                  max={600}
+                  value={settings.delayMax}
+                  disabled={settingsLoading}
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value);
+                    setSettings((s) => s ? { ...s, delayMax: val } : s);
+                    handleSaveSettings({ delayMax: val });
+                  }}
+                  className="w-full accent-emerald-500"
+                />
+              </div>
+              <div>
+                <div className="flex justify-between text-sm mb-1.5">
+                  <span className="text-muted-foreground">{t('wa_settings_daily_cap')}</span>
+                  <span className="font-medium">{settings.dailyCap}</span>
+                </div>
+                <input
+                  type="range"
+                  min={1}
+                  max={500}
+                  value={settings.dailyCap}
+                  disabled={settingsLoading}
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value);
+                    setSettings((s) => s ? { ...s, dailyCap: val } : s);
+                    handleSaveSettings({ dailyCap: val });
+                  }}
+                  className="w-full accent-emerald-500"
+                />
+              </div>
+              <div>
+                <div className="flex justify-between text-sm mb-1.5">
+                  <span className="text-muted-foreground">{t('wa_settings_batch_size')}</span>
+                  <span className="font-medium">{settings.batchSize}</span>
+                </div>
+                <input
+                  type="range"
+                  min={1}
+                  max={100}
+                  value={settings.batchSize}
+                  disabled={settingsLoading}
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value);
+                    setSettings((s) => s ? { ...s, batchSize: val } : s);
+                    handleSaveSettings({ batchSize: val });
+                  }}
+                  className="w-full accent-emerald-500"
+                />
+              </div>
             </div>
           </motion.div>
         )}
