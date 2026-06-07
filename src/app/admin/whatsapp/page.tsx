@@ -587,55 +587,59 @@ export default function WhatsAppAdminPage() {
                   subtitle="قوالب رسائل تلقائية تُرسل للعميل فوراً عند حدوث إجراء في النظام"
                 />
                 <div className="space-y-5">
-                  {templates.map((tmpl) => (
-                    <div
-                      key={tmpl.id}
-                      className="group/item relative rounded-xl border border-white/[0.04] bg-white/[0.01] p-4 transition-all duration-300 hover:border-white/[0.08] hover:bg-white/[0.02]"
-                    >
-                      <div className="flex items-center justify-between gap-4 mb-3">
-                        <span className="text-xs font-bold uppercase tracking-wider text-emerald-400 bg-emerald-500/5 px-2.5 py-1 rounded-lg border border-emerald-500/10">
-                          {tmpl.event.replace(/_/g, ' ')}
-                        </span>
-                        <PremiumToggle
-                          checked={tmpl.isActive}
+                  {templates.map((tmpl) => {
+                    const translated = t(`wa_event_${tmpl.event}`);
+                    const label = translated !== `wa_event_${tmpl.event}` ? translated : tmpl.event.replace(/_/g, ' ');
+                    return (
+                      <div
+                        key={tmpl.id}
+                        className="group/item relative rounded-xl border border-white/[0.04] bg-white/[0.01] p-4 transition-all duration-300 hover:border-white/[0.08] hover:bg-white/[0.02]"
+                      >
+                        <div className="flex items-center justify-between gap-4 mb-3">
+                          <span className="text-xs font-bold uppercase tracking-wider text-emerald-400 bg-emerald-500/5 px-2.5 py-1 rounded-lg border border-emerald-500/10">
+                            {label}
+                          </span>
+                          <PremiumToggle
+                            checked={tmpl.isActive}
+                            disabled={templatesLoading}
+                            onChange={(checked) => handleUpdateTemplate(tmpl.id, { isActive: checked })}
+                            label={t('wa_template_active')}
+                          />
+                        </div>
+
+                        <textarea
+                          value={tmpl.message}
                           disabled={templatesLoading}
-                          onChange={(checked) => handleUpdateTemplate(tmpl.id, { isActive: checked })}
-                          label={t('wa_template_active')}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setTemplates((prev) => prev.map((t) => (t.id === tmpl.id ? { ...t, message: val } : t)));
+                          }}
+                          onBlur={(e) => handleUpdateTemplate(tmpl.id, { message: e.target.value })}
+                          rows={3}
+                          className="w-full px-3 py-2 rounded-xl bg-black/20 border border-white/[0.06] text-xs focus:outline-none focus:border-emerald-500/40 focus:ring-1 focus:ring-emerald-500/25 transition-all resize-none leading-relaxed text-zinc-300"
                         />
-                      </div>
 
-                      <textarea
-                        value={tmpl.message}
-                        disabled={templatesLoading}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          setTemplates((prev) => prev.map((t) => (t.id === tmpl.id ? { ...t, message: val } : t)));
-                        }}
-                        onBlur={(e) => handleUpdateTemplate(tmpl.id, { message: e.target.value })}
-                        rows={3}
-                        className="w-full px-3 py-2 rounded-xl bg-black/20 border border-white/[0.06] text-xs focus:outline-none focus:border-emerald-500/40 focus:ring-1 focus:ring-emerald-500/25 transition-all resize-none leading-relaxed text-zinc-300"
-                      />
-
-                      <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
-                        <span className="text-[10px] font-semibold text-zinc-500 ml-1">
-                          {t('wa_template_vars')}:
-                        </span>
-                        {['name', 'model', 'date', 'time', 'issue', 'make'].map((v) => (
-                          <button
-                            key={v}
-                            onClick={() => {
-                              navigator.clipboard.writeText(`{{${v}}}`);
-                              showToast('success', `تم نسخ {{${v}}} للحافظة`);
-                            }}
-                            className="text-[10px] font-mono text-zinc-400 bg-white/[0.03] border border-white/[0.05] hover:border-emerald-500/20 hover:text-emerald-400 px-1.5 py-0.5 rounded transition-all cursor-pointer"
-                            title="اضغط للنسخ"
-                          >
-                            {`{{${v}}}`}
-                          </button>
-                        ))}
+                        <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+                          <span className="text-[10px] font-semibold text-zinc-500 ml-1">
+                            {t('wa_template_vars')}:
+                          </span>
+                          {['name', 'model', 'date', 'time', 'issue', 'make'].map((v) => (
+                            <button
+                              key={v}
+                              onClick={() => {
+                                navigator.clipboard.writeText(`{{${v}}}`);
+                                showToast('success', `تم نسخ {{${v}}} للحافظة`);
+                              }}
+                              className="text-[10px] font-mono text-zinc-400 bg-white/[0.03] border border-white/[0.05] hover:border-emerald-500/20 hover:text-emerald-400 px-1.5 py-0.5 rounded transition-all cursor-pointer"
+                              title="اضغط للنسخ"
+                            >
+                              {`{{${v}}}`}
+                            </button>
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </PremiumCard>
             )}
