@@ -56,8 +56,16 @@ export async function GET(req: NextRequest) {
       }));
     }
 
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const schedules = await prisma.reminderSchedule.findMany({
+      where: { isActive: true, isDeleted: false },
+    });
+
+    if (schedules.length === 0) {
+      return withSecurityHeaders(NextResponse.json({
+        success: true,
+        data: { sent: 0, reason: 'No active reminder schedules', total: 0 },
+      }));
+    }
 
     const customers = await prisma.customer.findMany({
       where: { isDeleted: false },
@@ -75,58 +83,85 @@ export async function GET(req: NextRequest) {
       },
     });
 
-    const eligible = customers.filter((c) => {
-      const b = c.bookings[0];
-      if (!b) return false;
-      const d = new Date(b.date);
-      return !isNaN(d.getTime()) && d <= thirtyDaysAgo;
-    });
+    const allResults: { scheduleName: string; sent: number; failed: number; total: number }[] = [];
+    let totalSent = 0;
 
-    const recentReminders = await prisma.reminderLog.findMany({
-      where: { sentAt: { gte: thirtyDaysAgo }, isDeleted: false },
-      select: { customerId: true },
-    });
-    const remindedIds = new Set(recentReminders.map((r) => r.customerId));
-    const targets = eligible.filter((c) => !remindedIds.has(c.id));
+    for (const schedule of schedules) {
+      if (schedule.intervalDays <= 0) continue; // skip manual/broadcast schedules
 
-    const remainingToday = DAILY_CAP - todayCount;
-    const batch = targets.slice(0, Math.min(BATCH_SIZE, remainingToday));
+      const cutoffDate = new Date();
+      cutoffDate.setDate(cutoffDate.getDate() - schedule.intervalDays);
 
-    const results: { customerId: string; phone: string; status: string; error?: string }[] = [];
-
-    for (const customer of batch) {
-      const delay = randomDelay(MIN_DELAY_MS, MAX_DELAY_MS);
-      await sleep(delay);
-
-      const vehicle = customer.vehicles[0];
-      const model = vehicle ? `${vehicle.make} ${vehicle.model}` : 'دراجتك';
-      const message = `مرحباً ${customer.name}، نود تذكيرك بموعد صيانة ${model} في مركز باجاج الأمير. نتطلع لخدمتك قريباً! 🏍️`;
-
-      const sendResult = await sendWhatsAppMessageViaService(customer.phone, message);
-
-      await prisma.reminderLog.create({
-        data: {
-          customerId: customer.id,
-          phone: customer.phone,
-          message,
-          status: sendResult.success ? 'sent' : 'failed',
-        },
+      const eligible = customers.filter((c) => {
+        const b = c.bookings[0];
+        if (!b) return false;
+        const d = new Date(b.date);
+        return !isNaN(d.getTime()) && d <= cutoffDate;
       });
 
-      results.push({
-        customerId: customer.id,
-        phone: customer.phone,
-        status: sendResult.success ? 'sent' : 'failed',
-        error: sendResult.error,
+      // Exclude customers reminded within the same interval period
+      const recentReminders = await prisma.reminderLog.findMany({
+        where: {
+          sentAt: { gte: cutoffDate },
+          isDeleted: false,
+        },
+        select: { customerId: true },
+      });
+      const remindedIds = new Set(recentReminders.map((r) => r.customerId));
+      const targets = eligible.filter((c) => !remindedIds.has(c.id));
+
+      const remainingToday = DAILY_CAP - todayCount - totalSent;
+      if (remainingToday <= 0) break;
+
+      const batch = targets.slice(0, Math.min(BATCH_SIZE, remainingToday));
+      let scheduleSent = 0;
+      let scheduleFailed = 0;
+
+      for (const customer of batch) {
+        const delay = randomDelay(MIN_DELAY_MS, MAX_DELAY_MS);
+        await sleep(delay);
+
+        const vehicle = customer.vehicles[0];
+        const model = vehicle ? `${vehicle.make} ${vehicle.model}` : 'دراجتك';
+        const message = schedule.message
+          .replace(/\{\{name\}\}/g, customer.name)
+          .replace(/\{\{model\}\}/g, model);
+
+        const sendResult = await sendWhatsAppMessageViaService(customer.phone, message);
+
+        await prisma.reminderLog.create({
+          data: {
+            customerId: customer.id,
+            phone: customer.phone,
+            message,
+            status: sendResult.success ? 'sent' : 'failed',
+          },
+        });
+
+        if (sendResult.success) {
+          scheduleSent++;
+          totalSent++;
+        } else {
+          scheduleFailed++;
+        }
+      }
+
+      allResults.push({
+        scheduleName: schedule.name,
+        sent: scheduleSent,
+        failed: scheduleFailed,
+        total: scheduleSent + scheduleFailed,
       });
     }
+
+    const grandTotal = allResults.reduce((sum, r) => sum + r.total, 0);
 
     const { ipAddress, userAgent } = getClientInfo(req);
     await logAudit({
       action: 'create',
       entity: 'ReminderBatch',
       entityId: 'batch',
-      newValue: { sent: results.filter((r) => r.status === 'sent').length, total: results.length },
+      newValue: { sent: totalSent, total: grandTotal, schedules: allResults },
       ipAddress,
       userAgent,
     });
@@ -134,10 +169,10 @@ export async function GET(req: NextRequest) {
     return withSecurityHeaders(NextResponse.json({
       success: true,
       data: {
-        sent: results.filter((r) => r.status === 'sent').length,
-        failed: results.filter((r) => r.status === 'failed').length,
-        total: results.length,
-        details: results,
+        sent: totalSent,
+        failed: allResults.reduce((sum, r) => sum + r.failed, 0),
+        total: grandTotal,
+        schedules: allResults,
       },
     }));
   } catch (error) {

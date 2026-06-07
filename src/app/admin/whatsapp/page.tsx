@@ -6,7 +6,7 @@ import { useTranslation } from '@/components/useTranslation';
 import Image from 'next/image';
 import {
   MessageCircle, QrCode, Smartphone, Loader2, Unplug,
-  Send, RefreshCw, CheckCircle2, XCircle, AlertCircle, Settings, Mail,
+  Send, RefreshCw, CheckCircle2, XCircle, AlertCircle, Settings, Mail, CalendarClock,
 } from 'lucide-react';
 
 interface WhatsAppState {
@@ -29,6 +29,9 @@ export default function WhatsAppAdminPage() {
 
   const [templates, setTemplates] = useState<{ id: string; event: string; message: string; isActive: boolean }[]>([]);
   const [templatesLoading, setTemplatesLoading] = useState(false);
+
+  const [schedules, setSchedules] = useState<{ id: string; name: string; intervalDays: number; message: string; isActive: boolean }[]>([]);
+  const [schedulesLoading, setSchedulesLoading] = useState(false);
 
   const fetchStatus = useCallback(async () => {
     try {
@@ -66,13 +69,28 @@ export default function WhatsAppAdminPage() {
     }
   }, []);
 
+  const fetchSchedules = useCallback(async () => {
+    try {
+      const res = await fetch('/api/v1/whatsapp/reminder-schedules/', { credentials: 'include' });
+      const data = await res.json();
+      if (data.success) {
+        setSchedules(data.data);
+      } else {
+        console.error('Schedules API error:', data.error);
+      }
+    } catch (err) {
+      console.error('Schedules fetch error:', err);
+    }
+  }, []);
+
   useEffect(() => {
     fetchStatus();
     fetchSettings();
     fetchTemplates();
+    fetchSchedules();
     const interval = setInterval(fetchStatus, 5000);
     return () => clearInterval(interval);
-  }, [fetchStatus, fetchSettings, fetchTemplates]);
+  }, [fetchStatus, fetchSettings, fetchTemplates, fetchSchedules]);
 
   const showToast = (type: 'success' | 'error', message: string) => {
     setToast({ type, message });
@@ -163,6 +181,29 @@ export default function WhatsAppAdminPage() {
       showToast('error', t('wa_network_error'));
     } finally {
       setTemplatesLoading(false);
+    }
+  };
+
+  const handleUpdateSchedule = async (id: string, updates: { name?: string; intervalDays?: number; message?: string; isActive?: boolean }) => {
+    setSchedulesLoading(true);
+    try {
+      const res = await fetch(`/api/v1/whatsapp/reminder-schedules/?id=${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(updates),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setSchedules((prev) => prev.map((s) => (s.id === id ? data.data : s)));
+        showToast('success', t('wa_schedule_saved'));
+      } else {
+        showToast('error', data?.error || t('wa_schedule_failed'));
+      }
+    } catch {
+      showToast('error', t('wa_network_error'));
+    } finally {
+      setSchedulesLoading(false);
     }
   };
 
@@ -489,6 +530,71 @@ export default function WhatsAppAdminPage() {
                   <p className="text-xs text-muted-foreground">
                     {t('wa_template_vars')}: {`{{name}}`}, {`{{model}}`}, {`{{date}}`}, {`{{time}}`}, {`{{issue}}`}, {`{{make}}`}
                   </p>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        )}
+
+        {/* Reminder Schedules Card */}
+        {schedules.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="glass rounded-2xl p-6"
+          >
+            <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+              <CalendarClock className="w-4 h-4" />
+              {t('wa_schedules_title')}
+            </h2>
+            <div className="space-y-4">
+              {schedules.map((sch) => (
+                <div key={sch.id} className="rounded-xl border border-border p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="text-sm font-medium">{sch.name}</span>
+                      <span className="text-xs text-muted-foreground ml-2">
+                        {sch.intervalDays > 0 ? `${sch.intervalDays} ${t('wa_schedules_days')}` : t('wa_schedules_manual')}
+                      </span>
+                    </div>
+                    <label className="inline-flex items-center gap-2 cursor-pointer">
+                      <span className="text-xs text-muted-foreground">{t('wa_schedule_active')}</span>
+                      <input
+                        type="checkbox"
+                        checked={sch.isActive}
+                        disabled={schedulesLoading}
+                        onChange={(e) => handleUpdateSchedule(sch.id, { isActive: e.target.checked })}
+                        className="accent-emerald-500 w-4 h-4"
+                      />
+                    </label>
+                  </div>
+                  <textarea
+                    value={sch.message}
+                    disabled={schedulesLoading}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setSchedules((prev) => prev.map((s) => (s.id === sch.id ? { ...s, message: val } : s)));
+                    }}
+                    onBlur={(e) => handleUpdateSchedule(sch.id, { message: e.target.value })}
+                    rows={3}
+                    className="w-full px-3 py-2 rounded-xl bg-secondary/50 border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none"
+                  />
+                  <div className="flex gap-2">
+                    <input
+                      type="number"
+                      min={0}
+                      max={365}
+                      value={sch.intervalDays}
+                      disabled={schedulesLoading}
+                      onChange={(e) => {
+                        const val = parseInt(e.target.value) || 0;
+                        setSchedules((prev) => prev.map((s) => (s.id === sch.id ? { ...s, intervalDays: val } : s)));
+                      }}
+                      onBlur={(e) => handleUpdateSchedule(sch.id, { intervalDays: parseInt(e.target.value) || 0 })}
+                      className="w-24 px-3 py-2 rounded-xl bg-secondary/50 border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+                    />
+                    <span className="text-xs text-muted-foreground self-center">{t('wa_schedules_days_label')}</span>
+                  </div>
                 </div>
               ))}
             </div>

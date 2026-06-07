@@ -273,6 +273,13 @@ export const translations = {
     wa_template_vars: 'Available variables',
     wa_template_saved: 'Template saved',
     wa_template_failed: 'Failed to save template',
+    wa_schedules_title: 'Reminder Schedules',
+    wa_schedule_active: 'Active',
+    wa_schedules_days: 'days',
+    wa_schedules_manual: 'Manual / Broadcast',
+    wa_schedules_days_label: 'Interval (days)',
+    wa_schedule_saved: 'Schedule saved',
+    wa_schedule_failed: 'Failed to save schedule',
 
     // CRM Customers
     crm_customer_management: 'Customer Management',
@@ -668,6 +675,13 @@ export const translations = {
     wa_template_vars: 'المتغيرات المتاحة',
     wa_template_saved: 'تم حفظ القالب',
     wa_template_failed: 'فشل في حفظ القالب',
+    wa_schedules_title: 'جداول التذكيرات',
+    wa_schedule_active: 'نشط',
+    wa_schedules_days: 'يوم',
+    wa_schedules_manual: 'يدوي / إذاعة',
+    wa_schedules_days_label: 'الفترة (أيام)',
+    wa_schedule_saved: 'تم حفظ الجدول',
+    wa_schedule_failed: 'فشل في حفظ الجدول',
 
     // CRM Customers
     crm_customer_management: 'إدارة العملاء',

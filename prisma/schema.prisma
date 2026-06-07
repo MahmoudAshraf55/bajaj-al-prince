@@ -292,3 +292,18 @@ model WhatsAppMessageTemplate {
 
   @@index([tenantId])
 }
+
+model ReminderSchedule {
+  id           String    @id @default(cuid())
+  name         String    // e.g. "صيانة دورية", "متابعة", "عرض خاص"
+  intervalDays Int       // days since last completed booking; 0 = manual/broadcast
+  message      String    // reminder message template
+  isActive     Boolean   @default(true)
+  isDeleted    Boolean   @default(false)
+  deletedAt    DateTime? @db.Timestamp(6)
+  createdAt    DateTime  @default(now()) @db.Timestamp(6)
+  updatedAt    DateTime  @updatedAt @db.Timestamp(6)
+  tenantId     String?
+
+  @@index([tenantId])
+}

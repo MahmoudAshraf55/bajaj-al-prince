@@ -62,6 +62,21 @@ async function main() {
     });
   }
   console.log('Default WhatsApp templates seeded');
+
+  // Seed default reminder schedules
+  const defaultSchedules = [
+    { name: 'صيانة دورية', intervalDays: 30, message: 'مرحباً {{name}}، نود تذكيرك بموعد صيانة {{model}} في مركز باجاج الأمير. نتطلع لخدمتك قريباً! 🏍️', isActive: true },
+    { name: 'متابعة', intervalDays: 7, message: 'مرحباً {{name}}، نأمل أن صيانة {{model}} نالت إعجابك في مركز باجاج الأمير. نحن هنا دائماً لخدمتك! 🏍️', isActive: true },
+    { name: 'عرض خاص', intervalDays: 0, message: 'مرحباً {{name}}، لدينا عرض خاص على قطع الغيار لـ {{model}} في مركز باجاج الأمير. لا تفوت الفرصة! 🏍️💰', isActive: false },
+  ];
+
+  for (const sch of defaultSchedules) {
+    const existing = await prisma.reminderSchedule.findFirst({ where: { name: sch.name } });
+    if (!existing) {
+      await prisma.reminderSchedule.create({ data: sch });
+    }
+  }
+  console.log('Default reminder schedules seeded');
 }
 
 main()
