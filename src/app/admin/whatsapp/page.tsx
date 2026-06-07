@@ -60,11 +60,9 @@ export default function WhatsAppAdminPage() {
         setTemplates(data.data);
       } else {
         console.error('Templates API error:', data.error);
-        showToast('error', data.error || 'Failed to load templates');
       }
     } catch (err) {
       console.error('Templates fetch error:', err);
-      showToast('error', 'Network error loading templates');
     }
   }, []);
 
