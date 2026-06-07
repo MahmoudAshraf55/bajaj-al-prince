@@ -56,9 +56,15 @@ export default function WhatsAppAdminPage() {
     try {
       const res = await fetch('/api/v1/whatsapp/templates/', { credentials: 'include' });
       const data = await res.json();
-      if (data.success) setTemplates(data.data);
-    } catch {
-      // ignore
+      if (data.success) {
+        setTemplates(data.data);
+      } else {
+        console.error('Templates API error:', data.error);
+        showToast('error', data.error || 'Failed to load templates');
+      }
+    } catch (err) {
+      console.error('Templates fetch error:', err);
+      showToast('error', 'Network error loading templates');
     }
   }, []);
 
