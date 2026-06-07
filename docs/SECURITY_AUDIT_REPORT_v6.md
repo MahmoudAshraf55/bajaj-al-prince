@@ -1,5 +1,5 @@
 # تقرير المراجعة الشاملة والجاهزية الإنتاجية v6
-## Bajaj Al-Prince — CRM Service History · Booking Lifecycle · Arabic i18n · Vehicle Removal Fix
+## Bajaj Al-Prince — CRM Service History · Booking Lifecycle · Arabic i18n · Vehicle Removal Fix · WhatsApp Maintenance Reminders
 
 **تاريخ التقرير:** ٧ يونيو ٢٠٢٦
 **الفرع:** `feature/3d-model-experiment` (commit `2bb5d8f`)
@@ -142,36 +142,48 @@
   - `@/src/components/translations.ts` (`crm_status_approved` → `crm_status_accepted`)
 - **الحل:** تم استبدال كل إشارة لـ `approved` (في ألوان الحالة) بـ `accepted` لتوافقها مع قيمة API الحقيقية، وتحديث مفاتيح الترجمة بشكل مطابق.
 
+### ٣.٨. نظام تذكير الصيانة عبر الواتساب (WhatsApp Maintenance Reminders)
+- **الملفات المتأثرة:**
+  - `@/src/lib/whatsapp.ts`
+  - `@/src/app/api/v1/whatsapp/status/route.ts`
+  - `@/src/app/api/v1/whatsapp/disconnect/route.ts`
+  - `@/src/app/api/v1/cron/reminders/route.ts`
+  - `@/src/app/admin/whatsapp/page.tsx`
+  - `@/prisma/schema.prisma`
+- **الآلية:**
+  1. **مكتبة Baileys (خفيفة بدون متصفح):** تم اختيار `@whiskeysockets/baileys` بدلاً من `whatsapp-web.js` لتجنب ثقل Puppeteer (~١٠٠ ميجا) ومشاكل Chromium على الخوادم اللينكسية.
+  2. **حفظ الجلسة محلياً:** تستخدم `useMultiFileAuthState` لتخزين بيانات المصادقة في مجلد `.baileys_auth` داخل المشروع، مما يلغي الحاجة لمسح QR في كل إعادة تشغيل.
+  3. **واجهة إدارية كاملة:** صفحة `/admin/whatsapp` تعرض حالة الاتصال (متصل/غير متصل) ورمز QR عند الحاجة، مع أزرار "فصل الاتصال" و"تشغيل التذكيرات".
+  4. **منطق مكافحة الحظر (Anti-Ban):**
+     - **الإرسال المتتابع (Sequential):** Loop يمر على العملاء واحداً تلو الآخر.
+     - **تأخير عشوائي:** انتظار ٦٠–١٢٠ ثانية بين كل رسالة (`Math.random() * 60s + 60s`).
+     - **حد يومي:** لا يُرسل أكثر من ٥٠ رسالة يومياً (`DAILY_CAP = 50`).
+     - **تتبع الإرسال:** جدول `ReminderLog` يسجل كل رسالة مُرسلة (نجح/فشل) مع `customerId` و `phone` و `sentAt`.
+  5. **Cron Job للتذكيرات:** مسار `GET /api/v1/cron/reminders` يبحث عن العملاء الذين مرّ على صيانتهم الأخيرة (حالة `completed`) ٣٠+ يوماً، ويُرسل لهم رسالة تذكير احترافية باللغة العربية.
+
 ---
 
 ## 4. خطة التطوير والميزات القادمة (Next Development Phases & Recommendations)
 
-### 🚀 المرحلة الأولى: نظام إشعارات واتساب للصيانة الدورية (WhatsApp Maintenance Reminders)
-- **الهدف:** إرسال رسائل واتساب تلقائية للعملاء تذكرهم بموعد الصيانة القادمة (كل ٣٠ يوماً).
-- **الآلية المقترحة:**
-  1. جدولة Cron Job يومي (Vercel Cron or node-cron) يفحص الحجوزات المكتملة ويحسب موعد الزيارة القادمة.
-  2. إرسال رسالة واتساب عبر WhatsApp Business API أو UltraMsg قبل يومين من موعد الزيارة.
-  3. تسجيل حالة الإرسال في `NotificationLog` لتجنب التكرار وإمكانية التتبع.
-
-### 🚀 المرحلة الثانية: تقارير الصيانة والإحصائيات (Maintenance Analytics Dashboard)
+### 🚀 المرحلة الأولى: تقارير الصيانة والإحصائيات (Maintenance Analytics Dashboard)
 - **الهدف:** توفير رؤى بصرية للمشرفين حول أكثر المشاكل شيوعاً وأكثر الموديلات تكراراً للصيانة.
 - **الآلية:** تجميع بيانات `issue` و `model` و `date` لإنشاء رسوم بيانية (Charts) على لوحة التحكم باستخدام Recharts أو Chart.js.
 
-### 🚀 المرحلة الثالثة: Edge Rate Limiting & DDoS Protection
+### 🚀 المرحلة الثانية: Edge Rate Limiting & DDoS Protection
 - **الهدف:** حماية مسارات الخادم من هجمات الإغراق (Brute-Force / DDoS) على مستوى Edge Network.
 - **الآلية:**
   1. تفعيل Upstash Redis أو Cloudflare Rate Limiting على مستوى IP.
   2. تطبيق sliding window limiter في `middleware.ts` لمسارات `/api/auth/login` و `/api/bookings`.
   3. عزل IPs المشبوهة مؤقتاً مع آلية auto-unblock بعد ١٥ دقيقة.
 
-### 🚀 المرحلة الرابعة: جاهزية SaaS متعدد المستأجرين (Multi-Tenant Isolation)
+### 🚀 المرحلة الثالثة: جاهزية SaaS متعدد المستأجرين (Multi-Tenant Isolation)
 - **الهدف:** تحويل النظام لمنصة خدمة برمجية (SaaS) متعددة المستأجرين.
 - **الآلية:**
   1. إضافة `tenantId` لكل JWT token وكل Prisma query.
   2. بناء middleware يتحقق من `tenantId` في كل API route.
   3. عزل البيانات تماماً (Cross-tenant Data Leak Prevention) مع فهرس مركب `@@index([tenantId, id])`.
 
-### 🚀 المرحلة الخامسة: Progressive Web App (PWA) & Offline Support
+### 🚀 المرحلة الرابعة: Progressive Web App (PWA) & Offline Support
 - **الهدف:** تمكين العملاء من تصفح الكتالوج وحجز الصيانة حتى بدون إنترنت.
 - **الآلية:**
   1. إضافة `manifest.json` + Service Worker (next-pwa) للـ caching.
@@ -191,6 +203,7 @@
 | **Vehicle Removal Fix** | **MEDIUM** | منع Race Conditions وتحسين UX. | لا يوجد. | تحسين تجربة المستخدم وتجنب إعادة الجلب المكررة. |
 | **Status Naming Consistency** | **LOW** | منع التباس في الواجهة بين `approved` و `accepted`. | لا يوجد. | لا يوجد. |
 | **JSON Parsing Safety** | **MEDIUM** | منع كراش frontend لو السيرفر رجع HTML/empty body. | لا يوجد. | زيادة استقرار التطبيق. |
+| **WhatsApp Reminders (Baileys)** | **HIGH** | Rate limit + Daily cap + Sequential delays + Audit Log. | جدول `ReminderLog` جديد + كتابة لكل إرسال. | اتصال WebSocket مستمر (ليس serverless-friendly إلا على Linux persistent server). |
 
 ---
 

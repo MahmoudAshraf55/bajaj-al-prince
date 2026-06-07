@@ -42,6 +42,7 @@
 - **Contact Management** — Customer inquiry tracking
 - **CRM & Vehicle Tracking** — Customer profiles with garage/vehicle ownership
 - **Financial Management** — Income/expense tracking with Decimal precision
+- **WhatsApp Maintenance Reminders** — Automated periodic service reminders via WhatsApp Web (Baileys) with anti-ban sequential sending
 
 ### Foundation Hardening (Phase 0 — Complete)
 
@@ -107,6 +108,8 @@ Full ERP platform covering: Work Orders, Inventory, POS, Cashier, Customer Porta
 | Validation | Zod | 4.4 |
 | Icons | Lucide React | 1.16 |
 | Testing | Playwright | 1.60 |
+| WhatsApp Web | @whiskeysockets/baileys | 6.x |
+| QR Code | qrcode | 1.x |
 
 ---
 
@@ -124,7 +127,8 @@ windsurf-project/
 │   │   ├── admin/          # Admin portal (login, dashboard, CRM)
 │   │   │   ├── customers/      # Customer management + detail/garage
 │   │   │   ├── vehicles/       # Global vehicle directory
-│   │   │   └── dashboard/      # Overview with financial stats
+│   │   │   ├── dashboard/      # Overview with financial stats
+│   │   │   └── whatsapp/       # WhatsApp Web QR + reminder controls
 │   │   ├── api/            # REST API (v1)
 │   │   │   ├── auth/           # Login, logout, me
 │   │   │   └── v1/             # Versioned business endpoints
@@ -133,7 +137,9 @@ windsurf-project/
 │   │   │       ├── contact/    # Contact messages + soft delete
 │   │   │       ├── customers/  # Customer CRUD + pagination
 │   │   │       ├── products/   # Product CRUD + pagination
-│   │   │       └── vehicles/   # Vehicle CRUD + pagination
+│   │   │       ├── vehicles/   # Vehicle CRUD + pagination
+│   │   │       ├── whatsapp/   # WhatsApp status + disconnect
+│   │   │       └── cron/       # Scheduled reminder jobs
 │   │   ├── booking/        # Booking page
 │   │   ├── market/         # Product marketplace
 │   │   ├── layout.tsx      # Root layout (LanguageProvider)
@@ -148,7 +154,8 @@ windsurf-project/
 │   │   ├── sanitize.ts     # DOMPurify Zod helper
 │   │   ├── auth.ts         # JWT verification + role guards
 │   │   ├── rate-limit.ts   # API rate limiting
-│   │   └── security.ts   # CORS, CSP, security headers
+│   │   ├── security.ts     # CORS, CSP, security headers
+│   │   └── whatsapp.ts     # WhatsApp Web client (Baileys) singleton
 │   ├── types/              # Shared TypeScript types
 │   └── app/
 ├── docs/                   # Project documentation
@@ -169,6 +176,7 @@ windsurf-project/
 | `Transaction` | Cashier income/expense | `type`, `amount` (Decimal), `description` |
 | `Customer` | CRM customer profiles | `name`, `phone`, `email`, `address` |
 | `Vehicle` | Motorcycle registry | `make`, `model`, `year`, `chassisNumber`, `plateNumber`, `customerId` |
+| `ReminderLog` | WhatsApp reminder tracking | `customerId`, `phone`, `message`, `status`, `sentAt` |
 
 **Foundation fields on every model:** `id` (UUID), `createdAt`, `updatedAt`, `isDeleted`, `deletedAt`, `tenantId`
 
@@ -189,6 +197,9 @@ All business routes are versioned under `/api/v1/` and accessible via `/api/` re
 | `/api/v1/customers/[id]` | GET, PATCH, DELETE | Profile (with garage), update, soft delete |
 | `/api/v1/vehicles` | GET, POST | List (paginated, with owner) / Create vehicle |
 | `/api/v1/vehicles/[id]` | GET, PATCH, DELETE | Detail (with owner), update, soft delete |
+| `/api/v1/whatsapp/status` | GET | WhatsApp connection status + QR code |
+| `/api/v1/whatsapp/disconnect` | POST | Disconnect WhatsApp session |
+| `/api/v1/cron/reminders` | GET | Trigger maintenance reminder batch (anti-ban) |
 | `/api/auth/login` | POST | JWT authentication |
 | `/api/auth/logout` | POST | Clear auth cookie |
 | `/api/auth/me` | GET | Verify current session |

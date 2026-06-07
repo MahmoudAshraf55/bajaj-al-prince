@@ -9,7 +9,7 @@ import type { LucideIcon } from 'lucide-react';
 import {
   LayoutDashboard, Mail, Calendar, Package, Receipt, LogOut,
   Trash2, Search, Plus, Minus,
-  DollarSign, MessageSquare, Users, Car, List,
+  DollarSign, MessageSquare, Users, Car, List, MessageCircle,
 } from 'lucide-react';
 
 interface ContactMessage {
@@ -166,6 +166,13 @@ export default function AdminDashboard() {
           >
             <List className="w-4 h-4" />
             {t('admin_vehicle_models')}
+          </button>
+          <button
+            onClick={() => router.push('/admin/whatsapp/')}
+            className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-white/5 transition-all"
+          >
+            <MessageCircle className="w-4 h-4" />
+            {t('admin_whatsapp')}
           </button>
         </nav>
         <div className="p-4 border-t border-border">

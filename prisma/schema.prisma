@@ -249,3 +249,21 @@ model UniqueVisitor {
   @@index([isDeleted])
   @@index([tenantId])
 }
+
+model ReminderLog {
+  id         String   @id @default(uuid())
+  customerId String
+  bookingId  String?
+  phone      String
+  message    String
+  status     String   @default("sent")
+  sentAt     DateTime @default(now()) @db.Timestamp(6)
+  isDeleted  Boolean  @default(false)
+  deletedAt  DateTime? @db.Timestamp(6)
+  tenantId   String?
+
+  @@index([customerId])
+  @@index([sentAt])
+  @@index([isDeleted])
+  @@index([tenantId])
+}
