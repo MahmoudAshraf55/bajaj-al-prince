@@ -164,7 +164,12 @@ export default function CustomerDetailPage() {
         method: 'DELETE',
         credentials: 'include',
       });
-      const data = await res.json();
+      let data: { success?: boolean; error?: string } | null = null;
+      try {
+        data = await res.json();
+      } catch {
+        // response body is not valid JSON
+      }
       if (res.ok && data?.success) {
         addToast('success', t('crm_vehicle_removed'));
         await fetchCustomer();
@@ -229,7 +234,7 @@ export default function CustomerDetailPage() {
 
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
-      case 'approved': return 'bg-green-500/10 text-green-400 border-green-500/20';
+      case 'accepted': return 'bg-green-500/10 text-green-400 border-green-500/20';
       case 'completed': return 'bg-blue-500/10 text-blue-400 border-blue-500/20';
       case 'rejected': return 'bg-red-500/10 text-red-400 border-red-500/20';
       case 'pending': return 'bg-amber-500/10 text-amber-400 border-amber-500/20';
@@ -507,7 +512,7 @@ export default function CustomerDetailPage() {
                     </div>
                     <span className={`px-2.5 py-1 rounded-lg text-xs font-medium border ${getStatusColor(b.status)}`}>
                       {b.status === 'pending' && t('crm_status_pending')}
-                      {b.status === 'accepted' && t('crm_status_approved')}
+                      {b.status === 'accepted' && t('crm_status_accepted')}
                       {b.status === 'completed' && t('crm_status_completed')}
                       {b.status === 'rejected' && t('crm_status_rejected')}
                     </span>

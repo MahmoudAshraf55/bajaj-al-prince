@@ -292,7 +292,7 @@ export const translations = {
     crm_save_actual_issue: 'Save Actual Issue',
     crm_cancel: 'Cancel',
     crm_status_pending: 'Pending',
-    crm_status_approved: 'Approved',
+    crm_status_accepted: 'Accepted',
     crm_status_completed: 'Completed',
     crm_status_rejected: 'Rejected',
 
@@ -679,7 +679,7 @@ export const translations = {
     crm_save_actual_issue: 'حفظ المشكلة الفعلية',
     crm_cancel: 'إلغاء',
     crm_status_pending: 'معلق',
-    crm_status_approved: 'مقبول',
+    crm_status_accepted: 'مقبول',
     crm_status_completed: 'مكتمل',
     crm_status_rejected: 'مرفوض',
 
