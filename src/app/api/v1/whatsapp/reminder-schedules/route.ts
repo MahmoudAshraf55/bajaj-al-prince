@@ -14,9 +14,9 @@ const scheduleSchema = z.object({
 });
 
 const DEFAULT_SCHEDULES = [
-  { name: 'صيانة دورية', intervalDays: 30, message: 'مرحباً {{name}}، نود تذكيرك بموعد صيانة {{model}} في مركز باجاج الأمير. نتطلع لخدمتك قريباً! 🏍️', isActive: true },
-  { name: 'متابعة', intervalDays: 7, message: 'مرحباً {{name}}، نأمل أن صيانة {{model}} نالت إعجابك في مركز باجاج الأمير. نحن هنا دائماً لخدمتك! 🏍️', isActive: true },
-  { name: 'عرض خاص', intervalDays: 0, message: 'مرحباً {{name}}، لدينا عرض خاص على قطع الغيار لـ {{model}} في مركز باجاج الأمير. لا تفوت الفرصة! 🏍️💰', isActive: false },
+  { name: 'صيانة دورية', intervalDays: 30, message: 'مرحباً {{name}}، نود تذكيرك بموعد صيانة {{model}} في مركز باجاج البرنس. نتطلع لخدمتك قريباً! 🏍️', isActive: true },
+  { name: 'متابعة', intervalDays: 7, message: 'مرحباً {{name}}، نأمل أن صيانة {{model}} نالت إعجابك في مركز باجاج البرنس. نحن هنا دائماً لخدمتك! 🏍️', isActive: true },
+  { name: 'عرض خاص', intervalDays: 0, message: 'مرحباً {{name}}، لدينا عرض خاص على قطع الغيار لـ {{model}} في مركز باجاج البرنس. لا تفوت الفرصة! 🏍️💰', isActive: false },
 ];
 
 export async function GET(req: NextRequest) {
