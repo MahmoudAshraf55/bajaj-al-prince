@@ -252,6 +252,15 @@ export const translations = {
     wa_step_2: 'The system automatically finds customers whose last service was 30+ days ago.',
     wa_step_3: 'Messages are sent one by one with a random delay (60–120s) to avoid bans.',
     wa_step_4: 'A maximum of 50 messages are sent per day as a safety measure.',
+    wa_test_message: 'Send Test Message',
+    wa_test_phone: 'Phone Number',
+    wa_test_phone_placeholder: 'Enter phone number (e.g. 2010XXXXXXXX)',
+    wa_test_message_text: 'Message',
+    wa_test_message_placeholder: 'Type your message here...',
+    wa_test_send: 'Send Message',
+    wa_test_sent: 'Message sent successfully',
+    wa_test_failed: 'Failed to send message',
+    wa_test_fill_fields: 'Please fill in both phone and message fields',
 
     // CRM Customers
     crm_customer_management: 'Customer Management',
@@ -626,6 +635,15 @@ export const translations = {
     wa_step_2: 'يجد النظام تلقائياً العملاء الذين مر على صيانتهم الأخيرة 30+ يوماً.',
     wa_step_3: 'تُرسل الرسائل واحدة تلو الأخرى بتأخير عشوائي (60–120 ثانية) لتجنب الحظر.',
     wa_step_4: 'يُرسل كحد أقصى 50 رسالة يومياً كإجراء أمان.',
+    wa_test_message: 'إرسال رسالة تجريبية',
+    wa_test_phone: 'رقم الهاتف',
+    wa_test_phone_placeholder: 'أدخل رقم الهاتف (مثال: 2010XXXXXXXX)',
+    wa_test_message_text: 'نص الرسالة',
+    wa_test_message_placeholder: 'اكتب رسالتك هنا...',
+    wa_test_send: 'إرسال الرسالة',
+    wa_test_sent: 'تم إرسال الرسالة بنجاح',
+    wa_test_failed: 'فشل في إرسال الرسالة',
+    wa_test_fill_fields: 'يرجى ملء رقم الهاتف ونص الرسالة',
 
     // CRM Customers
     crm_customer_management: 'إدارة العملاء',

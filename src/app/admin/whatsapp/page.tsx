@@ -22,6 +22,8 @@ export default function WhatsAppAdminPage() {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [testPhone, setTestPhone] = useState('');
+  const [testMessage, setTestMessage] = useState('');
 
   const fetchStatus = useCallback(async () => {
     try {
@@ -78,6 +80,34 @@ export default function WhatsAppAdminPage() {
         showToast('success', `${t('wa_cron_success')}: ${data.data.sent}/${data.data.total}`);
       } else {
         showToast('error', data?.error || t('wa_cron_failed'));
+      }
+    } catch {
+      showToast('error', t('wa_network_error'));
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleSendTest = async () => {
+    if (!testPhone.trim() || !testMessage.trim()) {
+      showToast('error', t('wa_test_fill_fields'));
+      return;
+    }
+    setActionLoading(true);
+    try {
+      const res = await fetch('/api/v1/whatsapp/send/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ phone: testPhone.trim(), message: testMessage.trim() }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast('success', t('wa_test_sent'));
+        setTestPhone('');
+        setTestMessage('');
+      } else {
+        showToast('error', data?.error || t('wa_test_failed'));
       }
     } catch {
       showToast('error', t('wa_network_error'));
@@ -200,6 +230,50 @@ export default function WhatsAppAdminPage() {
             </p>
             <div className="inline-block p-4 bg-white rounded-2xl">
               <Image src={state.qrDataUrl} alt="WhatsApp QR Code" width={256} height={256} className="w-64 h-64" />
+            </div>
+          </motion.div>
+        )}
+
+        {/* Test Message Card */}
+        {state?.status === 'connected' && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="glass rounded-2xl p-6"
+          >
+            <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+              <Send className="w-4 h-4" />
+              {t('wa_test_message')}
+            </h2>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-sm font-medium text-muted-foreground mb-1.5">{t('wa_test_phone')}</label>
+                <input
+                  type="tel"
+                  value={testPhone}
+                  onChange={(e) => setTestPhone(e.target.value)}
+                  placeholder={t('wa_test_phone_placeholder')}
+                  className="w-full px-3 py-2 rounded-xl bg-secondary/50 border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-muted-foreground mb-1.5">{t('wa_test_message_text')}</label>
+                <textarea
+                  value={testMessage}
+                  onChange={(e) => setTestMessage(e.target.value)}
+                  placeholder={t('wa_test_message_placeholder')}
+                  rows={3}
+                  className="w-full px-3 py-2 rounded-xl bg-secondary/50 border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none"
+                />
+              </div>
+              <button
+                onClick={handleSendTest}
+                disabled={actionLoading || !testPhone.trim() || !testMessage.trim()}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Send className="w-4 h-4" />
+                {t('wa_test_send')}
+              </button>
             </div>
           </motion.div>
         )}
