@@ -79,19 +79,26 @@ export async function initializeWhatsApp(): Promise<void> {
       }
 
       if (connection === 'close') {
-        const shouldReconnect =
-          (lastDisconnect?.error as Boom)?.output?.statusCode !== DisconnectReason.loggedOut;
+        const boomError = lastDisconnect?.error as Boom | undefined;
+        const statusCode = boomError?.output?.statusCode;
+        const errorMessage = boomError?.message ?? '';
+
+        const isLoggedOut = statusCode === DisconnectReason.loggedOut;
+        const isConflict = errorMessage.toLowerCase().includes('conflict') || errorMessage.toLowerCase().includes('replaced');
 
         sock = null;
         state.status = 'disconnected';
         state.qrDataUrl = null;
 
-        if (shouldReconnect) {
-          if (reconnectTimer) clearTimeout(reconnectTimer);
-          reconnectTimer = setTimeout(() => initializeWhatsApp(), 5000);
-        } else {
+        if (isConflict) {
+          state.error = 'Your WhatsApp number is already connected from another device. Please disconnect the other session and scan QR again.';
+          cleanupAuthFolder();
+        } else if (isLoggedOut) {
           state.error = 'Session logged out. Please scan QR again.';
           cleanupAuthFolder();
+        } else {
+          if (reconnectTimer) clearTimeout(reconnectTimer);
+          reconnectTimer = setTimeout(() => initializeWhatsApp(), 5000);
         }
       }
     });
