@@ -6,7 +6,7 @@ import { useTranslation } from '@/components/useTranslation';
 import Image from 'next/image';
 import {
   MessageCircle, QrCode, Smartphone, Loader2, Unplug,
-  Send, RefreshCw, CheckCircle2, XCircle, AlertCircle, Settings,
+  Send, RefreshCw, CheckCircle2, XCircle, AlertCircle, Settings, Mail,
 } from 'lucide-react';
 
 interface WhatsAppState {
@@ -26,6 +26,9 @@ export default function WhatsAppAdminPage() {
   const [testMessage, setTestMessage] = useState('');
   const [settings, setSettings] = useState<{ delayMin: number; delayMax: number; dailyCap: number; batchSize: number } | null>(null);
   const [settingsLoading, setSettingsLoading] = useState(false);
+
+  const [templates, setTemplates] = useState<{ id: string; event: string; message: string; isActive: boolean }[]>([]);
+  const [templatesLoading, setTemplatesLoading] = useState(false);
 
   const fetchStatus = useCallback(async () => {
     try {
@@ -49,12 +52,23 @@ export default function WhatsAppAdminPage() {
     }
   }, []);
 
+  const fetchTemplates = useCallback(async () => {
+    try {
+      const res = await fetch('/api/v1/whatsapp/templates/', { credentials: 'include' });
+      const data = await res.json();
+      if (data.success) setTemplates(data.data);
+    } catch {
+      // ignore
+    }
+  }, []);
+
   useEffect(() => {
     fetchStatus();
     fetchSettings();
+    fetchTemplates();
     const interval = setInterval(fetchStatus, 5000);
     return () => clearInterval(interval);
-  }, [fetchStatus, fetchSettings]);
+  }, [fetchStatus, fetchSettings, fetchTemplates]);
 
   const showToast = (type: 'success' | 'error', message: string) => {
     setToast({ type, message });
@@ -122,6 +136,29 @@ export default function WhatsAppAdminPage() {
       showToast('error', t('wa_network_error'));
     } finally {
       setSettingsLoading(false);
+    }
+  };
+
+  const handleUpdateTemplate = async (id: string, updates: { message?: string; isActive?: boolean }) => {
+    setTemplatesLoading(true);
+    try {
+      const res = await fetch(`/api/v1/whatsapp/templates/?id=${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(updates),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setTemplates((prev) => prev.map((t) => (t.id === id ? data.data : t)));
+        showToast('success', t('wa_template_saved'));
+      } else {
+        showToast('error', data?.error || t('wa_template_failed'));
+      }
+    } catch {
+      showToast('error', t('wa_network_error'));
+    } finally {
+      setTemplatesLoading(false);
     }
   };
 
@@ -403,6 +440,53 @@ export default function WhatsAppAdminPage() {
                   className="w-full accent-emerald-500"
                 />
               </div>
+            </div>
+          </motion.div>
+        )}
+
+        {/* Message Templates Card */}
+        {templates.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="glass rounded-2xl p-6"
+          >
+            <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+              <Mail className="w-4 h-4" />
+              {t('wa_templates_title')}
+            </h2>
+            <div className="space-y-4">
+              {templates.map((tmpl) => (
+                <div key={tmpl.id} className="rounded-xl border border-border p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium capitalize">{tmpl.event.replace(/_/g, ' ')}</span>
+                    <label className="inline-flex items-center gap-2 cursor-pointer">
+                      <span className="text-xs text-muted-foreground">{t('wa_template_active')}</span>
+                      <input
+                        type="checkbox"
+                        checked={tmpl.isActive}
+                        disabled={templatesLoading}
+                        onChange={(e) => handleUpdateTemplate(tmpl.id, { isActive: e.target.checked })}
+                        className="accent-emerald-500 w-4 h-4"
+                      />
+                    </label>
+                  </div>
+                  <textarea
+                    value={tmpl.message}
+                    disabled={templatesLoading}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setTemplates((prev) => prev.map((t) => (t.id === tmpl.id ? { ...t, message: val } : t)));
+                    }}
+                    onBlur={(e) => handleUpdateTemplate(tmpl.id, { message: e.target.value })}
+                    rows={3}
+                    className="w-full px-3 py-2 rounded-xl bg-secondary/50 border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    {t('wa_template_vars')}: {`{{name}}`}, {`{{model}}`}, {`{{date}}`}, {`{{time}}`}, {`{{issue}}`}, {`{{make}}`}
+                  </p>
+                </div>
+              ))}
             </div>
           </motion.div>
         )}

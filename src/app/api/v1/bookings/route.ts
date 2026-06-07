@@ -5,6 +5,7 @@ import { checkRateLimit } from '@/lib/rate-limit';
 import { validateOrigin, withSecurityHeaders } from '@/lib/security';
 import { logAudit, getClientInfo } from '@/lib/audit';
 import { sendWhatsAppMessageViaService } from '@/lib/whatsapp-client';
+import { buildMessage } from '@/lib/whatsapp-templates';
 import { Prisma } from '@prisma/client';
 import { sanitizedString } from '@/lib/sanitize';
 import { z } from 'zod';
@@ -178,10 +179,16 @@ export async function POST(req: NextRequest) {
     });
 
     // Fire-and-forget WhatsApp confirmation
-    sendWhatsAppMessageViaService(
-      data.phone,
-      `مرحباً ${data.name}، تم استلام حجزك في مركز باجاج الأمير.\nالموديل: ${data.model}\nالتاريخ: ${data.date}\nالوقت: ${data.time}\nنتطلع لخدمتك! 🏍️`
-    ).catch(() => {});
+    buildMessage('booking_created', {
+      name: data.name,
+      model: data.model,
+      date: data.date,
+      time: data.time,
+    }).then((message) => {
+      if (message) {
+        sendWhatsAppMessageViaService(data.phone, message).catch(() => {});
+      }
+    });
 
     return withSecurityHeaders(NextResponse.json({ success: true, data: { booking } }, { status: 201 }));
   } catch (error) {

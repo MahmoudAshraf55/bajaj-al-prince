@@ -279,3 +279,14 @@ model WhatsAppSettings {
 
   @@index([tenantId])
 }
+
+model WhatsAppMessageTemplate {
+  id        String   @id @default(cuid())
+  event     String   @unique // e.g. booking_created, booking_accepted, booking_rejected, booking_completed, issue_changed, vehicle_added
+  message   String
+  isActive  Boolean  @default(true)
+  updatedAt DateTime @updatedAt @db.Timestamp(6)
+  tenantId  String?
+
+  @@index([tenantId])
+}

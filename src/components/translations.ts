@@ -268,6 +268,11 @@ export const translations = {
     wa_settings_batch_size: 'Batch Size Per Run',
     wa_settings_saved: 'Settings saved',
     wa_settings_failed: 'Failed to save settings',
+    wa_templates_title: 'Auto Message Templates',
+    wa_template_active: 'Active',
+    wa_template_vars: 'Available variables',
+    wa_template_saved: 'Template saved',
+    wa_template_failed: 'Failed to save template',
 
     // CRM Customers
     crm_customer_management: 'Customer Management',
@@ -658,6 +663,11 @@ export const translations = {
     wa_settings_batch_size: 'حجم الدفعة في كل تشغيل',
     wa_settings_saved: 'تم حفظ الإعدادات',
     wa_settings_failed: 'فشل في حفظ الإعدادات',
+    wa_templates_title: 'قوالب الرسائل التلقائية',
+    wa_template_active: 'نشط',
+    wa_template_vars: 'المتغيرات المتاحة',
+    wa_template_saved: 'تم حفظ القالب',
+    wa_template_failed: 'فشل في حفظ القالب',
 
     // CRM Customers
     crm_customer_management: 'إدارة العملاء',

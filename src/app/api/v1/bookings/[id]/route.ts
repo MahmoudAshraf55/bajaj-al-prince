@@ -4,6 +4,7 @@ import { requireRole } from '@/lib/auth';
 import { checkRateLimit } from '@/lib/rate-limit';
 import { logAudit, getClientInfo, type AuditAction } from '@/lib/audit';
 import { sendWhatsAppMessageViaService } from '@/lib/whatsapp-client';
+import { buildMessage, type EventKey } from '@/lib/whatsapp-templates';
 import { z } from 'zod';
 import { withSecurityHeaders } from '@/lib/security';
 
@@ -55,18 +56,31 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
     // Fire-and-forget WhatsApp status notification
     if (oldBooking && oldBooking.phone) {
-      let message: string | null = null;
-      if (data.status === 'accepted') {
-        message = `مرحباً ${oldBooking.name}، تم قبول حجزك في مركز باجاج الأمير.\nالموديل: ${oldBooking.model}\nالتاريخ: ${oldBooking.date}\nالوقت: ${oldBooking.time}\nننتظرك! 🏍️`;
-      } else if (data.status === 'rejected') {
-        message = `مرحباً ${oldBooking.name}، نعتذر، تم رفض حجزك في مركز باجاج الأمير.\nالموديل: ${oldBooking.model}\nيرجى التواصل معنا لإعادة جدولة الموعد.`;
-      } else if (data.status === 'completed') {
-        message = `مرحباً ${oldBooking.name}، تم إنجاز صيانة ${oldBooking.model} بنجاح في مركز باجاج الأمير. شكراً لثقتك! 🏍️✅`;
+      const eventMap: Record<string, EventKey> = {
+        accepted: 'booking_accepted',
+        rejected: 'booking_rejected',
+        completed: 'booking_completed',
+      };
+
+      let event: EventKey | null = null;
+      if (data.status && eventMap[data.status]) {
+        event = eventMap[data.status];
       } else if (data.issue !== undefined && data.issue !== oldBooking.issue) {
-        message = `مرحباً ${oldBooking.name}، تم تحديث وصف المشكلة لحجزك في مركز باجاج الأمير.\nالمشكلة الجديدة: ${data.issue}`;
+        event = 'issue_changed';
       }
-      if (message) {
-        sendWhatsAppMessageViaService(oldBooking.phone, message).catch(() => {});
+
+      if (event) {
+        buildMessage(event, {
+          name: oldBooking.name,
+          model: oldBooking.model,
+          date: oldBooking.date,
+          time: oldBooking.time,
+          issue: data.issue ?? oldBooking.issue ?? '',
+        }).then((message) => {
+          if (message) {
+            sendWhatsAppMessageViaService(oldBooking.phone!, message).catch(() => {});
+          }
+        });
       }
     }
 

@@ -5,6 +5,7 @@ import { checkRateLimit } from '@/lib/rate-limit';
 import { sanitizedString } from '@/lib/sanitize';
 import { logAudit, getClientInfo } from '@/lib/audit';
 import { sendWhatsAppMessageViaService } from '@/lib/whatsapp-client';
+import { buildMessage } from '@/lib/whatsapp-templates';
 import { Prisma } from '@prisma/client';
 import { z } from 'zod';
 import { withSecurityHeaders } from '@/lib/security';
@@ -67,10 +68,15 @@ export async function POST(req: NextRequest) {
 
     // Fire-and-forget WhatsApp vehicle added notification
     if (vehicle.customer?.phone) {
-      sendWhatsAppMessageViaService(
-        vehicle.customer.phone,
-        `مرحباً ${vehicle.customer.name}، تم إضافة مركبة جديدة لملفك في مركز باجاج الأمير.\nالماركة: ${vehicle.make}\nالموديل: ${vehicle.model}\nنتطلع لخدمتك! 🏍️`
-      ).catch(() => {});
+      buildMessage('vehicle_added', {
+        name: vehicle.customer.name,
+        make: vehicle.make,
+        model: vehicle.model,
+      }).then((message) => {
+        if (message) {
+          sendWhatsAppMessageViaService(vehicle.customer!.phone!, message).catch(() => {});
+        }
+      });
     }
 
     return withSecurityHeaders(NextResponse.json({ success: true, data: { vehicle } }, { status: 201 }));
