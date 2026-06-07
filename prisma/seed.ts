@@ -43,6 +43,25 @@ async function main() {
     });
   }
   console.log('Default vehicle models seeded');
+
+  // Seed default WhatsApp message templates
+  const defaultTemplates = [
+    { event: 'booking_created', message: 'مرحباً {{name}}، تم استلام حجزك في مركز باجاج الأمير.\nالموديل: {{model}}\nالتاريخ: {{date}}\nالوقت: {{time}}\nنتطلع لخدمتك! 🏍️' },
+    { event: 'booking_accepted', message: 'مرحباً {{name}}، تم قبول حجزك في مركز باجاج الأمير.\nالموديل: {{model}}\nالتاريخ: {{date}}\nالوقت: {{time}}\nننتظرك! 🏍️' },
+    { event: 'booking_rejected', message: 'مرحباً {{name}}، نعتذر، تم رفض حجزك في مركز باجاج الأمير.\nالموديل: {{model}}\nيرجى التواصل معنا لإعادة جدولة الموعد.' },
+    { event: 'booking_completed', message: 'مرحباً {{name}}، تم إنجاز صيانة {{model}} بنجاح في مركز باجاج الأمير. شكراً لثقتك! 🏍️✅' },
+    { event: 'issue_changed', message: 'مرحباً {{name}}، تم تحديث وصف المشكلة لحجزك في مركز باجاج الأمير.\nالمشكلة الجديدة: {{issue}}' },
+    { event: 'vehicle_added', message: 'مرحباً {{name}}، تم إضافة مركبة جديدة لملفك في مركز باجاج الأمير.\nالماركة: {{make}}\nالموديل: {{model}}\nنتطلع لخدمتك! 🏍️' },
+  ];
+
+  for (const tmpl of defaultTemplates) {
+    await prisma.whatsAppMessageTemplate.upsert({
+      where: { event: tmpl.event },
+      update: {},
+      create: { event: tmpl.event, message: tmpl.message, isActive: true },
+    });
+  }
+  console.log('Default WhatsApp templates seeded');
 }
 
 main()
