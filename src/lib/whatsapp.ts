@@ -134,7 +134,7 @@ export async function disconnectWhatsApp(): Promise<void> {
     sock = null;
   }
   cleanupAuthFolder();
-  state.status = 'disconnected';
+  state.status = 'initializing';
   state.qrDataUrl = null;
   state.phone = null;
   state.error = null;
