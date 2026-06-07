@@ -87,27 +87,38 @@ export async function GET(req: NextRequest) {
     let totalSent = 0;
 
     for (const schedule of schedules) {
-      if (schedule.intervalDays <= 0) continue; // skip manual/broadcast schedules
+      let eligible;
+      let remindedIds: Set<string>;
 
-      const cutoffDate = new Date();
-      cutoffDate.setDate(cutoffDate.getDate() - schedule.intervalDays);
+      if (schedule.intervalDays === 0) {
+        // Broadcast mode: send to ALL active customers
+        eligible = customers;
 
-      const eligible = customers.filter((c) => {
-        const b = c.bookings[0];
-        if (!b) return false;
-        const d = new Date(b.date);
-        return !isNaN(d.getTime()) && d <= cutoffDate;
-      });
+        // Exclude customers who already received a reminder today (any schedule)
+        const todayReminders = await prisma.reminderLog.findMany({
+          where: { sentAt: { gte: todayStart }, isDeleted: false },
+          select: { customerId: true },
+        });
+        remindedIds = new Set(todayReminders.map((r) => r.customerId));
+      } else {
+        // Follow-up mode: send to customers whose last completed booking was >= intervalDays ago
+        const cutoffDate = new Date();
+        cutoffDate.setDate(cutoffDate.getDate() - schedule.intervalDays);
 
-      // Exclude customers reminded within the same interval period
-      const recentReminders = await prisma.reminderLog.findMany({
-        where: {
-          sentAt: { gte: cutoffDate },
-          isDeleted: false,
-        },
-        select: { customerId: true },
-      });
-      const remindedIds = new Set(recentReminders.map((r) => r.customerId));
+        eligible = customers.filter((c) => {
+          const b = c.bookings[0];
+          if (!b) return false;
+          const d = new Date(b.date);
+          return !isNaN(d.getTime()) && d <= cutoffDate;
+        });
+
+        const recentReminders = await prisma.reminderLog.findMany({
+          where: { sentAt: { gte: cutoffDate }, isDeleted: false },
+          select: { customerId: true },
+        });
+        remindedIds = new Set(recentReminders.map((r) => r.customerId));
+      }
+
       const targets = eligible.filter((c) => !remindedIds.has(c.id));
 
       const remainingToday = DAILY_CAP - todayCount - totalSent;
