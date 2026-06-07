@@ -148,7 +148,7 @@ export default function BookingPage() {
                     type="text"
                     value={form.name}
                     onChange={(e) => {
-                      const clean = e.target.value.replace(/[^a-zA-Z\s]/g, '');
+                      const clean = e.target.value.replace(/[^\p{L}\s'-]/gu, '');
                       setForm({ ...form, name: clean });
                     }}
                     className="w-full px-4 py-3 rounded-xl bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
