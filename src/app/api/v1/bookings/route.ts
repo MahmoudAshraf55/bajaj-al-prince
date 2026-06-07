@@ -4,6 +4,7 @@ import { requireAuth } from '@/lib/auth';
 import { checkRateLimit } from '@/lib/rate-limit';
 import { validateOrigin, withSecurityHeaders } from '@/lib/security';
 import { logAudit, getClientInfo } from '@/lib/audit';
+import { sendWhatsAppMessageViaService } from '@/lib/whatsapp-client';
 import { Prisma } from '@prisma/client';
 import { sanitizedString } from '@/lib/sanitize';
 import { z } from 'zod';
@@ -175,6 +176,12 @@ export async function POST(req: NextRequest) {
       ipAddress,
       userAgent,
     });
+
+    // Fire-and-forget WhatsApp confirmation
+    sendWhatsAppMessageViaService(
+      data.phone,
+      `مرحباً ${data.name}، تم استلام حجزك في مركز باجاج الأمير.\nالموديل: ${data.model}\nالتاريخ: ${data.date}\nالوقت: ${data.time}\nنتطلع لخدمتك! 🏍️`
+    ).catch(() => {});
 
     return withSecurityHeaders(NextResponse.json({ success: true, data: { booking } }, { status: 201 }));
   } catch (error) {

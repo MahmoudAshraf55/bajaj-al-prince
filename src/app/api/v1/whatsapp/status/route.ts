@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireRole } from '@/lib/auth';
 import { checkRateLimit } from '@/lib/rate-limit';
 import { withSecurityHeaders } from '@/lib/security';
-import { getWhatsAppState, ensureInitialized } from '@/lib/whatsapp';
+import { getWhatsAppStateFromService } from '@/lib/whatsapp-client';
 
 export async function GET(req: NextRequest) {
   const limit = await checkRateLimit(req, 'admin');
@@ -10,8 +10,7 @@ export async function GET(req: NextRequest) {
 
   try {
     await requireRole(req, ['admin', 'staff']);
-    ensureInitialized();
-    const state = getWhatsAppState();
+    const state = await getWhatsAppStateFromService();
     return withSecurityHeaders(NextResponse.json({ success: true, data: state }));
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unauthorized';

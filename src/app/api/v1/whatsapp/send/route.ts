@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireRole } from '@/lib/auth';
 import { checkRateLimit } from '@/lib/rate-limit';
 import { withSecurityHeaders } from '@/lib/security';
-import { sendWhatsAppMessage, getWhatsAppState } from '@/lib/whatsapp';
+import { sendWhatsAppMessageViaService, getWhatsAppStateFromService } from '@/lib/whatsapp-client';
 import { z } from 'zod';
 
 const sendSchema = z.object({
@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
   try {
     await requireRole(req, ['admin', 'staff']);
 
-    const waState = getWhatsAppState();
+    const waState = await getWhatsAppStateFromService();
     if (waState.status !== 'connected') {
       return withSecurityHeaders(NextResponse.json({ success: false, error: 'WhatsApp not connected' }, { status: 503 }));
     }
@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const data = sendSchema.parse(body);
 
-    const result = await sendWhatsAppMessage(data.phone, data.message);
+    const result = await sendWhatsAppMessageViaService(data.phone, data.message);
 
     if (result.success) {
       return withSecurityHeaders(NextResponse.json({ success: true, data: { sent: true } }));

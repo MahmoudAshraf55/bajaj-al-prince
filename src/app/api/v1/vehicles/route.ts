@@ -4,6 +4,7 @@ import { requireRole } from '@/lib/auth';
 import { checkRateLimit } from '@/lib/rate-limit';
 import { sanitizedString } from '@/lib/sanitize';
 import { logAudit, getClientInfo } from '@/lib/audit';
+import { sendWhatsAppMessageViaService } from '@/lib/whatsapp-client';
 import { Prisma } from '@prisma/client';
 import { z } from 'zod';
 import { withSecurityHeaders } from '@/lib/security';
@@ -52,7 +53,7 @@ export async function POST(req: NextRequest) {
     const payload = await requireRole(req, ['admin', 'staff']);
     const body = await req.json();
     const data = vehicleSchema.parse(body);
-    const vehicle = await prisma.vehicle.create({ data });
+    const vehicle = await prisma.vehicle.create({ data, include: { customer: true } });
     const { ipAddress, userAgent } = getClientInfo(req);
     await logAudit({
       userId: payload.userId,
@@ -63,6 +64,15 @@ export async function POST(req: NextRequest) {
       ipAddress,
       userAgent,
     });
+
+    // Fire-and-forget WhatsApp vehicle added notification
+    if (vehicle.customer?.phone) {
+      sendWhatsAppMessageViaService(
+        vehicle.customer.phone,
+        `مرحباً ${vehicle.customer.name}، تم إضافة مركبة جديدة لملفك في مركز باجاج الأمير.\nالماركة: ${vehicle.make}\nالموديل: ${vehicle.model}\nنتطلع لخدمتك! 🏍️`
+      ).catch(() => {});
+    }
+
     return withSecurityHeaders(NextResponse.json({ success: true, data: { vehicle } }, { status: 201 }));
   } catch (error) {
     if (error instanceof z.ZodError) {

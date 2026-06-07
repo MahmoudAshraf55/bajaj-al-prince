@@ -1,29 +1,30 @@
-import makeWASocket, { DisconnectReason, useMultiFileAuthState, type WASocket } from '@whiskeysockets/baileys';
+import express from 'express';
+import cors from 'cors';
+import makeWASocket, { DisconnectReason, useMultiFileAuthState } from '@whiskeysockets/baileys';
 import { Boom } from '@hapi/boom';
 import QRCode from 'qrcode';
 import path from 'path';
 import fs from 'fs';
+import { fileURLToPath } from 'url';
 
-const AUTH_FOLDER = path.join(process.cwd(), '.baileys_auth');
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
-export type WhatsAppStatus = 'initializing' | 'qr' | 'connecting' | 'connected' | 'disconnected';
+const AUTH_FOLDER = path.join(__dirname, '.baileys_auth');
+const PORT = process.env.WHATSAPP_SERVICE_PORT || 3001;
 
-interface WhatsAppState {
-  status: WhatsAppStatus;
-  qrDataUrl: string | null;
-  phone: string | null;
-  error: string | null;
-}
+const app = express();
+app.use(cors());
+app.use(express.json());
 
-const state: WhatsAppState = {
+let sock = null;
+let reconnectTimer = null;
+let state = {
   status: 'initializing',
   qrDataUrl: null,
   phone: null,
   error: null,
 };
-
-let sock: WASocket | null = null;
-let reconnectTimer: NodeJS.Timeout | null = null;
 
 function ensureAuthFolder() {
   if (!fs.existsSync(AUTH_FOLDER)) {
@@ -31,11 +32,11 @@ function ensureAuthFolder() {
   }
 }
 
-async function generateQR(qr: string): Promise<string> {
+async function generateQR(qr) {
   return QRCode.toDataURL(qr, { width: 256, margin: 2, type: 'image/png' });
 }
 
-export async function initializeWhatsApp(): Promise<void> {
+async function initializeWhatsApp() {
   if (sock) return;
   if (state.status === 'connecting') return;
 
@@ -44,7 +45,6 @@ export async function initializeWhatsApp(): Promise<void> {
   state.error = null;
 
   try {
-    // eslint-disable-next-line react-hooks/rules-of-hooks -- useMultiFileAuthState is a Baileys utility, not a React hook
     const { state: authState, saveCreds } = await useMultiFileAuthState(AUTH_FOLDER);
 
     const socket = makeWASocket({
@@ -79,7 +79,7 @@ export async function initializeWhatsApp(): Promise<void> {
       }
 
       if (connection === 'close') {
-        const boomError = lastDisconnect?.error as Boom | undefined;
+        const boomError = lastDisconnect?.error;
         const statusCode = boomError?.output?.statusCode;
         const errorMessage = boomError?.message ?? '';
 
@@ -104,9 +104,8 @@ export async function initializeWhatsApp(): Promise<void> {
       }
     });
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Unknown error';
     state.status = 'disconnected';
-    state.error = message;
+    state.error = err.message || 'Unknown error';
     sock = null;
   }
 }
@@ -117,11 +116,11 @@ function cleanupAuthFolder() {
       fs.rmSync(AUTH_FOLDER, { recursive: true, force: true });
     }
   } catch {
-    // ignore cleanup errors
+    // ignore
   }
 }
 
-export async function disconnectWhatsApp(): Promise<void> {
+async function disconnectWhatsApp() {
   if (reconnectTimer) {
     clearTimeout(reconnectTimer);
     reconnectTimer = null;
@@ -130,7 +129,7 @@ export async function disconnectWhatsApp(): Promise<void> {
     try {
       await sock.logout();
     } catch {
-      // ignore logout errors
+      // ignore
     }
     sock = null;
   }
@@ -141,30 +140,42 @@ export async function disconnectWhatsApp(): Promise<void> {
   state.error = null;
 }
 
-export function getWhatsAppState(): WhatsAppState {
-  return { ...state };
-}
+// API Routes
+app.get('/status', (req, res) => {
+  if (state.status === 'initializing' && !sock) {
+    initializeWhatsApp().catch(() => {});
+  }
+  res.json({ success: true, data: { ...state } });
+});
 
-export async function sendWhatsAppMessage(phone: string, text: string): Promise<{ success: boolean; error?: string }> {
+app.post('/disconnect', async (req, res) => {
+  await disconnectWhatsApp();
+  res.json({ success: true });
+});
+
+app.post('/send', async (req, res) => {
   if (!sock || state.status !== 'connected') {
-    return { success: false, error: 'WhatsApp is not connected' };
+    return res.status(503).json({ success: false, error: 'WhatsApp not connected' });
   }
 
   try {
-    const jid = `${phone.replace(/\D/g, '')}@s.whatsapp.net`;
-    await sock.sendMessage(jid, { text });
-    return { success: true };
-  } catch (err) {
-    const message = err instanceof Error ? err.message : 'Failed to send message';
-    return { success: false, error: message };
-  }
-}
+    const { phone, message } = req.body;
+    if (!phone || !message) {
+      return res.status(400).json({ success: false, error: 'phone and message are required' });
+    }
 
-// Lazy initialization — don't auto-start to avoid unnecessary overhead
-export function ensureInitialized(): void {
-  if (!sock && state.status === 'initializing') {
-    initializeWhatsApp().catch(() => {
-      // initialization errors are handled in state
-    });
+    const jid = `${phone.replace(/\D/g, '')}@s.whatsapp.net`;
+    await sock.sendMessage(jid, { text: message });
+    res.json({ success: true, data: { sent: true } });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message || 'Failed to send message' });
   }
-}
+});
+
+app.get('/health', (req, res) => {
+  res.json({ success: true, status: 'ok' });
+});
+
+app.listen(PORT, () => {
+  console.log(`[WhatsApp Service] Running on http://localhost:${PORT}`);
+});

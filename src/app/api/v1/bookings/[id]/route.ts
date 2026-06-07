@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { requireRole } from '@/lib/auth';
 import { checkRateLimit } from '@/lib/rate-limit';
 import { logAudit, getClientInfo, type AuditAction } from '@/lib/audit';
+import { sendWhatsAppMessageViaService } from '@/lib/whatsapp-client';
 import { z } from 'zod';
 import { withSecurityHeaders } from '@/lib/security';
 
@@ -51,6 +52,24 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       ipAddress,
       userAgent,
     });
+
+    // Fire-and-forget WhatsApp status notification
+    if (oldBooking && oldBooking.phone) {
+      let message: string | null = null;
+      if (data.status === 'accepted') {
+        message = `مرحباً ${oldBooking.name}، تم قبول حجزك في مركز باجاج الأمير.\nالموديل: ${oldBooking.model}\nالتاريخ: ${oldBooking.date}\nالوقت: ${oldBooking.time}\nننتظرك! 🏍️`;
+      } else if (data.status === 'rejected') {
+        message = `مرحباً ${oldBooking.name}، نعتذر، تم رفض حجزك في مركز باجاج الأمير.\nالموديل: ${oldBooking.model}\nيرجى التواصل معنا لإعادة جدولة الموعد.`;
+      } else if (data.status === 'completed') {
+        message = `مرحباً ${oldBooking.name}، تم إنجاز صيانة ${oldBooking.model} بنجاح في مركز باجاج الأمير. شكراً لثقتك! 🏍️✅`;
+      } else if (data.issue !== undefined && data.issue !== oldBooking.issue) {
+        message = `مرحباً ${oldBooking.name}، تم تحديث وصف المشكلة لحجزك في مركز باجاج الأمير.\nالمشكلة الجديدة: ${data.issue}`;
+      }
+      if (message) {
+        sendWhatsAppMessageViaService(oldBooking.phone, message).catch(() => {});
+      }
+    }
+
     return withSecurityHeaders(NextResponse.json({ success: true, data: { booking } }));
   } catch (error) {
     if (error instanceof z.ZodError) {

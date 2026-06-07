@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { requireRole } from '@/lib/auth';
 import { checkRateLimit } from '@/lib/rate-limit';
 import { withSecurityHeaders } from '@/lib/security';
-import { sendWhatsAppMessage, getWhatsAppState } from '@/lib/whatsapp';
+import { sendWhatsAppMessageViaService, getWhatsAppStateFromService } from '@/lib/whatsapp-client';
 import { logAudit, getClientInfo } from '@/lib/audit';
 
 function sleep(ms: number): Promise<void> {
@@ -31,7 +31,7 @@ export async function GET(req: NextRequest) {
   try {
     await requireRole(req, ['admin']);
 
-    const state = getWhatsAppState();
+    const state = await getWhatsAppStateFromService();
     if (state.status !== 'connected') {
       return withSecurityHeaders(NextResponse.json({ success: false, error: 'WhatsApp not connected' }, { status: 503 }));
     }
@@ -102,7 +102,7 @@ export async function GET(req: NextRequest) {
       const model = vehicle ? `${vehicle.make} ${vehicle.model}` : 'دراجتك';
       const message = `مرحباً ${customer.name}، نود تذكيرك بموعد صيانة ${model} في مركز باجاج الأمير. نتطلع لخدمتك قريباً! 🏍️`;
 
-      const sendResult = await sendWhatsAppMessage(customer.phone, message);
+      const sendResult = await sendWhatsAppMessageViaService(customer.phone, message);
 
       await prisma.reminderLog.create({
         data: {
