@@ -89,6 +89,7 @@ export async function initializeWhatsApp(): Promise<void> {
         sock = null;
         state.status = 'disconnected';
         state.qrDataUrl = null;
+        state.phone = null;
 
         if (isConflict) {
           state.error = 'Your WhatsApp number is already connected from another device. Please disconnect the other session and scan QR again.';

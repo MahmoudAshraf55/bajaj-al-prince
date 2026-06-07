@@ -152,7 +152,7 @@ export default function WhatsAppAdminPage() {
                 </p>
               )}
 
-              {state?.error && (
+              {state?.error && state.status !== 'connected' && (
                 <p className="text-sm text-red-400 flex items-center gap-1">
                   <AlertCircle className="w-3.5 h-3.5" />
                   {state.error}
