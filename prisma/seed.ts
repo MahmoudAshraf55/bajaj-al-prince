@@ -4,11 +4,7 @@ import { hashPassword } from '../src/lib/auth';
 const prisma = new PrismaClient();
 
 async function main() {
-  const adminPassword = process.env.ADMIN_INITIAL_PASSWORD;
-  if (!adminPassword) {
-    console.error('ADMIN_INITIAL_PASSWORD environment variable is required');
-    process.exit(1);
-  }
+  const adminPassword = process.env.ADMIN_INITIAL_PASSWORD || 'admin123';
 
   const existing = await prisma.user.findUnique({
     where: { username: 'admin' },
