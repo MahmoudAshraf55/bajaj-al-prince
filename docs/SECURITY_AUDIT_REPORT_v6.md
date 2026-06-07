@@ -127,12 +127,14 @@
   - `crm_status_pending` / `accepted` / `completed` / `rejected`
 
 ### ٣.٦. إصلاح عيب إزالة المركبات (Vehicle Removal Bug Fix)
-- **الملف:** `@/src/app/admin/customers/[id]/page.tsx`
-- **المشكلة السابقة:** كان `handleDeleteVehicle` يستدعي `fetchCustomer()` دون `await`، مما تسبب في سباق بيانات (Race Condition). كما لم يكن الرد JSON مُحللاً.
+- **الملف:** `@/src/app/admin/customers/[id]/page.tsx` + `@/src/app/api/v1/customers/[id]/route.ts` + `@/src/app/api/v1/bookings/route.ts`
+- **المشكلة السابقة:** كان `handleDeleteVehicle` يستدعي `fetchCustomer()` دون `await`، مما تسبب في سباق بيانات (Race Condition). كما لم يكن الرد JSON مُحللاً. ولكن المشكلة الجذرية الأهم: **Prisma `include` يستخدم SQL JOINs وليس `findMany` منفصلة**، فامتداد الـ middleware الخاص بـ `$allModels.findMany` لا يُطبق على العلاقات المتداخلة. هذا يعني أن المركبة المحذوفة برمجياً (`isDeleted: true`) كانت لا تزال تظهر في سجل العميل.
 - **الحل:**
   1. `await fetchCustomer()` بعد نجاح الحذف.
   2. تحليل JSON الرد (`const data = await res.json()`) والتحقق من `data?.success`.
   3. عرض رسالة الخطأ القادمة من الخادم (`data?.error`).
+  4. **إضافة `where: { isDeleted: false }` صراحةً في جميع `include` لـ `vehicles` و `bookings` و `vehicle` داخل الحجوزات في `@/src/app/api/v1/customers/[id]/route.ts`.**
+  5. **تطبيق نفس الإصلاح على `@/src/app/api/v1/bookings/route.ts` للـ `customer` و `vehicle` includes.**
 
 ### ٣.٧. توحيد الحالة `accepted` عبر النظام (Status Naming Consistency Fix)
 - **الملفات المتأثرة:**

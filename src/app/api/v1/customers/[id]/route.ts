@@ -22,10 +22,11 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     const customer = await prisma.customer.findFirst({
       where: { id },
       include: {
-        vehicles: true,
+        vehicles: { where: { isDeleted: false } },
         bookings: {
+          where: { isDeleted: false },
           orderBy: { date: 'desc' },
-          include: { vehicle: true },
+          include: { vehicle: { where: { isDeleted: false } } },
         },
       },
     });

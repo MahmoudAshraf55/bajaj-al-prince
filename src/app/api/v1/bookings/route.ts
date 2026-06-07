@@ -204,7 +204,10 @@ export async function GET(req: NextRequest) {
         skip,
         take: limit,
         orderBy: { createdAt: 'desc' },
-        include: { customer: true, vehicle: true },
+        include: {
+          customer: { where: { isDeleted: false } },
+          vehicle: { where: { isDeleted: false } },
+        },
       } as Parameters<typeof prisma.booking.findMany>[0]),
       prisma.booking.count(),
     ]);
