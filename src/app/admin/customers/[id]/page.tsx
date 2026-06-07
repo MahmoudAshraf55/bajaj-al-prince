@@ -5,10 +5,11 @@ import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from '@/components/useTranslation';
-import type { Customer, Vehicle, VehicleModel } from '@/types';
+import type { Customer, Vehicle, VehicleModel, Booking } from '@/types';
 import {
   ArrowLeft, User, Phone, Mail, MapPin, Car, Plus, Calendar,
   AlertCircle, CheckCircle2, X, Hash, Gauge, Pencil, ChevronDown,
+  Wrench, ClipboardList, Clock, Bell,
 } from 'lucide-react';
 
 interface Toast {
@@ -167,6 +168,31 @@ export default function CustomerDetailPage() {
     } catch {
       addToast('error', t('crm_network_error'));
     }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status.toLowerCase()) {
+      case 'approved': return 'bg-green-500/10 text-green-400 border-green-500/20';
+      case 'completed': return 'bg-blue-500/10 text-blue-400 border-blue-500/20';
+      case 'rejected': return 'bg-red-500/10 text-red-400 border-red-500/20';
+      case 'pending': return 'bg-amber-500/10 text-amber-400 border-amber-500/20';
+      default: return 'bg-muted text-muted-foreground border-border';
+    }
+  };
+
+  const getNextVisitDate = (bookings: Booking[]) => {
+    if (!bookings || bookings.length === 0) return null;
+    const lastDate = bookings[0].date;
+    const nextDate = new Date(lastDate);
+    nextDate.setDate(nextDate.getDate() + 30);
+    return nextDate.toISOString().split('T')[0];
+  };
+
+  const isOverdue = (nextDateStr: string) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const nextDate = new Date(nextDateStr);
+    return nextDate < today;
   };
 
   if (loading) {
@@ -345,6 +371,112 @@ export default function CustomerDetailPage() {
               >
                 {t('crm_add_first_vehicle')}
               </button>
+            </div>
+          )}
+        </div>
+
+        {/* Service History */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-bold flex items-center gap-2">
+              <ClipboardList className="w-5 h-5 text-primary" />
+              Service History ({customer?.bookings?.length ?? 0})
+            </h3>
+            {customer?.bookings && customer.bookings.length > 0 && (
+              <div className="flex items-center gap-2">
+                <Bell className="w-4 h-4 text-primary" />
+                <span className="text-xs text-muted-foreground">
+                  Next visit: <span className="text-primary font-medium">{getNextVisitDate(customer.bookings)}</span>
+                </span>
+              </div>
+            )}
+          </div>
+
+          {/* Next Visit Alert Card */}
+          {customer?.bookings && customer.bookings.length > 0 && (() => {
+            const nextDate = getNextVisitDate(customer.bookings);
+            if (!nextDate) return null;
+            const overdue = isOverdue(nextDate);
+            return (
+              <div className={`rounded-2xl p-4 border flex items-center gap-3 ${
+                overdue
+                  ? 'bg-red-500/5 border-red-500/20'
+                  : 'bg-primary/5 border-primary/20'
+              }`}>
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                  overdue ? 'bg-red-500/10' : 'bg-primary/10'
+                }`}>
+                  <Calendar className={`w-5 h-5 ${overdue ? 'text-red-400' : 'text-primary'}`} />
+                </div>
+                <div>
+                  <p className={`text-sm font-medium ${overdue ? 'text-red-400' : 'text-primary'}`}>
+                    {overdue ? 'Overdue Visit!' : 'Upcoming Visit'}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {overdue
+                      ? `Was due on ${nextDate} — follow up with customer`
+                      : `Scheduled for ${nextDate} — every 30 days maintenance`
+                    }
+                  </p>
+                </div>
+              </div>
+            );
+          })()}
+
+          {customer?.bookings && customer.bookings.length > 0 ? (
+            <div className="space-y-3">
+              {customer.bookings.map((b: Booking, idx: number) => (
+                <motion.div
+                  key={b.id}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: idx * 0.05 }}
+                  className="glass rounded-2xl p-5"
+                >
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                        <Wrench className="w-5 h-5 text-primary" />
+                      </div>
+                      <div>
+                        <p className="font-semibold text-sm">{b.model}</p>
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <Calendar className="w-3 h-3" />
+                          <span>{b.date}</span>
+                          <Clock className="w-3 h-3 ml-1" />
+                          <span>{b.time}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <span className={`px-2.5 py-1 rounded-lg text-xs font-medium border ${getStatusColor(b.status)}`}>
+                      {b.status}
+                    </span>
+                  </div>
+                  <div className="bg-secondary/30 rounded-xl p-3">
+                    <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
+                      <AlertCircle className="w-3 h-3" /> Issue Description
+                    </p>
+                    <p className="text-sm text-foreground">{b.issue}</p>
+                  </div>
+                  {b.vehicle && (
+                    <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
+                      <Car className="w-3 h-3" />
+                      <span>{b.vehicle.make} {b.vehicle.model}</span>
+                      {b.vehicle.plateNumber && (
+                        <span className="font-mono">· {b.vehicle.plateNumber}</span>
+                      )}
+                    </div>
+                  )}
+                </motion.div>
+              ))}
+            </div>
+          ) : (
+            <div className="glass rounded-2xl p-8 text-center">
+              <ClipboardList className="w-10 h-10 text-muted-foreground/30 mx-auto mb-3" />
+              <p className="text-muted-foreground text-sm">No service history yet</p>
+              <p className="text-muted-foreground/60 text-xs mt-1">
+                Bookings will appear here once the customer schedules a service.
+              </p>
             </div>
           )}
         </div>

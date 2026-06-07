@@ -40,6 +40,24 @@ export interface TransactionData {
   createdAt: Date;
 }
 
+export interface Booking {
+  id: string;
+  name: string;
+  email: string | null;
+  phone: string;
+  model: string;
+  issue: string;
+  date: string;
+  time: string;
+  status: string;
+  plateNumber: string | null;
+  customerId: string | null;
+  vehicleId: string | null;
+  vehicle: Vehicle | null;
+  createdAt: string;
+  updatedAt: string | null;
+}
+
 export interface Customer {
   id: string;
   name: string;
@@ -47,6 +65,7 @@ export interface Customer {
   email: string | null;
   address: string | null;
   vehicles: Vehicle[];
+  bookings: Booking[];
   createdAt: string;
   updatedAt: string | null;
   _count?: { vehicles: number };

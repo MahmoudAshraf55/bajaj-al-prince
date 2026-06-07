@@ -21,7 +21,13 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     const { id } = await params;
     const customer = await prisma.customer.findFirst({
       where: { id },
-      include: { vehicles: true },
+      include: {
+        vehicles: true,
+        bookings: {
+          orderBy: { date: 'desc' },
+          include: { vehicle: true },
+        },
+      },
     });
     if (!customer) {
       return withSecurityHeaders(NextResponse.json({ success: false, error: 'Customer not found' }, { status: 404 }));
