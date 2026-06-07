@@ -39,6 +39,11 @@ export default function CustomerDetailPage() {
   const [vehicleModels, setVehicleModels] = useState<VehicleModel[]>([]);
   const [isCustomModel, setIsCustomModel] = useState(false);
 
+  // Booking edit modal state
+  const [showBookingModal, setShowBookingModal] = useState(false);
+  const [editingBooking, setEditingBooking] = useState<Booking | null>(null);
+  const [bookingForm, setBookingForm] = useState({ issue: '' });
+
   const addToast = (type: 'success' | 'error', message: string) => {
     const id = Date.now();
     setToasts((prev) => [...prev, { id, type, message }]);
@@ -159,11 +164,63 @@ export default function CustomerDetailPage() {
         method: 'DELETE',
         credentials: 'include',
       });
-      if (res.ok) {
+      const data = await res.json();
+      if (res.ok && data?.success) {
         addToast('success', t('crm_vehicle_removed'));
-        fetchCustomer();
+        await fetchCustomer();
       } else {
-        addToast('error', t('crm_failed_remove_vehicle'));
+        addToast('error', data?.error || t('crm_failed_remove_vehicle'));
+      }
+    } catch {
+      addToast('error', t('crm_network_error'));
+    }
+  };
+
+  const handleMarkCompleted = async (bookingId: string) => {
+    try {
+      const res = await fetch(`/api/bookings/${bookingId}/`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ status: 'completed' }),
+      });
+      const data = await res.json();
+      if (res.ok && data?.success) {
+        addToast('success', t('crm_status_completed'));
+        await fetchCustomer();
+      } else {
+        addToast('error', data?.error || t('crm_failed_create'));
+      }
+    } catch {
+      addToast('error', t('crm_network_error'));
+    }
+  };
+
+  const handleOpenIssueEdit = (b: Booking) => {
+    setEditingBooking(b);
+    setBookingForm({ issue: b.issue });
+    setShowBookingModal(true);
+  };
+
+  const handleSaveIssue = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingBooking) return;
+    try {
+      const res = await fetch(`/api/bookings/${editingBooking.id}/`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ issue: bookingForm.issue.trim() }),
+      });
+      const data = await res.json();
+      if (res.ok && data?.success) {
+        addToast('success', t('crm_save_actual_issue'));
+        setShowBookingModal(false);
+        setEditingBooking(null);
+        setBookingForm({ issue: '' });
+        await fetchCustomer();
+      } else {
+        addToast('error', data?.error || t('crm_failed_create'));
       }
     } catch {
       addToast('error', t('crm_network_error'));
@@ -380,13 +437,13 @@ export default function CustomerDetailPage() {
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-bold flex items-center gap-2">
               <ClipboardList className="w-5 h-5 text-primary" />
-              Service History ({customer?.bookings?.length ?? 0})
+              {t('crm_service_history')} ({customer?.bookings?.length ?? 0})
             </h3>
             {customer?.bookings && customer.bookings.length > 0 && (
               <div className="flex items-center gap-2">
                 <Bell className="w-4 h-4 text-primary" />
                 <span className="text-xs text-muted-foreground">
-                  Next visit: <span className="text-primary font-medium">{getNextVisitDate(customer.bookings)}</span>
+                  {t('crm_next_visit')}: <span className="text-primary font-medium">{getNextVisitDate(customer.bookings)}</span>
                 </span>
               </div>
             )}
@@ -410,12 +467,12 @@ export default function CustomerDetailPage() {
                 </div>
                 <div>
                   <p className={`text-sm font-medium ${overdue ? 'text-red-400' : 'text-primary'}`}>
-                    {overdue ? 'Overdue Visit!' : 'Upcoming Visit'}
+                    {overdue ? t('crm_overdue_visit') : t('crm_upcoming_visit')}
                   </p>
                   <p className="text-xs text-muted-foreground">
                     {overdue
-                      ? `Was due on ${nextDate} — follow up with customer`
-                      : `Scheduled for ${nextDate} — every 30 days maintenance`
+                      ? t('crm_overdue_visit_desc').replace('{date}', nextDate)
+                      : t('crm_upcoming_visit_desc').replace('{date}', nextDate)
                     }
                   </p>
                 </div>
@@ -449,15 +506,49 @@ export default function CustomerDetailPage() {
                       </div>
                     </div>
                     <span className={`px-2.5 py-1 rounded-lg text-xs font-medium border ${getStatusColor(b.status)}`}>
-                      {b.status}
+                      {b.status === 'pending' && t('crm_status_pending')}
+                      {b.status === 'accepted' && t('crm_status_approved')}
+                      {b.status === 'completed' && t('crm_status_completed')}
+                      {b.status === 'rejected' && t('crm_status_rejected')}
                     </span>
                   </div>
-                  <div className="bg-secondary/30 rounded-xl p-3">
-                    <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
-                      <AlertCircle className="w-3 h-3" /> Issue Description
+
+                  {/* Issue Description with status-based coloring */}
+                  <div className={`rounded-xl p-3 ${
+                    b.status === 'completed'
+                      ? 'bg-green-500/10 border border-green-500/20'
+                      : 'bg-secondary/30'
+                  }`}>
+                    <p className={`text-xs mb-1 flex items-center gap-1 ${
+                      b.status === 'completed' ? 'text-green-400' : 'text-muted-foreground'
+                    }`}>
+                      <AlertCircle className="w-3 h-3" /> {t('crm_issue_description')}
                     </p>
-                    <p className="text-sm text-foreground">{b.issue}</p>
+                    <p className={`text-sm ${b.status === 'completed' ? 'text-green-300' : 'text-foreground'}`}>
+                      {b.issue}
+                    </p>
                   </div>
+
+                  {/* Action Buttons */}
+                  {b.status !== 'completed' && b.status !== 'rejected' && (
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <button
+                        onClick={() => handleMarkCompleted(b.id)}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-green-500/10 text-green-400 border border-green-500/20 text-xs font-medium hover:bg-green-500/20 transition-colors"
+                      >
+                        <CheckCircle2 className="w-3 h-3" />
+                        {t('crm_maintenance_done')}
+                      </button>
+                      <button
+                        onClick={() => handleOpenIssueEdit(b)}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs font-medium hover:bg-emerald-500/20 transition-colors"
+                      >
+                        <Pencil className="w-3 h-3" />
+                        {t('crm_issue_changed')}
+                      </button>
+                    </div>
+                  )}
+
                   {b.vehicle && (
                     <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
                       <Car className="w-3 h-3" />
@@ -473,9 +564,9 @@ export default function CustomerDetailPage() {
           ) : (
             <div className="glass rounded-2xl p-8 text-center">
               <ClipboardList className="w-10 h-10 text-muted-foreground/30 mx-auto mb-3" />
-              <p className="text-muted-foreground text-sm">No service history yet</p>
+              <p className="text-muted-foreground text-sm">{t('crm_no_service_history')}</p>
               <p className="text-muted-foreground/60 text-xs mt-1">
-                Bookings will appear here once the customer schedules a service.
+                {t('crm_no_service_history_desc')}
               </p>
             </div>
           )}
@@ -609,6 +700,68 @@ export default function CustomerDetailPage() {
                     editingVehicle ? t('crm_update_vehicle_btn') : t('crm_add_vehicle_btn')
                   )}
                 </button>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Booking Issue Edit Modal */}
+      <AnimatePresence>
+        {showBookingModal && editingBooking && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-40 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+            onClick={() => { setShowBookingModal(false); setEditingBooking(null); }}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="glass rounded-2xl p-6 w-full max-w-md border border-border"
+            >
+              <div className="flex items-center justify-between mb-5">
+                <h3 className="text-lg font-bold">{t('crm_actual_issue')}</h3>
+                <button
+                  onClick={() => { setShowBookingModal(false); setEditingBooking(null); }}
+                  className="p-1 rounded-lg hover:bg-white/5 text-muted-foreground"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              <form onSubmit={handleSaveIssue} className="space-y-4">
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
+                    {t('crm_issue_description')}
+                  </label>
+                  <textarea
+                    required
+                    rows={4}
+                    value={bookingForm.issue}
+                    onChange={(e) => setBookingForm({ issue: e.target.value })}
+                    className="w-full px-4 py-2.5 rounded-xl bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm resize-none"
+                    placeholder={t('booking_issue_ph')}
+                  />
+                </div>
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => { setShowBookingModal(false); setEditingBooking(null); }}
+                    className="flex-1 py-2.5 rounded-xl bg-muted text-muted-foreground font-medium text-sm hover:bg-muted/80 transition-colors"
+                  >
+                    {t('crm_cancel')}
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={submitting}
+                    className="flex-1 py-2.5 rounded-xl bg-emerald-600 text-white font-medium text-sm hover:bg-emerald-600/90 transition-colors disabled:opacity-50"
+                  >
+                    {t('crm_save_actual_issue')}
+                  </button>
+                </div>
               </form>
             </motion.div>
           </motion.div>

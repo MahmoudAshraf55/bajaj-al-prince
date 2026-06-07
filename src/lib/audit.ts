@@ -11,6 +11,7 @@ export type AuditAction =
   | 'logout'
   | 'approve'
   | 'reject'
+  | 'complete'
   | 'payment'
   | 'inventory_change';
 

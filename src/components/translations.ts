@@ -276,6 +276,26 @@ export const translations = {
     crm_retry: 'Retry',
     crm_back_to_customers: 'Back to Customers',
 
+    // Service History
+    crm_service_history: 'Service History',
+    crm_next_visit: 'Next visit',
+    crm_upcoming_visit: 'Upcoming Visit',
+    crm_overdue_visit: 'Overdue Visit!',
+    crm_overdue_visit_desc: 'Was due on {date} — follow up with customer',
+    crm_upcoming_visit_desc: 'Scheduled for {date} — every 30 days maintenance',
+    crm_no_service_history: 'No service history yet',
+    crm_no_service_history_desc: 'Bookings will appear here once the customer schedules a service.',
+    crm_issue_description: 'Issue Description',
+    crm_maintenance_done: 'Maintenance Done',
+    crm_issue_changed: 'Issue Changed',
+    crm_actual_issue: 'Actual Issue Found',
+    crm_save_actual_issue: 'Save Actual Issue',
+    crm_cancel: 'Cancel',
+    crm_status_pending: 'Pending',
+    crm_status_approved: 'Approved',
+    crm_status_completed: 'Completed',
+    crm_status_rejected: 'Rejected',
+
     // CRM Vehicles
     crm_vehicle_directory: 'Vehicle Directory',
     crm_search_vehicle_placeholder: 'Search by make, model, or plate...',
@@ -642,6 +662,26 @@ export const translations = {
     crm_error_loading: 'حدث خطأ أثناء تحميل البيانات',
     crm_retry: 'إعادة المحاولة',
     crm_back_to_customers: 'العودة إلى العملاء',
+
+    // Service History
+    crm_service_history: 'سجل الصيانة',
+    crm_next_visit: 'الزيارة القادمة',
+    crm_upcoming_visit: 'زيارة قادمة',
+    crm_overdue_visit: 'زيارة متأخرة!',
+    crm_overdue_visit_desc: 'كان المقرر في {date} — تابع مع العميل',
+    crm_upcoming_visit_desc: 'مجدولة في {date} — صيانة كل 30 يوم',
+    crm_no_service_history: 'لا يوجد سجل صيانة بعد',
+    crm_no_service_history_desc: 'ستظهر الحجوزات هنا بمجرد أن يجدول العميل موعد صيانة.',
+    crm_issue_description: 'وصف المشكلة',
+    crm_maintenance_done: 'تم الصيانة',
+    crm_issue_changed: 'اختلاف المشكلة',
+    crm_actual_issue: 'المشكلة الفعلية',
+    crm_save_actual_issue: 'حفظ المشكلة الفعلية',
+    crm_cancel: 'إلغاء',
+    crm_status_pending: 'معلق',
+    crm_status_approved: 'مقبول',
+    crm_status_completed: 'مكتمل',
+    crm_status_rejected: 'مرفوض',
 
     // Footer
     footer_description: 'البرنس بجاج — وجهتك الموثوقة لبيع وصيانة وقطع غيار أصلية وتشخيص دراجات باجاج. نخدم راكبي الدراجات بالشغف منذ 2019.',

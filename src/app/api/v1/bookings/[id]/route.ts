@@ -2,12 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireRole } from '@/lib/auth';
 import { checkRateLimit } from '@/lib/rate-limit';
-import { logAudit, getClientInfo } from '@/lib/audit';
+import { logAudit, getClientInfo, type AuditAction } from '@/lib/audit';
 import { z } from 'zod';
 import { withSecurityHeaders } from '@/lib/security';
 
 const bookingUpdateSchema = z.object({
-  status: z.enum(['pending', 'accepted', 'rejected']),
+  status: z.enum(['pending', 'accepted', 'rejected', 'completed']).optional(),
+  issue: z.string().min(1).max(1000).optional(),
 });
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -20,16 +21,33 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const body = await req.json();
     const data = bookingUpdateSchema.parse(body);
     const oldBooking = await prisma.booking.findUnique({ where: { id } });
-    const booking = await prisma.booking.update({ where: { id }, data });
+
+    // Build update payload: only include fields that are provided
+    const updateData: Record<string, unknown> = {};
+    if (data.status !== undefined) updateData.status = data.status;
+    if (data.issue !== undefined) updateData.issue = data.issue;
+
+    const booking = await prisma.booking.update({ where: { id }, data: updateData });
     const { ipAddress, userAgent } = getClientInfo(req);
-    const action = data.status === 'accepted' ? 'approve' : data.status === 'rejected' ? 'reject' : 'update';
+
+    let action: AuditAction = 'update';
+    if (data.status === 'accepted') action = 'approve';
+    else if (data.status === 'rejected') action = 'reject';
+    else if (data.status === 'completed') action = 'complete';
+
+    const oldValue: Record<string, unknown> = {};
+    if (oldBooking) {
+      if (data.status !== undefined) oldValue.status = oldBooking.status;
+      if (data.issue !== undefined) oldValue.issue = oldBooking.issue;
+    }
+
     await logAudit({
       userId: payload.userId,
       action,
       entity: 'Booking',
       entityId: id,
-      oldValue: oldBooking ? { status: oldBooking.status } as Record<string, unknown> : undefined,
-      newValue: { status: data.status } as Record<string, unknown>,
+      oldValue: Object.keys(oldValue).length > 0 ? oldValue : undefined,
+      newValue: updateData,
       ipAddress,
       userAgent,
     });
