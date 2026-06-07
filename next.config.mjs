@@ -6,6 +6,12 @@ const nextConfig = {
     unoptimized: true,
   },
   trailingSlash: true,
+  webpack: (config, { isServer }) => {
+    if (isServer) {
+      config.externals.push('ws', '@whiskeysockets/baileys', 'qrcode', 'bufferutil', 'utf-8-validate');
+    }
+    return config;
+  },
   async rewrites() {
     return [
       { source: '/api/products/:path*', destination: '/api/v1/products/:path*' },
