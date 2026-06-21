@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Phone, MapPin, MessageCircle } from 'lucide-react';
 import Logo from '@/components/ui/Logo';
@@ -15,6 +16,12 @@ const footerLinks = [
 
 export default function Footer() {
   const { t } = useTranslation();
+  const [year, setYear] = useState(2024);
+
+  useEffect(() => {
+    setYear(new Date().getFullYear());
+  }, []);
+
   return (
     <footer className="border-t border-border bg-card relative overflow-hidden snap-start snap-always">
       <div className="absolute inset-0 bg-linear-to-t from-primary/3 to-transparent pointer-events-none" />
@@ -74,8 +81,8 @@ export default function Footer() {
         </div>
 
         <div className="border-t border-border mt-12 pt-8 flex flex-col md:flex-row items-center justify-center gap-4">
-          <p className="text-muted-foreground text-xs text-center" suppressHydrationWarning>
-            &copy; {new Date().getFullYear()} El Prince Bajaj. {t('footer_rights')}
+          <p className="text-muted-foreground text-xs text-center">
+            &copy; {year} El Prince Bajaj. {t('footer_rights')}
           </p>
         </div>
       </div>
