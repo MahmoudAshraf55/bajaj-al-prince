@@ -118,21 +118,21 @@ model User {
 }
 
 model Customer {
-  id        String    @id @default(uuid())
-  name      String
-  phone     String
-  email     String?
-  address   String?
-  vehicles  Vehicle[]
-  bookings  Booking[]
-  createdAt DateTime  @default(now()) @db.Timestamp(6)
-  updatedAt DateTime? @updatedAt @db.Timestamp(6)
-  isDeleted Boolean   @default(false)
-  deletedAt DateTime? @db.Timestamp(6)
-  tenantId  String?
+  id          String      @id @default(uuid())
+  name        String
+  email       String      @unique
+  phone       String?
+  address     String?
+  vehicles    Vehicle[]
+  bookings    Booking[]
+  createdAt   DateTime    @default(now()) @db.Timestamp(6)
+  updatedAt   DateTime    @updatedAt @db.Timestamp(6)
+  isDeleted   Boolean     @default(false)
+  deletedAt   DateTime?   @db.Timestamp(6)
+  tenantId    String?
 
-  @@index([name])
-  @@index([phone])
+  @@index([email])
+  @@index([createdAt])
   @@index([isDeleted])
   @@index([tenantId])
 }

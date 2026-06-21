@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from '@/components/useTranslation';
+import BackButton from '@/components/BackButton';
 import type { Customer } from '@/types';
 import {
   Search, Plus, ChevronLeft, ChevronRight, User,
@@ -172,7 +173,10 @@ export default function CustomersPage() {
 
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="max-w-6xl mx-auto space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <h2 className="text-2xl font-bold">{t('crm_customer_management')}</h2>
+          <div className="flex items-center gap-4">
+            <BackButton fallback="/admin/dashboard/" />
+            <h2 className="text-2xl font-bold">{t('crm_customer_management')}</h2>
+          </div>
           <div className="flex items-center gap-3">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />

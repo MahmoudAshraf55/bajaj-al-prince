@@ -55,9 +55,9 @@ export default function Services() {
           className="text-center max-w-3xl mx-auto mb-16"
         >
           <div className="flex items-center justify-center gap-3 mb-6">
-            <div className="h-px w-12 bg-gradient-to-r from-transparent to-accent" />
+            <div className="h-px w-12 bg-linear-to-r from-transparent to-accent" />
             <span className="text-accent text-xs font-semibold tracking-[0.3em] uppercase">Core Features</span>
-            <div className="h-px w-12 bg-gradient-to-l from-transparent to-accent" />
+            <div className="h-px w-12 bg-linear-to-l from-transparent to-accent" />
           </div>
           <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black mb-6 leading-tight">
             Everything You Need to <span className="gradient-text-cyan">Win</span>

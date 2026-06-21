@@ -93,8 +93,8 @@ export default function Hero() {
         <div className="absolute inset-0 bg-grid-pattern opacity-10 pointer-events-none" />
 
         {/* Letterbox Cinema Borders */}
-        <div className="absolute top-0 left-0 right-0 h-16 bg-gradient-to-b from-black/80 to-transparent pointer-events-none z-10" />
-        <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-black/80 to-transparent pointer-events-none z-10" />
+        <div className="absolute top-0 left-0 right-0 h-16 bg-linear-to-b from-black/80 to-transparent pointer-events-none z-10" />
+        <div className="absolute bottom-0 left-0 right-0 h-16 bg-linear-to-t from-black/80 to-transparent pointer-events-none z-10" />
 
         <div className="relative z-10 max-w-5xl mx-auto text-center">
           <motion.div
@@ -121,7 +121,7 @@ export default function Hero() {
           <div className="flex flex-col sm:flex-row items-center justify-center gap-5">
             <Link
               href="tel:01221370120"
-              className="inline-flex items-center gap-2.5 px-9 py-4 rounded-full bg-gradient-to-r from-amber-500 to-orange-600 text-black font-extrabold text-sm hover:brightness-110 hover:-translate-y-0.5 transition-all duration-300 shadow-xl shadow-amber-500/10 hover:shadow-amber-500/25 active:translate-y-0"
+              className="inline-flex items-center gap-2.5 px-9 py-4 rounded-full bg-linear-to-r from-amber-500 to-orange-600 text-black font-extrabold text-sm hover:brightness-110 hover:-translate-y-0.5 transition-all duration-300 shadow-xl shadow-amber-500/10 hover:shadow-amber-500/25 active:translate-y-0"
             >
               {t('hero_callNow')}
               <ArrowRight className="w-4 h-4 text-black stroke-[3px]" />
@@ -160,7 +160,7 @@ export default function Hero() {
           <div className="glass-premium glass-premium-hover rounded-2xl p-6 sm:p-8 hover:-translate-y-1 transition-all duration-500 depth-3 relative overflow-hidden group">
             <div className="absolute -right-20 -top-20 w-40 h-40 bg-amber-500/5 rounded-full blur-2xl group-hover:bg-amber-500/10 transition-all duration-700" />
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500/20 to-amber-900/10 border border-amber-500/20 flex items-center justify-center">
+              <div className="w-10 h-10 rounded-xl bg-linear-to-br from-amber-500/20 to-amber-900/10 border border-amber-500/20 flex items-center justify-center">
                 <Wrench className="w-5 h-5 text-amber-400" />
               </div>
               <span className="text-[10px] text-amber-400 uppercase tracking-[0.3em] font-bold">{t('card_expertise')}</span>
@@ -169,7 +169,7 @@ export default function Hero() {
             <p className="text-muted-foreground/90 text-sm leading-relaxed font-medium">{t('card_professionalService_desc')}</p>
             <div className="mt-4 flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-amber-400 animate-pulse-glow" />
-              <div className="w-16 h-px bg-gradient-to-r from-amber-500/40 to-transparent" />
+              <div className="w-16 h-px bg-linear-to-r from-amber-500/40 to-transparent" />
             </div>
           </div>
         </motion.div>
@@ -187,7 +187,7 @@ export default function Hero() {
           <div className="glass-premium glass-premium-hover rounded-2xl p-6 sm:p-8 hover:-translate-y-1 transition-all duration-500 depth-3 relative overflow-hidden group">
             <div className="absolute -left-20 -top-20 w-40 h-40 bg-amber-500/5 rounded-full blur-2xl group-hover:bg-amber-500/10 transition-all duration-700" />
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500/20 to-amber-900/10 border border-amber-500/20 flex items-center justify-center">
+              <div className="w-10 h-10 rounded-xl bg-linear-to-br from-amber-500/20 to-amber-900/10 border border-amber-500/20 flex items-center justify-center">
                 <Award className="w-5 h-5 text-amber-400" />
               </div>
               <span className="text-[10px] text-amber-400 uppercase tracking-[0.3em] font-bold">{t('card_quality')}</span>
@@ -195,7 +195,7 @@ export default function Hero() {
             <h3 className="text-foreground font-black text-xl mb-2 text-glow">{t('card_genuineParts')}</h3>
             <p className="text-muted-foreground/90 text-sm leading-relaxed font-medium">{t('card_genuineParts_desc')}</p>
             <div className="mt-4 flex items-center gap-2 justify-end">
-              <div className="w-16 h-px bg-gradient-to-l from-amber-500/40 to-transparent" />
+              <div className="w-16 h-px bg-linear-to-l from-amber-500/40 to-transparent" />
               <div className="w-2 h-2 rounded-full bg-amber-400 animate-pulse-glow" />
             </div>
           </div>
@@ -214,7 +214,7 @@ export default function Hero() {
           <div className="glass-premium glass-premium-hover rounded-2xl p-6 sm:p-8 hover:-translate-y-1 transition-all duration-500 depth-3 relative overflow-hidden group">
             <div className="absolute -right-20 -top-20 w-40 h-40 bg-amber-500/5 rounded-full blur-2xl group-hover:bg-amber-500/10 transition-all duration-700" />
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500/20 to-amber-900/10 border border-amber-500/20 flex items-center justify-center">
+              <div className="w-10 h-10 rounded-xl bg-linear-to-br from-amber-500/20 to-amber-900/10 border border-amber-500/20 flex items-center justify-center">
                 <TrendingUp className="w-5 h-5 text-amber-400" />
               </div>
               <span className="text-[10px] text-amber-400 uppercase tracking-[0.3em] font-bold">{t('card_fullService')}</span>
@@ -223,7 +223,7 @@ export default function Hero() {
             <p className="text-muted-foreground/90 text-sm leading-relaxed font-medium">{t('card_completeSolutions_desc')}</p>
             <div className="mt-4 flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-amber-400 animate-pulse-glow" />
-              <div className="w-16 h-px bg-gradient-to-r from-amber-500/40 to-transparent" />
+              <div className="w-16 h-px bg-linear-to-r from-amber-500/40 to-transparent" />
             </div>
           </div>
         </motion.div>

@@ -29,9 +29,9 @@ export default function PaymentMethods() {
           className="text-center max-w-3xl mx-auto mb-16"
         >
           <div className="flex items-center justify-center gap-3 mb-6">
-            <div className="h-px w-12 bg-gradient-to-r from-transparent to-primary" />
+            <div className="h-px w-12 bg-linear-to-r from-transparent to-primary" />
             <span className="text-accent text-xs font-semibold tracking-[0.3em] uppercase">{t('payment_tag')}</span>
-            <div className="h-px w-12 bg-gradient-to-l from-transparent to-primary" />
+            <div className="h-px w-12 bg-linear-to-l from-transparent to-primary" />
           </div>
           <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black mb-6 leading-tight">
             {t('payment_title')}
@@ -47,7 +47,7 @@ export default function PaymentMethods() {
               transition={{ duration: 0.6, delay: 0.15 * i }}
               className="group glass rounded-2xl p-6 sm:p-8 text-center card-glow hover:-translate-y-1 transition-all duration-500"
             >
-              <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${method.color} border border-primary/10 flex items-center justify-center mx-auto mb-5 group-hover:scale-110 transition-transform duration-500`}>
+              <div className={`w-14 h-14 rounded-2xl bg-linear-to-br ${method.color} border border-primary/10 flex items-center justify-center mx-auto mb-5 group-hover:scale-110 transition-transform duration-500`}>
                 <method.icon className="w-6 h-6 text-primary" />
               </div>
               <h3 className="text-foreground font-bold text-lg mb-2">{t(method.nameKey)}</h3>

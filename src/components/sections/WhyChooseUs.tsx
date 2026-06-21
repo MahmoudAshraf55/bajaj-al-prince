@@ -40,9 +40,9 @@ export default function WhyChooseUs() {
           className="text-center max-w-3xl mx-auto mb-16"
         >
           <div className="flex items-center justify-center gap-3 mb-6">
-            <div className="h-px w-12 bg-gradient-to-r from-transparent to-accent" />
+            <div className="h-px w-12 bg-linear-to-r from-transparent to-accent" />
             <span className="text-accent text-xs font-semibold tracking-[0.3em] uppercase">{t('services_tag')}</span>
-            <div className="h-px w-12 bg-gradient-to-l from-transparent to-accent" />
+            <div className="h-px w-12 bg-linear-to-l from-transparent to-accent" />
           </div>
           <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black mb-6 leading-tight">
             {t('services_title')}
@@ -61,9 +61,9 @@ export default function WhyChooseUs() {
               transition={{ duration: 0.5, delay: 0.08 * i }}
               className="group relative rounded-2xl p-6 bg-card/50 backdrop-blur-xl border border-border/60 hover:border-primary/40 transition-all duration-500 hover:-translate-y-1 card-glow"
             >
-              <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-primary/5 via-transparent to-accent/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+              <div className="absolute inset-0 rounded-2xl bg-linear-to-br from-primary/5 via-transparent to-accent/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
               <div className="relative">
-                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/15 to-primary/5 border border-primary/20 flex items-center justify-center mb-4 group-hover:scale-110 group-hover:rotate-3 transition-all duration-500">
+                <div className="w-12 h-12 rounded-xl bg-linear-to-br from-primary/15 to-primary/5 border border-primary/20 flex items-center justify-center mb-4 group-hover:scale-110 group-hover:rotate-3 transition-all duration-500">
                   <service.icon className="w-5 h-5 text-primary group-hover:text-accent transition-colors duration-500" />
                 </div>
                 <h3 className="text-foreground font-semibold text-sm mb-2">{t(service.titleKey)}</h3>

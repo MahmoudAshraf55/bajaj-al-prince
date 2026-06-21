@@ -33,9 +33,9 @@ export default function OurStory() {
           className="text-center max-w-3xl mx-auto mb-20"
         >
           <div className="flex items-center justify-center gap-3 mb-6">
-            <div className="h-px w-12 bg-gradient-to-r from-transparent to-primary" />
+            <div className="h-px w-12 bg-linear-to-r from-transparent to-primary" />
             <span className="text-accent text-xs font-semibold tracking-[0.3em] uppercase">{t('story_tag')}</span>
-            <div className="h-px w-12 bg-gradient-to-l from-transparent to-primary" />
+            <div className="h-px w-12 bg-linear-to-l from-transparent to-primary" />
           </div>
           <h2 className="text-3xl sm:text-4xl lg:text-6xl font-black mb-6 leading-tight">
             {t('story_title')}
@@ -48,7 +48,7 @@ export default function OurStory() {
         <div className="relative">
           {/* Center line - hidden on mobile */}
           <div className="hidden md:block absolute left-1/2 top-0 bottom-0 w-px -translate-x-1/2">
-            <div className="w-full h-full bg-gradient-to-b from-primary/40 via-accent/20 to-transparent" />
+            <div className="w-full h-full bg-linear-to-b from-primary/40 via-accent/20 to-transparent" />
           </div>
 
           <div className="space-y-12 md:space-y-0">
@@ -64,7 +64,7 @@ export default function OurStory() {
                 <div className={`${milestone.side === 'right' ? 'md:col-start-2' : ''} flex ${milestone.side === 'left' ? 'md:justify-end' : 'md:justify-start'}`}>
                   <div className={`glass rounded-2xl p-6 sm:p-8 card-glow hover:-translate-y-1 transition-transform duration-500 max-w-md w-full ${milestone.side === 'left' ? 'md:text-right' : 'md:text-left'}`}>
                     <div className={`flex items-center gap-3 mb-4 ${milestone.side === 'left' ? 'md:flex-row-reverse' : ''}`}>
-                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 flex items-center justify-center flex-shrink-0">
+                      <div className="w-10 h-10 rounded-xl bg-linear-to-br from-primary/20 to-primary/5 border border-primary/20 flex items-center justify-center flex-shrink-0">
                         <milestone.icon className="w-5 h-5 text-primary" />
                       </div>
                       <span className="text-2xl sm:text-3xl font-black gradient-text">{milestone.year || t(milestone.yearKey || '')}</span>

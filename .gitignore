@@ -73,3 +73,18 @@ all-blob-reports/
 # logs
 logs/
 *.log
+
+# local scratch / backup files
+*.bak
+*-test.html
+/zod/
+
+# local AI/tooling state
+.blackboxcli/
+
+# git worktree directories created inside this checkout
+worktree-*/
+
+# runtime session credentials
+.baileys_auth/
+services/whatsapp/.baileys_auth/

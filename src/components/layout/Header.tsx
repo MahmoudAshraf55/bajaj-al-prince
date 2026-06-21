@@ -12,6 +12,7 @@ const navLinks = [
   { href: '/#story', labelKey: 'nav_ourStory' as const },
   { href: '/#services', labelKey: 'nav_services' as const },
   { href: '/#reviews', labelKey: 'nav_reviews' as const },
+  { href: '/#tiktok', labelKey: 'nav_tiktok' as const },
   { href: '/#contact', labelKey: 'nav_contact' as const },
   { href: '/market/', labelKey: 'nav_market' as const },
   { href: '/booking/', labelKey: 'nav_bookNow' as const },
@@ -48,7 +49,7 @@ export default function Header() {
               className={cn(
                 'px-4 py-2 rounded-full text-sm font-medium transition-all duration-300',
                 link.labelKey === 'nav_bookNow'
-                  ? 'bg-gradient-to-r from-primary to-secondary text-primary-foreground hover:opacity-90 shadow-lg shadow-primary/20'
+                  ? 'bg-linear-to-r from-primary to-secondary text-primary-foreground hover:opacity-90 shadow-lg shadow-primary/20'
                   : 'text-muted-foreground hover:text-foreground hover:bg-white/5'
               )}
             >

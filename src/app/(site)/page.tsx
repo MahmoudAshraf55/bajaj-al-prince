@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react';
 import Hero from "@/components/sections/Hero";
+import TikTokPlayer from "@/app/components/tiktok/TikTokPlayer";
 import OurStory from "@/components/sections/OurStory";
 import WhyChooseUs from "@/components/sections/WhyChooseUs";
 import ServiceHighlights from "@/components/sections/ServiceHighlights";
@@ -27,6 +28,10 @@ export default function Home() {
   return (
     <div className="flex flex-col">
       <Hero />
+      {/* TikTok integration – free & stable */}
+      <section id="tiktok" className="scroll-mt-24">
+        <TikTokPlayer />
+      </section>
       <OurStory />
       <WhyChooseUs />
       <ServiceHighlights />

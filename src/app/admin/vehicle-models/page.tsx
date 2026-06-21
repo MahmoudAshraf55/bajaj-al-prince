@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from '@/components/useTranslation';
+import BackButton from '@/components/BackButton';
 import type { VehicleModel } from '@/types';
 import {
   Plus, X, AlertCircle, CheckCircle2, List, Trash2, Pencil,
@@ -179,10 +180,13 @@ export default function VehicleModelsPage() {
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="max-w-4xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold flex items-center gap-2">
-            <List className="w-6 h-6 text-primary" />
-            {t('vmodels_title')}
-          </h2>
+          <div className="flex items-center gap-4">
+            <BackButton fallback="/admin/dashboard/" />
+            <h2 className="text-2xl font-bold flex items-center gap-2">
+              <List className="w-6 h-6 text-primary" />
+              {t('vmodels_title')}
+            </h2>
+          </div>
           <button
             onClick={openAddModal}
             className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"

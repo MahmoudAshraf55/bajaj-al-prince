@@ -4,15 +4,15 @@ test.describe('Admin Login & Inventory Management', () => {
   test('admin login page loads', async ({ page }) => {
     await page.goto('/admin');
     await expect(page.getByRole('heading', { name: /Admin Portal/i })).toBeVisible();
-    await expect(page.getByPlaceholder(/admin/i)).toBeVisible();
-    await expect(page.getByPlaceholder('••••••••')).toBeVisible();
+    await expect(page.getByLabel(/Username/i)).toBeVisible();
+    await expect(page.getByLabel(/Password/i)).toBeVisible();
     await page.screenshot({ path: 'e2e/screenshots/admin-login.png' });
   });
 
   test('admin login with valid credentials', async ({ page }) => {
     await page.goto('/admin');
-    await page.getByPlaceholder(/admin/i).fill('admin');
-    await page.getByPlaceholder('••••••••').fill('admin123');
+    await page.getByLabel(/Username/i).fill('admin');
+    await page.getByLabel(/Password/i).fill('admin123');
     await page.screenshot({ path: 'e2e/screenshots/admin-login-filled.png' });
 
     await page.getByRole('button', { name: /Sign In/i }).click();
@@ -23,8 +23,8 @@ test.describe('Admin Login & Inventory Management', () => {
 
   test('admin login with invalid credentials shows error', async ({ page }) => {
     await page.goto('/admin');
-    await page.getByPlaceholder(/admin/i).fill('wronguser');
-    await page.getByPlaceholder('••••••••').fill('wrongpass');
+    await page.getByLabel(/Username/i).fill('wronguser');
+    await page.getByLabel(/Password/i).fill('wrongpass');
     await page.getByRole('button', { name: /Sign In/i }).click();
 
     await expect(page.getByText(/Invalid credentials/i)).toBeVisible({ timeout: 10000 });
@@ -33,8 +33,8 @@ test.describe('Admin Login & Inventory Management', () => {
 
   test('dashboard overview displays stats', async ({ page }) => {
     await page.goto('/admin');
-    await page.getByPlaceholder(/admin/i).fill('admin');
-    await page.getByPlaceholder('••••••••').fill('admin123');
+    await page.getByLabel(/Username/i).fill('admin');
+    await page.getByLabel(/Password/i).fill('admin123');
     await page.getByRole('button', { name: /Sign In/i }).click();
     await expect(page.getByRole('heading', { name: /Dashboard Overview/i })).toBeVisible({ timeout: 10000 });
 
@@ -46,8 +46,8 @@ test.describe('Admin Login & Inventory Management', () => {
 
   test('inventory management - view products and update stock', async ({ page }) => {
     await page.goto('/admin');
-    await page.getByPlaceholder(/admin/i).fill('admin');
-    await page.getByPlaceholder('••••••••').fill('admin123');
+    await page.getByLabel(/Username/i).fill('admin');
+    await page.getByLabel(/Password/i).fill('admin123');
     await page.getByRole('button', { name: /Sign In/i }).click();
     await expect(page.getByText(/Dashboard Overview/i)).toBeVisible({ timeout: 10000 });
 
@@ -68,8 +68,8 @@ test.describe('Admin Login & Inventory Management', () => {
 
   test('admin logout redirects to login', async ({ page }) => {
     await page.goto('/admin');
-    await page.getByPlaceholder(/admin/i).fill('admin');
-    await page.getByPlaceholder('••••••••').fill('admin123');
+    await page.getByLabel(/Username/i).fill('admin');
+    await page.getByLabel(/Password/i).fill('admin123');
     await page.getByRole('button', { name: /Sign In/i }).click();
     await expect(page.getByText(/Dashboard Overview/i)).toBeVisible({ timeout: 10000 });
 
@@ -83,3 +83,4 @@ test.describe('Admin Login & Inventory Management', () => {
     await expect(page.getByRole('heading', { name: /Admin Portal/i })).toBeVisible({ timeout: 10000 });
   });
 });
+

@@ -74,9 +74,9 @@ export default function About() {
           className="text-center max-w-4xl mx-auto mb-20"
         >
           <div className="flex items-center justify-center gap-3 mb-6">
-            <div className="h-px w-12 bg-gradient-to-r from-transparent to-primary" />
+            <div className="h-px w-12 bg-linear-to-r from-transparent to-primary" />
             <span className="text-accent text-xs font-semibold tracking-[0.3em] uppercase">Platform Overview</span>
-            <div className="h-px w-12 bg-gradient-to-l from-transparent to-primary" />
+            <div className="h-px w-12 bg-linear-to-l from-transparent to-primary" />
           </div>
           <h2 className="text-3xl sm:text-4xl lg:text-6xl font-black mb-6 leading-tight">
             Built For <span className="gradient-text">Modern</span>
@@ -99,9 +99,9 @@ export default function About() {
               transition={{ duration: 0.6, delay: 0.15 + i * 0.1 }}
               className="group relative rounded-2xl p-6 sm:p-8 bg-card/50 backdrop-blur-xl border border-border/60 hover:border-primary/40 transition-all duration-500 hover:-translate-y-1 card-glow"
             >
-              <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-primary/5 via-transparent to-accent/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+              <div className="absolute inset-0 rounded-2xl bg-linear-to-br from-primary/5 via-transparent to-accent/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
               <div className="relative">
-                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-br from-primary/15 to-primary/5 border border-primary/20 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-500">
+                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-linear-to-br from-primary/15 to-primary/5 border border-primary/20 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-500">
                   <stat.icon className="w-5 h-5 text-primary group-hover:text-accent transition-colors duration-500" />
                 </div>
                 <div className="text-3xl sm:text-4xl lg:text-5xl font-black gradient-text mb-2">

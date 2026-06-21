@@ -51,7 +51,15 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const body = await req.json();
     const data = customerUpdateSchema.parse(body);
     const oldCustomer = await prisma.customer.findUnique({ where: { id } });
-    const customer = await prisma.customer.update({ where: { id }, data });
+    const customer = await prisma.customer.update({
+      where: { id },
+      data: {
+        ...(data.name !== undefined && { name: data.name }),
+        ...(data.phone !== undefined && { phone: data.phone }),
+        ...(data.email !== undefined && { email: data.email ?? '' }),
+        ...(data.address !== undefined && { address: data.address }),
+      },
+    });
     const { ipAddress, userAgent } = getClientInfo(req);
     await logAudit({
       userId: payload.userId,
@@ -82,7 +90,10 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     const payload = await requireRole(req, ['admin', 'staff']);
     const { id } = await params;
     const oldCustomer = await prisma.customer.findUnique({ where: { id } });
-    await prisma.customer.softDelete({ id });
+    await prisma.customer.update({
+      where: { id },
+      data: { isDeleted: true, deletedAt: new Date() },
+    });
     const { ipAddress, userAgent } = getClientInfo(req);
     await logAudit({
       userId: payload.userId,

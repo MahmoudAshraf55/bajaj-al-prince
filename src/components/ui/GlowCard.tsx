@@ -39,11 +39,11 @@ export default function GlowCard({
       )}
     >
       {/* Inner glow on hover */}
-      <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-primary/5 via-transparent to-accent/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+      <div className="absolute inset-0 rounded-2xl bg-linear-to-br from-primary/5 via-transparent to-accent/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
 
       {/* Icon */}
       <div className="relative mb-5">
-        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/15 to-primary/5 border border-primary/20 flex items-center justify-center group-hover:scale-110 group-hover:border-primary/40 transition-all duration-500">
+        <div className="w-12 h-12 rounded-xl bg-linear-to-br from-primary/15 to-primary/5 border border-primary/20 flex items-center justify-center group-hover:scale-110 group-hover:border-primary/40 transition-all duration-500">
           <Icon className="w-5 h-5 text-primary group-hover:text-accent transition-colors duration-500" />
         </div>
         <div className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-accent/60 animate-pulse-glow" />
@@ -60,7 +60,7 @@ export default function GlowCard({
       </p>
 
       {/* Divider */}
-      <div className="relative h-px bg-gradient-to-r from-primary/30 via-border to-transparent mb-4" />
+      <div className="relative h-px bg-linear-to-r from-primary/30 via-border to-transparent mb-4" />
 
       {/* Benefit */}
       <p className="relative text-xs text-muted-foreground/80 mb-3">
@@ -74,7 +74,7 @@ export default function GlowCard({
             initial={{ width: 0 }}
             animate={inView ? { width: '100%' } : {}}
             transition={{ duration: 1.2, delay: 0.3 + index * 0.1, ease: 'easeOut' }}
-            className="h-full rounded-full bg-gradient-to-r from-primary to-accent"
+            className="h-full rounded-full bg-linear-to-r from-primary to-accent"
           />
         </div>
         <span className="text-xs font-bold text-accent whitespace-nowrap">{metric}</span>

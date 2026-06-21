@@ -39,9 +39,9 @@ export default function ServiceHighlights() {
           className="text-center max-w-3xl mx-auto mb-20"
         >
           <div className="flex items-center justify-center gap-3 mb-6">
-            <div className="h-px w-12 bg-gradient-to-r from-transparent to-primary" />
+            <div className="h-px w-12 bg-linear-to-r from-transparent to-primary" />
             <span className="text-accent text-xs font-semibold tracking-[0.3em] uppercase">{t('highlights_tag')}</span>
-            <div className="h-px w-12 bg-gradient-to-l from-transparent to-primary" />
+            <div className="h-px w-12 bg-linear-to-l from-transparent to-primary" />
           </div>
           <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black mb-6 leading-tight">
             {t('highlights_title')}
@@ -55,7 +55,7 @@ export default function ServiceHighlights() {
               initial={{ opacity: 0, scale: 0.5 }}
               animate={isInView ? { opacity: 1, scale: 1 } : {}}
               transition={{ duration: 0.6, delay: 0.1 * i, type: 'spring' }}
-              className={`relative rounded-full flex items-center justify-center text-center font-semibold text-foreground backdrop-blur-xl border border-white/10 bg-gradient-to-br ${bubble.color} ${sizeMap[bubble.size as keyof typeof sizeMap]} animate-bubble`}
+              className={`relative rounded-full flex items-center justify-center text-center font-semibold text-foreground backdrop-blur-xl border border-white/10 bg-linear-to-br ${bubble.color} ${sizeMap[bubble.size as keyof typeof sizeMap]} animate-bubble`}
               style={{ animationDelay: `${i * 0.5}s` }}
             >
               <span className="px-3 leading-tight">{t(bubble.labelKey)}</span>

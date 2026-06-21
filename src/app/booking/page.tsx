@@ -7,6 +7,7 @@ import {
   User, Phone, Hash, Gauge, ChevronDown, Mail,
 } from 'lucide-react';
 import { useTranslation } from '@/components/useTranslation';
+import BackButton from '@/components/BackButton';
 import type { VehicleModel } from '@/types';
 
 export default function BookingPage() {
@@ -94,6 +95,9 @@ export default function BookingPage() {
   return (
     <div className="min-h-screen pt-24 pb-16">
       <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
+        <div className="mb-6">
+          <BackButton fallback="/" />
+        </div>
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}

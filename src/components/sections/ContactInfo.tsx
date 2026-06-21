@@ -82,9 +82,9 @@ export default function ContactInfo() {
           className="text-center max-w-3xl mx-auto mb-16"
         >
           <div className="flex items-center justify-center gap-3 mb-6">
-            <div className="h-px w-12 bg-gradient-to-r from-transparent to-primary" />
+            <div className="h-px w-12 bg-linear-to-r from-transparent to-primary" />
             <span className="text-accent text-xs font-semibold tracking-[0.3em] uppercase">{t('contact_tag')}</span>
-            <div className="h-px w-12 bg-gradient-to-l from-transparent to-primary" />
+            <div className="h-px w-12 bg-linear-to-l from-transparent to-primary" />
           </div>
           <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black mb-6 leading-tight">
             {t('contact_title')}
@@ -107,7 +107,7 @@ export default function ContactInfo() {
               className="group glass rounded-2xl p-6 card-glow hover:-translate-y-1 transition-all duration-500 block"
             >
               <div className="flex items-start justify-between mb-4">
-                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 flex items-center justify-center group-hover:scale-110 transition-transform duration-500">
+                <div className="w-12 h-12 rounded-xl bg-linear-to-br from-primary/20 to-primary/5 border border-primary/20 flex items-center justify-center group-hover:scale-110 transition-transform duration-500">
                   <contact.icon className="w-5 h-5 text-primary" />
                 </div>
                 <span className="text-[10px] text-accent uppercase tracking-wider font-semibold">{t(contact.action)}</span>

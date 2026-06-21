@@ -54,7 +54,14 @@ export async function POST(req: NextRequest) {
     const payload = await requireRole(req, ['admin', 'staff']);
     const body = await req.json();
     const data = customerSchema.parse(body);
-    const customer = await prisma.customer.create({ data });
+    const customer = await prisma.customer.create({
+      data: {
+        name: data.name,
+        phone: data.phone,
+        email: data.email ?? '',
+        address: data.address ?? null,
+      },
+    });
     const { ipAddress, userAgent } = getClientInfo(req);
     await logAudit({
       userId: payload.userId,

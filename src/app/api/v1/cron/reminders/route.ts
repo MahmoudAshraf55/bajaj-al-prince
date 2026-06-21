@@ -138,12 +138,17 @@ export async function GET(req: NextRequest) {
           .replace(/\{\{name\}\}/g, customer.name)
           .replace(/\{\{model\}\}/g, model);
 
-        const sendResult = await sendWhatsAppMessageViaService(customer.phone, message);
+        const phone = customer.phone ?? '';
+        if (!phone) {
+          scheduleFailed++;
+          continue;
+        }
+        const sendResult = await sendWhatsAppMessageViaService(phone, message);
 
         await prisma.reminderLog.create({
           data: {
             customerId: customer.id,
-            phone: customer.phone,
+            phone,
             message,
             status: sendResult.success ? 'sent' : 'failed',
           },

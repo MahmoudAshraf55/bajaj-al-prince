@@ -9,7 +9,17 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test": "playwright test",
+    "test:e2e": "playwright test",
+    "test:ci": "playwright test --reporter=html",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:push": "prisma db push",
+    "db:seed": "prisma db seed",
+    "postinstall": "prisma generate",
+    "typecheck": "tsc --noEmit",
+    "audit": "npm audit --audit-level=high"
   },
   "dependencies": {
     "@eslint/eslintrc": "^3.3.5",

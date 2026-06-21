@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from '@/components/useTranslation';
+import BackButton from '@/components/BackButton';
 import Image from 'next/image';
 import {
   MessageCircle, QrCode, Smartphone, Loader2, Unplug,
@@ -23,7 +24,7 @@ function PremiumCard({ children, className = "", delay = 0 }: { children: React.
       initial={{ opacity: 0, y: 15 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, delay, ease: [0.16, 1, 0.3, 1] }}
-      className={`relative overflow-hidden rounded-2xl border border-white/[0.06] bg-white/[0.02] backdrop-blur-xl p-6 shadow-2xl shadow-black/10 transition-all duration-300 hover:border-white/[0.1] hover:bg-white/[0.03] ${className}`}
+      className={`relative overflow-hidden rounded-2xl border border-white/6 bg-white/2 backdrop-blur-xl p-6 shadow-2xl shadow-black/10 transition-all duration-300 hover:border-white/10 hover:bg-white/3 ${className}`}
     >
       <div className="absolute -right-20 -top-20 w-40 h-40 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none" />
       {children}
@@ -33,7 +34,7 @@ function PremiumCard({ children, className = "", delay = 0 }: { children: React.
 
 function SectionHeader({ icon: Icon, title, subtitle }: { icon: React.ComponentType<{ className?: string }>; title: string; subtitle?: string }) {
   return (
-    <div className="flex items-start gap-4 mb-6 border-b border-white/[0.06] pb-4">
+    <div className="flex items-start gap-4 mb-6 border-b border-white/6 pb-4">
       <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 shadow-inner">
         <Icon className="w-5 h-5" />
       </div>
@@ -324,17 +325,18 @@ export default function WhatsAppAdminPage() {
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-white/[0.06] pb-6"
+          className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-white/6 pb-6"
         >
           <div className="flex items-center gap-3.5">
+            <BackButton fallback="/admin/dashboard/" />
             <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shadow-lg shadow-emerald-500/5">
               <MessageCircle className="w-6 h-6 text-emerald-400" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white via-zinc-200 to-zinc-400">
+              <h1 className="text-2xl font-bold tracking-tight bg-clip-text text-transparent bg-linear-to-r from-white via-zinc-200 to-zinc-400">
                 {t('admin_whatsapp')}
               </h1>
-              <p className="text-xs text-zinc-400 mt-1">إدارة قوالب الرسائل وتتبع حالة الاتصال وجداول تذكيرات العملاء</p>
+              <p className="text-xs text-zinc-400 mt-1">{t('wa_subtitle')}</p>
             </div>
           </div>
         </motion.div>
@@ -348,7 +350,7 @@ export default function WhatsAppAdminPage() {
               <SectionHeader
                 icon={Smartphone}
                 title={t('wa_connection_status')}
-                subtitle="الحالة الفورية لاتصال بوابة الواتساب بالخدمة"
+                subtitle={t('wa_status_subtitle')}
               />
 
               {loading ? (
@@ -371,7 +373,7 @@ export default function WhatsAppAdminPage() {
                   </div>
 
                   {state?.phone && (
-                    <div className="bg-white/[0.02] border border-white/[0.04] rounded-xl px-4 py-3 flex items-center justify-between">
+                    <div className="bg-white/2 border border-white/4 rounded-xl px-4 py-3 flex items-center justify-between">
                       <span className="text-xs text-zinc-400">{t('wa_connected_number')}</span>
                       <span className="text-sm font-mono font-semibold text-emerald-400 tracking-wider">+{state.phone}</span>
                     </div>
@@ -397,7 +399,7 @@ export default function WhatsAppAdminPage() {
                     <button
                       onClick={handleDisconnect}
                       disabled={actionLoading || state?.status === 'disconnected'}
-                      className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-white/[0.04] text-red-400 border border-white/[0.06] hover:bg-red-500/10 hover:border-red-500/20 active:scale-[0.98] transition-all disabled:opacity-30 disabled:cursor-not-allowed disabled:active:scale-100 text-sm"
+                      className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-white/4 text-red-400 border border-white/6 hover:bg-red-500/10 hover:border-red-500/20 active:scale-[0.98] transition-all disabled:opacity-30 disabled:cursor-not-allowed disabled:active:scale-100 text-sm"
                     >
                       <Unplug className="w-4 h-4" />
                       {t('wa_disconnect')}
@@ -411,20 +413,20 @@ export default function WhatsAppAdminPage() {
 
             {/* QR Code Card */}
             {state?.qrDataUrl && (
-              <PremiumCard delay={0.15} className="border-blue-500/10 bg-blue-500/[0.01]">
+              <PremiumCard delay={0.15} className="border-blue-500/10 bg-blue-500/1">
                 <SectionHeader
                   icon={QrCode}
                   title={t('wa_scan_qr')}
                   subtitle={t('wa_scan_qr_desc')}
                 />
-                <div className="flex flex-col items-center justify-center p-6 bg-white/[0.02] border border-white/[0.04] rounded-2xl relative group">
-                  <div className="absolute inset-0 bg-gradient-to-b from-transparent via-emerald-500/10 to-transparent w-full h-0.5 top-0 animate-[scan_3s_ease-in-out_infinite] pointer-events-none" />
+                <div className="flex flex-col items-center justify-center p-6 bg-white/2 border border-white/4 rounded-2xl relative group">
+                  <div className="absolute inset-0 bg-linear-to-b from-transparent via-emerald-500/10 to-transparent w-full h-0.5 top-0 animate-[scan_3s_ease-in-out_infinite] pointer-events-none" />
                   <div className="p-4 bg-white rounded-2xl shadow-2xl relative z-10 transition-transform duration-300 group-hover:scale-[1.02]">
                     <Image src={state.qrDataUrl} alt="WhatsApp QR Code" width={220} height={250} className="w-56 h-56" />
                   </div>
                   <div className="mt-4 text-xs text-zinc-400 flex items-center gap-1.5">
                     <Loader2 className="w-3 h-3 animate-spin text-blue-400" />
-                    <span>انتظار مسح الرمز وتحديث الاتصال تلقائياً...</span>
+                    <span>{t('wa_qr_waiting')}</span>
                   </div>
                 </div>
               </PremiumCard>
@@ -436,7 +438,7 @@ export default function WhatsAppAdminPage() {
                 <SectionHeader
                   icon={Send}
                   title={t('wa_test_message')}
-                  subtitle="اختبر إرسال رسالة واتساب يدويّاً لأي رقم للتأكد من بوابة الإرسال"
+                  subtitle={t('wa_test_subtitle')}
                 />
                 <div className="space-y-4">
                   <div className="space-y-1.5">
@@ -446,7 +448,7 @@ export default function WhatsAppAdminPage() {
                       value={testPhone}
                       onChange={(e) => setTestPhone(e.target.value)}
                       placeholder={t('wa_test_phone_placeholder')}
-                      className="w-full px-4 py-2.5 rounded-xl bg-white/[0.03] border border-white/[0.06] text-sm focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 transition-all font-mono tracking-wide"
+                      className="w-full px-4 py-2.5 rounded-xl bg-white/3 border border-white/6 text-sm focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 transition-all font-mono tracking-wide"
                     />
                   </div>
                   <div className="space-y-1.5">
@@ -456,13 +458,13 @@ export default function WhatsAppAdminPage() {
                       onChange={(e) => setTestMessage(e.target.value)}
                       placeholder={t('wa_test_message_placeholder')}
                       rows={3}
-                      className="w-full px-4 py-2.5 rounded-xl bg-white/[0.03] border border-white/[0.06] text-sm focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 transition-all resize-none leading-relaxed"
+                      className="w-full px-4 py-2.5 rounded-xl bg-white/3 border border-white/6 text-sm focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 transition-all resize-none leading-relaxed"
                     />
                   </div>
                   <button
                     onClick={handleSendTest}
                     disabled={actionLoading || !testPhone.trim() || !testMessage.trim()}
-                    className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-white/[0.05] text-zinc-100 hover:bg-white/[0.08] active:scale-[0.98] transition-all text-sm font-semibold disabled:opacity-30 disabled:cursor-not-allowed border border-white/[0.08]"
+                    className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-white/5 text-zinc-100 hover:bg-white/8 active:scale-[0.98] transition-all text-sm font-semibold disabled:opacity-30 disabled:cursor-not-allowed border border-white/8"
                   >
                     <Send className="w-4 h-4 text-emerald-400" />
                     {t('wa_test_send')}
@@ -481,14 +483,14 @@ export default function WhatsAppAdminPage() {
                 <SectionHeader
                   icon={Shield}
                   title={t('wa_settings_title')}
-                  subtitle="إعدادات ذكية لمنع حظر الرقم من قبل شركة Meta عبر تحديد فترات انتظار وتدفق دفعات الرسائل"
+                  subtitle={t('wa_settings_subtitle')}
                 />
                 <div className="space-y-6">
                   {/* Min Delay Slider */}
                   <div className="space-y-2">
                     <div className="flex justify-between items-center text-xs font-semibold">
                       <span className="text-zinc-400">{t('wa_settings_delay_min')}</span>
-                      <span className="text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/10 font-mono text-[11px]">{settings.delayMin} ثانية</span>
+                      <span className="text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/10 font-mono text-[11px]">{settings.delayMin} {t('wa_second')}</span>
                     </div>
                     <div className="relative group flex items-center">
                       <input
@@ -511,7 +513,7 @@ export default function WhatsAppAdminPage() {
                   <div className="space-y-2">
                     <div className="flex justify-between items-center text-xs font-semibold">
                       <span className="text-zinc-400">{t('wa_settings_delay_max')}</span>
-                      <span className="text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/10 font-mono text-[11px]">{settings.delayMax} ثانية</span>
+                      <span className="text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/10 font-mono text-[11px]">{settings.delayMax} {t('wa_second')}</span>
                     </div>
                     <div className="relative group flex items-center">
                       <input
@@ -533,7 +535,7 @@ export default function WhatsAppAdminPage() {
                   {/* Two columns for numbers */}
                   <div className="grid grid-cols-2 gap-4 pt-2">
                     {/* Daily Cap */}
-                    <div className="space-y-2 bg-white/[0.02] border border-white/[0.04] p-3 rounded-xl">
+                    <div className="space-y-2 bg-white/2 border border-white/4 p-3 rounded-xl">
                       <div className="flex justify-between items-center text-[11px] font-semibold text-zinc-400">
                         <span>{t('wa_settings_daily_cap')}</span>
                         <span className="text-emerald-400 font-mono">{settings.dailyCap}</span>
@@ -554,7 +556,7 @@ export default function WhatsAppAdminPage() {
                     </div>
 
                     {/* Batch Size */}
-                    <div className="space-y-2 bg-white/[0.02] border border-white/[0.04] p-3 rounded-xl">
+                    <div className="space-y-2 bg-white/2 border border-white/4 p-3 rounded-xl">
                       <div className="flex justify-between items-center text-[11px] font-semibold text-zinc-400">
                         <span>{t('wa_settings_batch_size')}</span>
                         <span className="text-emerald-400 font-mono">{settings.batchSize}</span>
@@ -584,7 +586,7 @@ export default function WhatsAppAdminPage() {
                 <SectionHeader
                   icon={Mail}
                   title={t('wa_templates_title')}
-                  subtitle="قوالب رسائل تلقائية تُرسل للعميل فوراً عند حدوث إجراء في النظام"
+                  subtitle={t('wa_templates_subtitle')}
                 />
                 <div className="space-y-5">
                   {templates.map((tmpl) => {
@@ -593,7 +595,7 @@ export default function WhatsAppAdminPage() {
                     return (
                       <div
                         key={tmpl.id}
-                        className="group/item relative rounded-xl border border-white/[0.04] bg-white/[0.01] p-4 transition-all duration-300 hover:border-white/[0.08] hover:bg-white/[0.02]"
+                        className="group/item relative rounded-xl border border-white/4 bg-white/1 p-4 transition-all duration-300 hover:border-white/8 hover:bg-white/2"
                       >
                         <div className="flex items-center justify-between gap-4 mb-3">
                           <span className="text-xs font-bold uppercase tracking-wider text-emerald-400 bg-emerald-500/5 px-2.5 py-1 rounded-lg border border-emerald-500/10">
@@ -616,7 +618,7 @@ export default function WhatsAppAdminPage() {
                           }}
                           onBlur={(e) => handleUpdateTemplate(tmpl.id, { message: e.target.value })}
                           rows={3}
-                          className="w-full px-3 py-2 rounded-xl bg-black/20 border border-white/[0.06] text-xs focus:outline-none focus:border-emerald-500/40 focus:ring-1 focus:ring-emerald-500/25 transition-all resize-none leading-relaxed text-zinc-300"
+                          className="w-full px-3 py-2 rounded-xl bg-black/20 border border-white/6 text-xs focus:outline-none focus:border-emerald-500/40 focus:ring-1 focus:ring-emerald-500/25 transition-all resize-none leading-relaxed text-zinc-300"
                         />
 
                         <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
@@ -628,10 +630,10 @@ export default function WhatsAppAdminPage() {
                               key={v}
                               onClick={() => {
                                 navigator.clipboard.writeText(`{{${v}}}`);
-                                showToast('success', `تم نسخ {{${v}}} للحافظة`);
+                                showToast('success', t('wa_copied').replace('{{var}}', `{{${v}}}`));
                               }}
-                              className="text-[10px] font-mono text-zinc-400 bg-white/[0.03] border border-white/[0.05] hover:border-emerald-500/20 hover:text-emerald-400 px-1.5 py-0.5 rounded transition-all cursor-pointer"
-                              title="اضغط للنسخ"
+                              className="text-[10px] font-mono text-zinc-400 bg-white/3 border border-white/5 hover:border-emerald-500/20 hover:text-emerald-400 px-1.5 py-0.5 rounded transition-all cursor-pointer"
+                              title={t('wa_click_copy')}
                             >
                               {`{{${v}}}`}
                             </button>
@@ -650,13 +652,13 @@ export default function WhatsAppAdminPage() {
                 <SectionHeader
                   icon={CalendarClock}
                   title={t('wa_schedules_title')}
-                  subtitle="جدولة رسائل المتابعة وعروض الصيانة بناءً على فترات مخصصة من آخر موعد صيانة"
+                  subtitle={t('wa_schedules_subtitle')}
                 />
                 <div className="space-y-5">
                   {schedules.map((sch) => (
                     <div
                       key={sch.id}
-                      className="group/item relative rounded-xl border border-white/[0.04] bg-white/[0.01] p-4 transition-all duration-300 hover:border-white/[0.08] hover:bg-white/[0.02]"
+                      className="group/item relative rounded-xl border border-white/4 bg-white/1 p-4 transition-all duration-300 hover:border-white/8 hover:bg-white/2"
                     >
                       <div className="flex items-center justify-between gap-4 mb-3">
                         <div className="flex items-center gap-2">
@@ -682,10 +684,10 @@ export default function WhatsAppAdminPage() {
                         }}
                         onBlur={(e) => handleUpdateSchedule(sch.id, { message: e.target.value })}
                         rows={3}
-                        className="w-full px-3 py-2 rounded-xl bg-black/20 border border-white/[0.06] text-xs focus:outline-none focus:border-emerald-500/40 focus:ring-1 focus:ring-emerald-500/25 transition-all resize-none leading-relaxed text-zinc-300"
+                        className="w-full px-3 py-2 rounded-xl bg-black/20 border border-white/6 text-xs focus:outline-none focus:border-emerald-500/40 focus:ring-1 focus:ring-emerald-500/25 transition-all resize-none leading-relaxed text-zinc-300"
                       />
 
-                      <div className="mt-3 flex items-center justify-between border-t border-white/[0.03] pt-2.5">
+                      <div className="mt-3 flex items-center justify-between border-t border-white/3 pt-2.5">
                         <div className="flex items-center gap-2">
                           <input
                             type="number"
@@ -698,7 +700,7 @@ export default function WhatsAppAdminPage() {
                               setSchedules((prev) => prev.map((s) => (s.id === sch.id ? { ...s, intervalDays: val } : s)));
                             }}
                             onBlur={(e) => handleUpdateSchedule(sch.id, { intervalDays: parseInt(e.target.value) || 0 })}
-                            className="w-16 px-2.5 py-1 rounded-lg bg-black/30 border border-white/[0.08] text-center text-xs font-mono text-emerald-400 focus:outline-none focus:border-emerald-500/50"
+                            className="w-16 px-2.5 py-1 rounded-lg bg-black/30 border border-white/8 text-center text-xs font-mono text-emerald-400 focus:outline-none focus:border-emerald-500/50"
                           />
                           <span className="text-[11px] font-semibold text-zinc-400">{t('wa_schedules_days_label')}</span>
                         </div>
@@ -709,9 +711,9 @@ export default function WhatsAppAdminPage() {
                               key={v}
                               onClick={() => {
                                 navigator.clipboard.writeText(`{{${v}}}`);
-                                showToast('success', `تم نسخ {{${v}}} للحافظة`);
+                                showToast('success', t('wa_copied').replace('{{var}}', `{{${v}}}`));
                               }}
-                              className="text-[10px] font-mono text-zinc-500 bg-white/[0.02] border border-white/[0.04] px-1.5 py-0.5 rounded hover:text-emerald-400 hover:border-emerald-500/10 transition-all"
+                              className="text-[10px] font-mono text-zinc-500 bg-white/2 border border-white/4 px-1.5 py-0.5 rounded hover:text-emerald-400 hover:border-emerald-500/10 transition-all"
                             >
                               {`{{${v}}}`}
                             </button>
@@ -725,32 +727,32 @@ export default function WhatsAppAdminPage() {
             )}
 
             {/* Info Card */}
-            <PremiumCard delay={0.4} className="bg-emerald-500/[0.01]">
+            <PremiumCard delay={0.4} className="bg-emerald-500/1">
               <SectionHeader
                 icon={Info}
                 title={t('wa_how_it_works')}
-                subtitle="كيفية استخدام وإدارة حملات التذكير وجدولة الإرسال"
+                subtitle={t('wa_info_subtitle')}
               />
               <div className="relative border-r-2 border-emerald-500/10 pr-4 space-y-4 text-xs leading-relaxed text-zinc-400">
                 <div className="relative">
-                  <div className="absolute -right-[21px] top-1 w-2.5 h-2.5 rounded-full bg-emerald-500 border border-[#070709] shadow shadow-emerald-500/50" />
-                  <p className="font-semibold text-zinc-200 mb-0.5">1. ربط الواتساب</p>
-                  <p>امسح الرمز المربع (QR) لتسجيل الدخول، ويجب بقاء الهاتف متصلاً لضمان تسليم فوري وبدون تأخير.</p>
+                  <div className="absolute -right-5.25 top-1 w-2.5 h-2.5 rounded-full bg-emerald-500 border border-[#070709] shadow shadow-emerald-500/50" />
+                  <p className="font-semibold text-zinc-200 mb-0.5">{t('wa_info_step1_title')}</p>
+                  <p>{t('wa_info_step1_desc')}</p>
                 </div>
                 <div className="relative">
-                  <div className="absolute -right-[21px] top-1 w-2.5 h-2.5 rounded-full bg-zinc-600 border border-[#070709]" />
-                  <p className="font-semibold text-zinc-200 mb-0.5">2. تخصيص القوالب والرسائل</p>
-                  <p>استخدم الأقواس مثل {`{{name}}`} و {`{{model}}`} لإدراج بيانات العميل والمركبة تلقائياً وبأقصى درجة دقة.</p>
+                  <div className="absolute -right-5.25 top-1 w-2.5 h-2.5 rounded-full bg-zinc-600 border border-[#070709]" />
+                  <p className="font-semibold text-zinc-200 mb-0.5">{t('wa_info_step2_title')}</p>
+                  <p>{t('wa_info_step2_desc')}</p>
                 </div>
                 <div className="relative">
-                  <div className="absolute -right-[21px] top-1 w-2.5 h-2.5 rounded-full bg-zinc-600 border border-[#070709]" />
-                  <p className="font-semibold text-zinc-200 mb-0.5">3. جدولة التذكيرات (أيام)</p>
-                  <p>القيمة &quot;0&quot; تعني إرسال مباشر وعاجل (Broadcast). القيم الأكبر تبحث تلقائياً عن تاريخ آخر حجز مغلق.</p>
+                  <div className="absolute -right-5.25 top-1 w-2.5 h-2.5 rounded-full bg-zinc-600 border border-[#070709]" />
+                  <p className="font-semibold text-zinc-200 mb-0.5">{t('wa_info_step3_title')}</p>
+                  <p>{t('wa_info_step3_desc')}</p>
                 </div>
                 <div className="relative">
-                  <div className="absolute -right-[21px] top-1 w-2.5 h-2.5 rounded-full bg-zinc-600 border border-[#070709]" />
-                  <p className="font-semibold text-zinc-200 mb-0.5">4. منع الحظر التلقائي</p>
-                  <p>يتم عشوائياً الانتظار لثوانٍ معدودة بين كل رسالة والأخرى، كما يوجد سقف يومي لحجم الرسائل لحماية حسابك.</p>
+                  <div className="absolute -right-5.25 top-1 w-2.5 h-2.5 rounded-full bg-zinc-600 border border-[#070709]" />
+                  <p className="font-semibold text-zinc-200 mb-0.5">{t('wa_info_step4_title')}</p>
+                  <p>{t('wa_info_step4_desc')}</p>
                 </div>
               </div>
             </PremiumCard>

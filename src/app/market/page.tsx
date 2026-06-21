@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { AlertTriangle, Package, Search, Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useTranslation } from '@/components/useTranslation';
+import BackButton from '@/components/BackButton';
 
 interface Product {
   id: string;
@@ -61,6 +62,9 @@ export default function MarketPage() {
   return (
     <div className="min-h-screen pt-24 pb-16">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="mb-6">
+          <BackButton fallback="/" />
+        </div>
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -76,7 +80,7 @@ export default function MarketPage() {
         </motion.div>
 
         <div className="glass rounded-2xl p-4 mb-8 flex items-center gap-3 border border-primary/20">
-          <AlertTriangle className="w-5 h-5 text-primary flex-shrink-0" />
+          <AlertTriangle className="w-5 h-5 text-primary shrink-0" />
           <p className="text-sm text-muted-foreground">
             <span className="text-primary font-medium">{t('market_notice')}</span> {t('market_notice_text')}
           </p>
@@ -134,7 +138,7 @@ export default function MarketPage() {
                   transition={{ delay: i * 0.05 }}
                   className="glass rounded-2xl overflow-hidden group hover:border-primary/30 transition-all duration-500"
                 >
-                  <div className="aspect-[4/3] bg-secondary flex items-center justify-center relative">
+                  <div className="aspect-4/3 bg-secondary flex items-center justify-center relative">
                     <Package className="w-12 h-12 text-muted-foreground/30" />
                     {!product.stock && (
                       <div className="absolute top-3 right-3 px-2 py-1 rounded-lg bg-red-500/20 border border-red-500/30 text-red-400 text-xs font-medium">

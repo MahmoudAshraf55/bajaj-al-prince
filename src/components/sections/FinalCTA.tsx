@@ -31,9 +31,9 @@ export default function FinalCTA() {
           transition={{ duration: 0.8 }}
         >
           <div className="flex items-center justify-center gap-3 mb-6">
-            <div className="h-px w-12 bg-gradient-to-r from-transparent to-primary" />
+            <div className="h-px w-12 bg-linear-to-r from-transparent to-primary" />
             <span className="text-accent text-xs font-semibold tracking-[0.3em] uppercase">{t('cta_tag')}</span>
-            <div className="h-px w-12 bg-gradient-to-l from-transparent to-primary" />
+            <div className="h-px w-12 bg-linear-to-l from-transparent to-primary" />
           </div>
 
           <h2 className="text-3xl sm:text-4xl lg:text-6xl font-black mb-6 leading-tight">
@@ -56,7 +56,7 @@ export default function FinalCTA() {
                 transition={{ duration: 0.5, delay: 0.1 * i }}
                 className={`inline-flex items-center gap-2 px-6 py-3.5 rounded-full font-semibold text-sm transition-all duration-300 hover:-translate-y-0.5 ${
                   action.primary
-                    ? 'bg-gradient-to-r from-primary to-secondary text-white shadow-lg shadow-primary/30 hover:shadow-primary/50'
+                    ? 'bg-linear-to-r from-primary to-secondary text-white shadow-lg shadow-primary/30 hover:shadow-primary/50'
                     : 'glass border border-border/60 text-foreground hover:border-primary/30 hover:bg-white/5'
                 }`}
               >

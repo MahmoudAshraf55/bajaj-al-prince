@@ -107,7 +107,7 @@ export async function POST(req: NextRequest) {
 
       if (!customer) {
         customer = await tx.customer.create({
-          data: { name: data.name, phone: data.phone, email: data.email || null },
+          data: { name: data.name, phone: data.phone, email: data.email || '' },
         });
       } else if (data.email && !customer.email) {
         customer = await tx.customer.update({
