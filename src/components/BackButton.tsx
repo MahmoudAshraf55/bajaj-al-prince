@@ -11,7 +11,7 @@ export default function BackButton({ fallback = '/', label }: BackButtonProps) {
   const router = useRouter();
   const handleBack = () => {
     // If there is history to go back to, use router.back(), else navigate to fallback
-    if (window.history.length > 2) {
+    if (typeof window !== 'undefined' && window.history.length > 2) {
       router.back();
     } else {
       router.push(fallback);

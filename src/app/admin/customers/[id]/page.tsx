@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -256,6 +256,9 @@ export default function CustomerDetailPage() {
     const nextDate = new Date(nextDateStr);
     return nextDate < today;
   };
+
+  // Use useMemo to avoid hydration mismatch from Date calculations
+  const maxYear = useMemo(() => new Date().getFullYear() + 1, []);
 
   if (loading) {
     return (
@@ -662,7 +665,7 @@ export default function CustomerDetailPage() {
                     <input
                       type="number"
                       min="1900"
-                      max={new Date().getFullYear() + 1}
+                      max={maxYear}
                       value={form.year}
                       onChange={(e) => setForm((f) => ({ ...f, year: e.target.value }))}
                       className="w-full px-4 py-2.5 rounded-xl bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm"

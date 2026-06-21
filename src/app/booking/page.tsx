@@ -19,11 +19,13 @@ export default function BookingPage() {
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [errorMsg, setErrorMsg] = useState('');
   const [today, setToday] = useState('');
+  const [maxYear, setMaxYear] = useState(2025);
   const [models, setModels] = useState<VehicleModel[]>([]);
   const [isCustomModel, setIsCustomModel] = useState(false);
 
   useEffect(() => {
     setToday(new Date().toISOString().split('T')[0]);
+    setMaxYear(new Date().getFullYear() + 1);
     fetch('/api/vehicle-models/')
       .then((r) => r.json().catch(() => ({ success: false, data: { models: [] } })))
       .then((d) => {
@@ -277,7 +279,7 @@ export default function BookingPage() {
                     id="booking-year"
                     type="number"
                     min="1900"
-                    max={new Date().getFullYear() + 1}
+                    max={maxYear}
                     value={form.year}
                     onChange={(e) => setForm({ ...form, year: e.target.value })}
                     className="w-full px-4 py-3 rounded-xl bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
