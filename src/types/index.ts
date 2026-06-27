@@ -298,3 +298,38 @@ export type ApiResponse<T> = {
   error?: string;
   meta?: PaginationMeta;
 };
+
+// Accounting types
+export type AccountingPeriod = 'day' | 'month' | 'quarter' | 'year';
+
+export interface AccountingSummary {
+  period: { from: string; to: string; label: string };
+  revenue: number;          // sale invoices total
+  returns: number;          // return invoices total
+  netSales: number;         // revenue - returns
+  cogs: number;             // cost of goods sold
+  grossProfit: number;      // netSales - cogs
+  grossMargin: number;      // percentage
+  expenses: number;         // purchases + manual expenses + work order costs
+  discounts: number;        // invoice discounts
+  taxes: number;            // invoice taxes
+  netProfit: number;        // grossProfit - expenses - discounts
+  netMargin: number;        // percentage
+  byPaymentMethod: { method: string; amount: number; count: number }[];
+  byCategory: { category: string; revenue: number; cogs: number; profit: number }[];
+  invoiceCount: number;
+}
+
+export interface AccountingTransaction {
+  id: string;
+  type: string;             // SALE | RETURN | PURCHASE | EXPENSE | INCOME | STOCK_ADJUSTMENT
+  amount: number;
+  description: string | null;
+  referenceNumber: string | null;
+  referenceType: string | null;
+  referenceId: string | null;
+  category: string | null;
+  paymentMethod: string | null;
+  date: string;
+  createdById: string;
+}

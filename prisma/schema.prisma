@@ -304,6 +304,7 @@ model User {
   tokenVersion      Int                @default(0)
   invoices          Invoice[]
   stockMovements    StockMovement[]
+  journalEntries    JournalEntry[]
   barcodeScanLogs   BarcodeScanLog[]
   scannerSessions   ScannerSession[]
   createdAt         DateTime           @default(now()) @db.Timestamp(6)
@@ -417,6 +418,43 @@ model AuditLog {
   @@index([entity, entityId])
   @@index([createdAt])
   @@index([userId])
+  @@index([tenantId])
+}
+
+enum JournalEntryType {
+  SALE
+  RETURN
+  PURCHASE
+  EXPENSE
+  INCOME
+  STOCK_ADJUSTMENT
+}
+
+model JournalEntry {
+  id              String           @id @default(uuid())
+  type            JournalEntryType
+  amount          Decimal          @db.Decimal(12, 2)
+  description     String?
+  referenceType   String?          // "invoice" | "stock_movement" | "manual_transaction" | "work_order"
+  referenceId     String?          // ID of the source document
+  referenceNumber String?          // Human-readable ref (e.g., INV-20260627-0001)
+  category        String?          // Product category or expense category
+  paymentMethod   String?          // "cash" | "card" | "transfer"
+  createdById     String
+  createdBy       User             @relation(fields: [createdById], references: [id])
+  date            DateTime         @db.Timestamp(6)
+  createdAt       DateTime         @default(now()) @db.Timestamp(6)
+  updatedAt       DateTime?        @updatedAt @db.Timestamp(6)
+  isDeleted       Boolean          @default(false)
+  deletedAt       DateTime?        @db.Timestamp(6)
+  tenantId        String?
+
+  @@index([type])
+  @@index([date])
+  @@index([referenceType, referenceId])
+  @@index([createdById])
+  @@index([category])
+  @@index([isDeleted])
   @@index([tenantId])
 }
 
