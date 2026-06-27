@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import AdminSidebar from "@/components/AdminSidebar";
 
 export const metadata: Metadata = {
   title: "Admin Portal | El Prince Bajaj",
@@ -10,5 +11,12 @@ export default function AdminLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  return <>{children}</>;
+  return (
+    <div className="flex min-h-screen bg-background">
+      <AdminSidebar />
+      <main className="flex-1 min-h-screen overflow-auto">
+        {children}
+      </main>
+    </div>
+  );
 }

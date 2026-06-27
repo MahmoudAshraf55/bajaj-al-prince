@@ -4,13 +4,10 @@ import { useEffect, useState, useCallback } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import Logo from '@/components/ui/Logo';
 import { useTranslation } from '@/components/useTranslation';
 import {
   Package, Plus, Pencil, Trash2, X, Search, Upload, Sparkles,
-  LogOut, LayoutDashboard, Mail, Calendar, Loader2, DollarSign,
-  MessageCircle, Wrench, Users, Car, List,
-  ShoppingCart, TrendingUp, Camera,
+  Loader2,
 } from 'lucide-react';
 
 interface Product {
