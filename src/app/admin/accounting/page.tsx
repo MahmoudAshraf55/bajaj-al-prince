@@ -9,8 +9,7 @@ import type { AccountingSummary, AccountingTransaction, AccountingPeriod } from 
 import {
   LayoutDashboard, Mail, Calendar, Receipt, Package, ShoppingCart,
   MessageCircle, Wrench, Users, Car, TrendingUp, DollarSign,
-  LogOut, ArrowUpRight, ArrowDownRight, X, Search, ChevronLeft, ChevronRight,
-  Loader2, FileText,
+  LogOut, ArrowUpRight, ArrowDownRight, Loader2, ChevronLeft, ChevronRight,
 } from 'lucide-react';
 
 type PeriodTab = { key: AccountingPeriod; label: string; days: number };
@@ -27,7 +26,7 @@ export default function AccountingPage() {
   const router = useRouter();
 
   const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<{ username: string } | null>(null);
   const [periodTab, setPeriodTab] = useState<AccountingPeriod>('day');
   const [customFrom, setCustomFrom] = useState('');
   const [customTo, setCustomTo] = useState('');
@@ -133,7 +132,7 @@ export default function AccountingPage() {
     return d.toLocaleDateString(language === 'ar' ? 'ar-EG' : 'en-US', { year: 'numeric', month: 'short', day: 'numeric' });
   };
 
-  const Card = ({ label, value, color, icon: Icon, sub }: { label: string; value: string; color: string; icon?: any; sub?: string }) => (
+  const Card = ({ label, value, color, icon: Icon, sub }: { label: string; value: string; color: string; icon?: React.ComponentType<{ className?: string }>; sub?: string }) => (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className={`rounded-2xl p-5 ${color}`}>
       <div className="flex items-start justify-between mb-2">
         <p className="text-sm opacity-80">{label}</p>
