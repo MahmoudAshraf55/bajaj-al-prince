@@ -21,6 +21,7 @@ const nextConfig = {
       { source: '/api/customers/:path*', destination: '/api/v1/customers/:path*' },
       { source: '/api/vehicles/:path*', destination: '/api/v1/vehicles/:path*' },
       { source: '/api/vehicle-models/:path*', destination: '/api/v1/vehicle-models/:path*' },
+      { source: '/api/work-orders/:path*', destination: '/api/v1/work-orders/:path*' },
     ];
   },
   async headers() {
@@ -46,11 +47,11 @@ const nextConfig = {
           },
           {
             key: 'Permissions-Policy',
-            value: 'camera=(), microphone=(), geolocation=()',
+            value: 'camera=(self), microphone=(), geolocation=()',
           },
           {
             key: 'Content-Security-Policy',
-            value: `default-src 'self'; script-src 'self' 'unsafe-eval'${isDev ? " 'unsafe-inline'" : ''}; style-src 'self'${isDev ? " 'unsafe-inline'" : ''}; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' blob: https://raw.githack.com https://raw.githubusercontent.com; frame-src 'self' https://www.tiktok.com https://www.youtube.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self';`,
+            value: `default-src 'self'; script-src 'self' 'unsafe-eval'${isDev ? " 'unsafe-inline'" : ''} https://www.gstatic.com; style-src 'self'${isDev ? " 'unsafe-inline'" : ''}; img-src 'self' data: blob:; font-src 'self'; media-src 'self' blob:; connect-src 'self' blob: https://raw.githack.com https://raw.githubusercontent.com https://www.gstatic.com; frame-src 'self' https://www.tiktok.com https://www.youtube.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self';`,
           },
         ],
       },
