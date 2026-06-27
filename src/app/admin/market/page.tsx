@@ -7,8 +7,11 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from '@/components/useTranslation';
 import {
   Package, Plus, Pencil, Trash2, X, Search, Upload, Sparkles,
-  Loader2,
+  LogOut, LayoutDashboard, Mail, Calendar, Loader2, DollarSign,
+  MessageCircle, Wrench, Users, Car, List,
+  ShoppingCart, TrendingUp, Camera,
 } from 'lucide-react';
+import Logo from '@/components/ui/Logo';
 
 interface Product {
   id: string;
@@ -213,11 +216,6 @@ export default function AdminMarket() {
     p.name.toLowerCase().includes(search.toLowerCase())
   );
 
-  const logout = async () => {
-    await fetch('/api/auth/logout/', { method: 'POST', credentials: 'include' });
-    router.push('/admin/');
-  };
-
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -227,86 +225,8 @@ export default function AdminMarket() {
   }
 
   return (
-    <div className="min-h-screen bg-background" dir={language === 'ar' ? 'rtl' : 'ltr'}>
-      <aside className="fixed top-0 ltr:left-0 rtl:right-0 h-full w-64 glass ltr:border-r rtl:border-l border-border hidden md:flex flex-col z-30">
-        <div className="p-6 border-b border-border">
-          <Logo size="sm" />
-        </div>
-        <nav className="flex-1 p-4 flex flex-col gap-1">
-          <button onClick={() => router.push('/admin/dashboard/')} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-white/5 transition-all">
-            <LayoutDashboard className="w-4 h-4" />
-            {t('admin_overview')}
-          </button>
-          <button onClick={() => router.push('/admin/dashboard/?tab=messages')} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-white/5 transition-all">
-            <Mail className="w-4 h-4" />
-            {t('admin_messages')}
-          </button>
-          <button onClick={() => router.push('/admin/dashboard/?tab=bookings')} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-white/5 transition-all">
-            <Calendar className="w-4 h-4" />
-            {t('admin_bookings')}
-          </button>
-          <div className="mt-4 mb-1 px-4 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60">
-            POS & Warehouse
-          </div>
-          <button onClick={() => router.push('/admin/pos/')} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-white/5 transition-all">
-            <ShoppingCart className="w-4 h-4" />
-            {t('pos_title')}
-          </button>
-          <button onClick={() => router.push('/admin/warehouse/')} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-white/5 transition-all">
-            <TrendingUp className="w-4 h-4" />
-            {t('wh_title')}
-          </button>
-          <button onClick={() => router.push('/admin/accounting/')} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-white/5 transition-all">
-            <DollarSign className="w-4 h-4" />
-            {t('admin_accounting')}
-          </button>
-          <div className="mt-4 mb-1 px-4 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60">
-            CRM
-          </div>
-          <button onClick={() => router.push('/admin/market/')} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium bg-primary text-primary-foreground transition-all">
-            <Package className="w-4 h-4" />
-            {t('admin_market')}
-          </button>
-          <button onClick={() => router.push('/admin/customers/')} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-white/5 transition-all">
-            <Users className="w-4 h-4" />
-            {t('admin_customers')}
-          </button>
-          <button onClick={() => router.push('/admin/vehicles/')} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-white/5 transition-all">
-            <Car className="w-4 h-4" />
-            {t('admin_vehicles')}
-          </button>
-          <button onClick={() => router.push('/admin/vehicle-models/')} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-white/5 transition-all">
-            <List className="w-4 h-4" />
-            {t('admin_vehicle_models')}
-          </button>
-          <button onClick={() => router.push('/admin/work-orders/')} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-white/5 transition-all">
-            <Wrench className="w-4 h-4" />
-            {t('wo_title')}
-          </button>
-          <button onClick={() => router.push('/admin/whatsapp/')} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-white/5 transition-all">
-            <MessageCircle className="w-4 h-4" />
-            {t('admin_whatsapp')}
-          </button>
-          <button onClick={() => router.push('/admin/devices/')} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-white/5 transition-all">
-            <Camera className="w-4 h-4" />
-            {t('admin_devices')}
-          </button>
-        </nav>
-        <div className="p-4 border-t border-border">
-          <button onClick={logout} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-white/5 transition-all w-full">
-            <LogOut className="w-4 h-4" />
-            {t('admin_sign_out')}
-          </button>
-        </div>
-      </aside>
-
-      <main className="ltr:md:ml-64 rtl:md:mr-64 min-h-screen">
-        <div className="md:hidden glass border-b border-border p-4 flex items-center justify-between">
-          <span className="font-bold">{t('admin_market_title')}</span>
-          <button onClick={logout} className="text-muted-foreground"><LogOut className="w-5 h-5" /></button>
-        </div>
-
-        <div className="p-6 sm:p-8">
+    <>
+    <div className="p-6 sm:p-8">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
             <div>
               <h1 className="text-2xl font-bold">{t('admin_market_title')}</h1>
@@ -368,7 +288,6 @@ export default function AdminMarket() {
             )}
           </div>
         </div>
-      </main>
 
       <AnimatePresence>
         {showModal && (
@@ -532,6 +451,6 @@ export default function AdminMarket() {
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
+    </>
   );
 }
