@@ -32,6 +32,18 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const booking = await prisma.booking.update({ where: { id }, data: updateData });
     const { ipAddress, userAgent } = getClientInfo(req);
 
+    // Auto-create WorkOrder when booking is accepted
+    if (data.status === 'accepted' && booking.vehicleId) {
+      await prisma.workOrder.create({
+        data: {
+          description: booking.issue,
+          status: 'pending',
+          vehicleId: booking.vehicleId,
+          bookingId: booking.id,
+        },
+      }).catch(() => {});
+    }
+
     let action: AuditAction = 'update';
     if (data.status === 'accepted') action = 'approve';
     else if (data.status === 'rejected') action = 'reject';
@@ -76,6 +88,19 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
           date: oldBooking.date,
           time: oldBooking.time,
           issue: data.issue ?? oldBooking.issue ?? '',
+        }).then((message) => {
+          if (message) {
+            sendWhatsAppMessageViaService(oldBooking.phone!, message).catch(() => {});
+          }
+        });
+      }
+
+      // If booking was accepted, also send work_order_created WhatsApp
+      if (data.status === 'accepted') {
+        buildMessage('work_order_created', {
+          name: oldBooking.name,
+          model: oldBooking.model,
+          work: booking.issue,
         }).then((message) => {
           if (message) {
             sendWhatsAppMessageViaService(oldBooking.phone!, message).catch(() => {});

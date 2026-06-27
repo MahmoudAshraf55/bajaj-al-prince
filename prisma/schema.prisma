@@ -25,7 +25,7 @@ model ContactMessage {
 }
 
 model Booking {
-  id          String    @id @default(uuid())
+  id          String      @id @default(uuid())
   name        String
   email       String?
   phone       String
@@ -33,16 +33,17 @@ model Booking {
   issue       String
   date        String
   time        String
-  status      String    @default("pending")
+  status      String      @default("pending")
   plateNumber String?
   customerId  String?
-  customer    Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  customer    Customer?   @relation(fields: [customerId], references: [id], onDelete: SetNull)
   vehicleId   String?
-  vehicle     Vehicle?  @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
-  createdAt   DateTime  @default(now()) @db.Timestamp(6)
-  updatedAt   DateTime  @updatedAt @db.Timestamp(6)
-  isDeleted   Boolean   @default(false)
-  deletedAt   DateTime? @db.Timestamp(6)
+  vehicle     Vehicle?    @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
+  workOrders  WorkOrder[]
+  createdAt   DateTime    @default(now()) @db.Timestamp(6)
+  updatedAt   DateTime    @updatedAt @db.Timestamp(6)
+  isDeleted   Boolean     @default(false)
+  deletedAt   DateTime?   @db.Timestamp(6)
   tenantId    String?
 
   @@unique([date, time], name: "Booking_date_time_unique")
@@ -53,24 +54,219 @@ model Booking {
 }
 
 model Product {
+  id                String          @id @default(uuid())
+  name              String
+  nameAr            String?
+  description       String?
+  barcode           String?         @unique
+  sku               String?
+  price             Decimal         @db.Decimal(10, 2)
+  costPrice         Decimal?        @db.Decimal(10, 2)
+  stock             Int             @default(0)
+  lowStockThreshold Int             @default(5)
+  unit              String          @default("piece")
+  category          String
+  vehicleModel      String?
+  image             String?
+  available         Boolean         @default(true)
+  taxExempt         Boolean         @default(false)
+  taxRate           Decimal?        @db.Decimal(3, 1)
+  activeFrom        DateTime?       @db.Timestamp(6)
+  expiryDate        DateTime?       @db.Timestamp(6)
+  invoiceItems      InvoiceItem[]
+  stockMovements    StockMovement[]
+  barcodeScanLogs   BarcodeScanLog[]
+  createdAt         DateTime        @default(now()) @db.Timestamp(6)
+  updatedAt         DateTime        @updatedAt @db.Timestamp(6)
+  isDeleted         Boolean         @default(false)
+  deletedAt         DateTime?       @db.Timestamp(6)
+  tenantId          String?
+
+  @@index([barcode])
+  @@index([sku])
+  @@index([category])
+  @@index([available])
+  @@index([createdAt])
+  @@index([isDeleted])
+  @@index([tenantId])
+}
+
+enum InvoiceType {
+  sale
+  purchase
+  return
+}
+
+enum InvoiceStatus {
+  draft
+  confirmed
+  cancelled
+}
+
+model Invoice {
+  id            String        @id @default(uuid())
+  number        String        @unique
+  type          InvoiceType   @default(sale)
+  status        InvoiceStatus @default(draft)
+  subtotal      Decimal       @db.Decimal(10, 2)
+  taxTotal      Decimal       @db.Decimal(10, 2) @default(0)
+  discount      Decimal       @db.Decimal(10, 2) @default(0)
+  total         Decimal       @db.Decimal(10, 2)
+  paid          Decimal       @db.Decimal(10, 2) @default(0)
+  change        Decimal       @db.Decimal(10, 2) @default(0)
+  paymentMethod String?
+  notes         String?
+  customerId    String?
+  customer      Customer?     @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  customerName  String?
+  createdById   String
+  createdBy     User          @relation(fields: [createdById], references: [id])
+  items         InvoiceItem[]
+  barcodeScanLogs BarcodeScanLog[]
+  createdAt     DateTime      @default(now()) @db.Timestamp(6)
+  updatedAt     DateTime      @updatedAt @db.Timestamp(6)
+  isDeleted     Boolean       @default(false)
+  deletedAt     DateTime?     @db.Timestamp(6)
+  tenantId      String?
+
+  @@index([number])
+  @@index([type])
+  @@index([status])
+  @@index([createdById])
+  @@index([customerId])
+  @@index([createdAt])
+  @@index([isDeleted])
+  @@index([tenantId])
+}
+
+model InvoiceItem {
   id          String    @id @default(uuid())
-  name        String
-  description String?
-  price       Decimal   @db.Decimal(10, 2)
-  stock       Int       @default(0)
-  category    String
-  image       String?
-  available   Boolean   @default(true)
+  invoiceId   String
+  invoice     Invoice   @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  productId   String
+  product     Product   @relation(fields: [productId], references: [id])
+  barcode     String?
+  productName String
+  unitPrice   Decimal   @db.Decimal(10, 2)
+  costPrice   Decimal   @db.Decimal(10, 2)
+  quantity    Int
+  total       Decimal   @db.Decimal(10, 2)
   createdAt   DateTime  @default(now()) @db.Timestamp(6)
   updatedAt   DateTime  @updatedAt @db.Timestamp(6)
   isDeleted   Boolean   @default(false)
   deletedAt   DateTime? @db.Timestamp(6)
   tenantId    String?
 
-  @@index([category])
-  @@index([available])
+  @@index([invoiceId])
+  @@index([productId])
   @@index([createdAt])
   @@index([isDeleted])
+  @@index([tenantId])
+}
+
+enum MovementType {
+  in
+  out
+  adjustment
+}
+
+model StockMovement {
+  id          String       @id @default(uuid())
+  productId   String
+  product     Product      @relation(fields: [productId], references: [id])
+  type        MovementType
+  quantity    Int
+  reference   String?
+  notes       String?
+  createdById String
+  createdBy   User         @relation(fields: [createdById], references: [id])
+  createdAt   DateTime     @default(now()) @db.Timestamp(6)
+  updatedAt   DateTime     @updatedAt @db.Timestamp(6)
+  isDeleted   Boolean      @default(false)
+  deletedAt   DateTime?    @db.Timestamp(6)
+  tenantId    String?
+
+  @@index([productId])
+  @@index([type])
+  @@index([createdById])
+  @@index([createdAt])
+  @@index([isDeleted])
+  @@index([tenantId])
+}
+
+enum ScanSource {
+  HH400
+  MobileCamera
+  Webcam
+}
+
+enum ScanStatus {
+  success
+  not_found
+  error
+}
+
+model BarcodeScanLog {
+  id         String     @id @default(uuid())
+  barcode    String
+  source     ScanSource
+  userId     String?
+  user       User?      @relation(fields: [userId], references: [id])
+  invoiceId  String?
+  invoice    Invoice?   @relation(fields: [invoiceId], references: [id])
+  productId  String?
+  product    Product?   @relation(fields: [productId], references: [id])
+  deviceName String?
+  ipAddress  String?
+  status     ScanStatus
+  createdAt  DateTime   @default(now()) @db.Timestamp(6)
+  updatedAt  DateTime   @updatedAt @db.Timestamp(6)
+  isDeleted  Boolean    @default(false)
+  deletedAt  DateTime?  @db.Timestamp(6)
+  tenantId   String?
+
+  @@index([barcode])
+  @@index([source])
+  @@index([userId])
+  @@index([invoiceId])
+  @@index([productId])
+  @@index([createdAt])
+  @@index([isDeleted])
+  @@index([tenantId])
+}
+
+model ScannerSession {
+  id         String   @id @default(uuid())
+  token      String   @unique
+  deviceName String?
+  ipAddress  String?
+  pin        String?
+  status     String   @default("active") // active | disconnected
+  createdById String
+  createdBy  User     @relation(fields: [createdById], references: [id])
+  createdAt  DateTime @default(now()) @db.Timestamp(6)
+  updatedAt  DateTime @updatedAt @db.Timestamp(6)
+  isDeleted  Boolean  @default(false)
+  deletedAt  DateTime? @db.Timestamp(6)
+  tenantId   String?
+
+  @@index([token])
+  @@index([status])
+  @@index([createdById])
+  @@index([createdAt])
+  @@index([isDeleted])
+  @@index([tenantId])
+}
+
+model AppSetting {
+  id        String   @id @default(uuid())
+  key       String   @unique
+  value     String
+  createdAt DateTime @default(now()) @db.Timestamp(6)
+  updatedAt DateTime @updatedAt @db.Timestamp(6)
+  tenantId  String?
+
+  @@index([key])
   @@index([tenantId])
 }
 
@@ -99,18 +295,22 @@ enum UserRole {
 }
 
 model User {
-  id             String    @id @default(uuid())
-  username       String    @unique
-  password       String
-  role           UserRole  @default(viewer)
-  failedAttempts Int       @default(0)
-  lockedUntil    DateTime? @db.Timestamp(6)
-  tokenVersion   Int       @default(0)
-  createdAt      DateTime  @default(now()) @db.Timestamp(6)
-  updatedAt      DateTime? @updatedAt @db.Timestamp(6)
-  isDeleted      Boolean   @default(false)
-  deletedAt      DateTime? @db.Timestamp(6)
-  tenantId       String?
+  id                String             @id @default(uuid())
+  username          String             @unique
+  password          String
+  role              UserRole           @default(viewer)
+  failedAttempts    Int                @default(0)
+  lockedUntil       DateTime?          @db.Timestamp(6)
+  tokenVersion      Int                @default(0)
+  invoices          Invoice[]
+  stockMovements    StockMovement[]
+  barcodeScanLogs   BarcodeScanLog[]
+  scannerSessions   ScannerSession[]
+  createdAt         DateTime           @default(now()) @db.Timestamp(6)
+  updatedAt         DateTime?          @updatedAt @db.Timestamp(6)
+  isDeleted         Boolean            @default(false)
+  deletedAt         DateTime?          @db.Timestamp(6)
+  tenantId          String?
 
   @@index([username])
   @@index([isDeleted])
@@ -118,18 +318,19 @@ model User {
 }
 
 model Customer {
-  id          String      @id @default(uuid())
-  name        String
-  email       String      @unique
-  phone       String?
-  address     String?
-  vehicles    Vehicle[]
-  bookings    Booking[]
-  createdAt   DateTime    @default(now()) @db.Timestamp(6)
-  updatedAt   DateTime    @updatedAt @db.Timestamp(6)
-  isDeleted   Boolean     @default(false)
-  deletedAt   DateTime?   @db.Timestamp(6)
-  tenantId    String?
+  id        String      @id @default(uuid())
+  name      String
+  email     String
+  phone     String?
+  address   String?
+  vehicles  Vehicle[]
+  bookings  Booking[]
+  invoices  Invoice[]
+  createdAt DateTime   @default(now()) @db.Timestamp(6)
+  updatedAt DateTime   @updatedAt @db.Timestamp(6)
+  isDeleted Boolean    @default(false)
+  deletedAt DateTime?  @db.Timestamp(6)
+  tenantId  String?
 
   @@index([email])
   @@index([createdAt])
@@ -185,6 +386,8 @@ model WorkOrder {
   cost        Decimal?  @db.Decimal(10, 2)
   vehicleId   String
   vehicle     Vehicle   @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  bookingId   String?
+  booking     Booking?  @relation(fields: [bookingId], references: [id], onDelete: SetNull)
   createdAt   DateTime  @default(now()) @db.Timestamp(6)
   updatedAt   DateTime? @updatedAt @db.Timestamp(6)
   isDeleted   Boolean   @default(false)
@@ -193,6 +396,7 @@ model WorkOrder {
 
   @@index([status])
   @@index([vehicleId])
+  @@index([bookingId])
   @@index([isDeleted])
   @@index([tenantId])
 }

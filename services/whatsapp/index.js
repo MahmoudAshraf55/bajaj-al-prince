@@ -10,6 +10,14 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+process.on('unhandledRejection', (reason) => {
+  console.error('[WhatsApp Service] Unhandled Rejection:', reason);
+});
+
+process.on('uncaughtException', (err) => {
+  console.error('[WhatsApp Service] Uncaught Exception:', err?.message || err);
+});
+
 const AUTH_FOLDER = path.join(__dirname, '.baileys_auth');
 const PORT = process.env.WHATSAPP_SERVICE_PORT || 3001;
 
@@ -17,8 +25,34 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// Simple per-IP rate limiter for /send endpoint
+const rateLimitMap = new Map();
+const RATE_LIMIT_WINDOW = 10_000;
+const RATE_LIMIT_MAX = 5;
+
+function checkRateLimit(ip) {
+  const now = Date.now();
+  const entry = rateLimitMap.get(ip);
+  if (!entry || now - entry.windowStart > RATE_LIMIT_WINDOW) {
+    rateLimitMap.set(ip, { windowStart: now, count: 1 });
+    return true;
+  }
+  if (entry.count >= RATE_LIMIT_MAX) return false;
+  entry.count++;
+  return true;
+}
+
+setInterval(() => {
+  const now = Date.now();
+  for (const [ip, entry] of rateLimitMap) {
+    if (now - entry.windowStart > RATE_LIMIT_WINDOW) rateLimitMap.delete(ip);
+  }
+}, 60_000);
+
 let sock = null;
 let reconnectTimer = null;
+let isInitializing = false;
+const SEND_TIMEOUT_MS = 25_000;
 let state = {
   status: 'initializing',
   qrDataUrl: null,
@@ -39,6 +73,8 @@ async function generateQR(qr) {
 async function initializeWhatsApp() {
   if (sock) return;
   if (state.status === 'connecting') return;
+  if (isInitializing) return;
+  isInitializing = true;
 
   ensureAuthFolder();
   state.status = 'initializing';
@@ -107,6 +143,8 @@ async function initializeWhatsApp() {
     state.status = 'disconnected';
     state.error = err.message || 'Unknown error';
     sock = null;
+  } finally {
+    isInitializing = false;
   }
 }
 
@@ -142,7 +180,7 @@ async function disconnectWhatsApp() {
 
 // API Routes
 app.get('/status', (req, res) => {
-  if (state.status === 'initializing' && !sock) {
+  if (state.status === 'initializing' && !sock && !isInitializing) {
     initializeWhatsApp().catch(() => {});
   }
   res.json({ success: true, data: { ...state } });
@@ -154,6 +192,11 @@ app.post('/disconnect', async (req, res) => {
 });
 
 app.post('/send', async (req, res) => {
+  const clientIp = req.ip || req.connection?.remoteAddress || 'unknown';
+  if (!checkRateLimit(clientIp)) {
+    return res.status(429).json({ success: false, error: 'Too many requests. Please wait.' });
+  }
+
   if (!sock || state.status !== 'connected') {
     return res.status(503).json({ success: false, error: 'WhatsApp not connected' });
   }
@@ -165,10 +208,15 @@ app.post('/send', async (req, res) => {
     }
 
     const jid = `${phone.replace(/\D/g, '')}@s.whatsapp.net`;
-    await sock.sendMessage(jid, { text: message });
+    const sendPromise = sock.sendMessage(jid, { text: message });
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Send timeout')), SEND_TIMEOUT_MS)
+    );
+    await Promise.race([sendPromise, timeoutPromise]);
     res.json({ success: true, data: { sent: true } });
   } catch (err) {
-    res.status(500).json({ success: false, error: err.message || 'Failed to send message' });
+    const msg = err?.message || err?.toString?.() || 'Failed to send message';
+    res.status(500).json({ success: false, error: msg });
   }
 });
 
@@ -178,4 +226,7 @@ app.get('/health', (req, res) => {
 
 app.listen(PORT, () => {
   console.log(`[WhatsApp Service] Running on http://localhost:${PORT}`);
+  initializeWhatsApp().catch((err) => {
+    console.error('[WhatsApp Service] Initialization error:', err?.message || err);
+  });
 });

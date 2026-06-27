@@ -1,0 +1,14 @@
+node_modules
+.git
+.gitignore
+.env
+.env.example
+*.sqlite
+*.db
+prisma/migrations
+docs
+tests
+playwright
+**/*.test.ts
+**/*.spec.ts
+**/*.md

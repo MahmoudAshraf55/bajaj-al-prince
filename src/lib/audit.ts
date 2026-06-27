@@ -13,7 +13,9 @@ export type AuditAction =
   | 'reject'
   | 'complete'
   | 'payment'
-  | 'inventory_change';
+  | 'import'
+  | 'inventory_change'
+  | 'scan';
 
 export interface AuditLogInput {
   userId?: string;

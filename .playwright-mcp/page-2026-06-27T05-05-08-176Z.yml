@@ -1,0 +1,454 @@
+- generic [ref=e1]:
+  - banner [ref=e2]:
+    - generic [ref=e3]:
+      - link "El Prince Bajaj Logo EL PRINCE BAJAJ" [ref=e4] [cursor=pointer]:
+        - /url: /
+        - generic [ref=e5]:
+          - img "El Prince Bajaj Logo" [ref=e7]
+          - generic [ref=e8]:
+            - generic [ref=e9]: EL PRINCE
+            - generic [ref=e10]: BAJAJ
+      - navigation [ref=e11]:
+        - link "قصتنا" [ref=e641] [cursor=pointer]:
+          - /url: /#story
+        - link "خدماتنا" [ref=e642] [cursor=pointer]:
+          - /url: /#services
+        - link "الآراء" [ref=e643] [cursor=pointer]:
+          - /url: /#reviews
+        - link "تيك توك" [ref=e644] [cursor=pointer]:
+          - /url: /#tiktok
+        - link "تواصل معنا" [ref=e645] [cursor=pointer]:
+          - /url: /#contact
+        - link "المتجر" [ref=e646] [cursor=pointer]:
+          - /url: /market/
+        - link "احجز الآن" [ref=e647] [cursor=pointer]:
+          - /url: /booking/
+      - generic [ref=e19]:
+        - button "Switch language to English" [active] [ref=e648]:
+          - generic [ref=e21]: EN
+          - generic [ref=e23]: AR
+        - link "0122 137 0120" [ref=e24] [cursor=pointer]:
+          - /url: tel:01221370120
+          - img [ref=e25]
+          - generic [ref=e27]: 0122 137 0120
+  - main [ref=e28]:
+    - generic [ref=e29]:
+      - generic [ref=e30]:
+        - generic [ref=e35]:
+          - generic [ref=e36]:
+            - generic [ref=e37]:
+              - img [ref=e38]
+              - generic [ref=e40]: مركز باجاج الموثوق
+              - img [ref=e41]
+            - heading "البرنس بجاج" [level=1] [ref=e649]:
+              - text: البرنس
+              - text: بجاج
+            - paragraph [ref=e44]: وجهتك الموثوقة لبيع وصيانة وقطع غيار أصلية وتشخيص دراجات باجاج. نخدم راكبي الدراجات النارية بالشغف والخبرة منذ 2019.
+            - generic [ref=e45]:
+              - link "اتصل الآن" [ref=e650] [cursor=pointer]:
+                - /url: tel:01221370120
+                - text: اتصل الآن
+                - img [ref=e47]
+              - link "احجز صيانة" [ref=e651] [cursor=pointer]:
+                - /url: /booking/
+          - generic:
+            - generic: تمرير للاستكشاف
+            - img
+        - generic [ref=e50]:
+          - generic [ref=e51]:
+            - paragraph [ref=e52]: Authorized Service Center
+            - paragraph [ref=e53]: Since 2019
+          - generic [ref=e55]:
+            - generic [ref=e57]:
+              - img [ref=e59]
+              - generic [ref=e61]: خبرتنا
+            - heading "خدمة احترافية" [level=3] [ref=e652]
+            - paragraph [ref=e63]: فنيون معتمدون بخبرة عملية سنوية في إصلاح وصيانة دراجات باجاج.
+        - generic [ref=e69]:
+          - generic [ref=e71]:
+            - img [ref=e73]
+            - generic [ref=e76]: وعد الجودة
+          - heading "قطع غيار أصلية فقط" [level=3] [ref=e653]
+          - paragraph [ref=e78]: نستخدم ونوفر قطع غيار باجاج الأصلية لضمان عمر دراجتك وسلامتها.
+        - generic [ref=e84]:
+          - generic [ref=e86]:
+            - img [ref=e88]
+            - generic [ref=e91]: خدمة شاملة
+          - heading "حلول شاملة" [level=3] [ref=e654]
+          - paragraph [ref=e93]: من المبيعات والصيانة إلى التشخيص وقطع الغيار — وجهتك الشاملة لباجاج.
+      - generic [ref=e98]:
+        - generic [ref=e99]:
+          - img [ref=e100]
+          - generic [ref=e102]: TIKTOK
+          - img [ref=e103]
+        - generic [ref=e106]:
+          - generic [ref=e107]:
+            - heading "تابعنا على TikTok" [level=3] [ref=e108]
+            - paragraph [ref=e109]: أحدث الفيديوهات والعروض
+          - iframe [ref=e112]:
+            - main [ref=f1e3]:
+              - generic [ref=f1e5]:
+                - img "logo" [ref=f1e6]
+                - generic [ref=f1e7]:
+                  - generic [ref=f1e8]: Page not available
+                  - generic [ref=f1e9]: Find more trending videos on TikTok
+                - link "Discover more on TikTok" [ref=f1e11] [cursor=pointer]:
+                  - /url: https://www.tiktok.com?referer_url=windsurf-project-three-topaz.vercel.app%2F&refer=embed&embed_source=121374463%2C121468991%2C121439635%2C121749182%2C121433650%2C121404359%2C121497414%2C122349556%2C122221973%2C122122240%2C121351166%2C121811500%2C121960941%2C122122244%2C122122243%2C122122242%2C121487028%2C122258714%2C121331973%2C120811592%2C120810756%2C121885509%3Bnull%3Bembed_discover_button&referer_video_id=0
+                  - button "Discover more on TikTok" [ref=f1e12]:
+                    - generic [ref=f1e14]: Discover more on TikTok
+          - link "@elprince.bajajj" [ref=e113] [cursor=pointer]:
+            - /url: https://www.tiktok.com/@elprince.bajajj/video/7611079884860919060
+            - img [ref=e114]
+            - text: "@elprince.bajajj"
+      - generic [ref=e117]:
+        - generic [ref=e118]:
+          - generic [ref=e121]: رحلتنا
+          - heading "قصة البرنس بجاج" [level=2] [ref=e655]
+          - paragraph [ref=e124]: من متجر صغير لقطع الغيار إلى مركز باجاج شامل موثوق. رحلتنا مبنية على الشغف والخبرة وثقة العملاء.
+        - generic [ref=e128]:
+          - generic [ref=e131]:
+            - generic [ref=e132]:
+              - img [ref=e134]
+              - generic [ref=e139]: "2019"
+            - heading "بدأنا كمتجر تجزئة" [level=3] [ref=e656]
+            - paragraph [ref=e141]: بدأنا كمتجر صغير لبيع قطع غيار الدراجات النارية يخدم المجتمع المحلي.
+          - generic [ref=e146]:
+            - generic [ref=e147]:
+              - img [ref=e149]
+              - generic [ref=e152]: "2020"
+            - heading "نقطة بيع باجاج المعتمدة" [level=3] [ref=e657]
+            - paragraph [ref=e154]: حصلنا على الترخيص كنقطة بيع رسمية لدراجات باجاج.
+          - generic [ref=e159]:
+            - generic [ref=e160]:
+              - img [ref=e162]
+              - generic [ref=e165]: "2021"
+            - heading "التوسع إلى الجملة" [level=3] [ref=e658]
+            - paragraph [ref=e167]: توسعنا إلى التوزيع بالجملة، وإمداد المحلات بالقطع في جميع أنحاء المنطقة.
+          - generic [ref=e172]:
+            - generic [ref=e173]:
+              - img [ref=e175]
+              - generic [ref=e177]: "2022"
+            - heading "خدمات الصيانة المعتمدة" [level=3] [ref=e659]
+            - paragraph [ref=e179]: أضفنا خدمات الصيانة والإصلاح الاحترافية مع فنيين معتمدين.
+          - generic [ref=e184]:
+            - generic [ref=e185]:
+              - img [ref=e187]
+              - generic [ref=e189]: "2023"
+            - heading "مزود خدمة موثوق" [level=3] [ref=e660]
+            - paragraph [ref=e191]: أصبحنا من أكثر مزودي خدمة باجاج موثوقية في المنطقة.
+          - generic [ref=e196]:
+            - generic [ref=e197]:
+              - img [ref=e199]
+              - generic [ref=e204]: اليوم
+            - heading "وجهة شاملة" [level=3] [ref=e661]
+            - paragraph [ref=e206]: مركز خدمة شامل للمبيعات والصيانة وقطع الغيار الأصلية والتشخيص والدعم الفني.
+      - generic [ref=e211]:
+        - generic [ref=e212]:
+          - generic [ref=e215]: ما نقدمه
+          - heading "لماذا تختار البرنس بجاج" [level=2] [ref=e662]
+          - paragraph [ref=e218]: من الصيانة الدورية إلى إعادة البناء الكاملة، نقدم خدمات شاملة مصممة للحفاظ على دراجتك الباجاج في أفضل حالة.
+        - generic [ref=e219]:
+          - generic [ref=e221]:
+            - img [ref=e223]
+            - heading "صيانة الدراجات النارية" [level=3] [ref=e663]
+            - paragraph [ref=e226]: خدمات الصيانة الدورية والتعديلات والعناية الوقائية للحفاظ على أداء دراجتك المثالي.
+          - generic [ref=e228]:
+            - img [ref=e230]
+            - heading "إعادة بناء المحركات" [level=3] [ref=e664]
+            - paragraph [ref=e234]: إصلاح وإعادة بناء المحركات بشكل كامل بواسطة فنيين ذوي خبرة باستخدام قطع غيار أصلية.
+          - generic [ref=e236]:
+            - img [ref=e238]
+            - heading "ترميم الإطار" [level=3] [ref=e665]
+            - paragraph [ref=e242]: إصلاحات هيكلية وترميم الإطار لإعادة الدراجات التالفة إلى الحياة.
+          - generic [ref=e244]:
+            - img [ref=e246]
+            - heading "حلول المشاكل الكهربائية" [level=3] [ref=e666]
+            - paragraph [ref=e249]: تشخيص وإصلاح متقدم لجميع الأنظمة الكهربائية والأسلاك والمكونات.
+          - generic [ref=e251]:
+            - img [ref=e253]
+            - heading "تشخيص معقد" [level=3] [ref=e667]
+            - paragraph [ref=e256]: معدات تشخيص حاسوبية لتحديد وحل أكثر المشاكل تحدياً.
+          - generic [ref=e258]:
+            - img [ref=e260]
+            - heading "توفير قطع نادرة" [level=3] [ref=e668]
+            - paragraph [ref=e265]: نوفر قطع غيار باجاج الأصلية النادرة من خلال شبكة موردينا الواسعة.
+          - generic [ref=e267]:
+            - img [ref=e269]
+            - heading "الصيانة الدورية" [level=3] [ref=e669]
+            - paragraph [ref=e272]: برامج صيانة مجدولة مصممة لتطويل عمر دراجتك.
+          - generic [ref=e274]:
+            - img [ref=e276]
+            - heading "دعم الإصلاح الطارئ" [level=3] [ref=e670]
+            - paragraph [ref=e281]: خدمات إصلاح عاجلة عندما تحتاجها أكثر. ضمان الإنجاز السريع.
+          - generic [ref=e283]:
+            - img [ref=e285]
+            - heading "استشارة فنية" [level=3] [ref=e671]
+            - paragraph [ref=e288]: نصائح خبيرة حول الترقيات والتعديلات وجداول الصيانة المثلى.
+          - generic [ref=e290]:
+            - img [ref=e292]
+            - heading "متابعة العملاء" [level=3] [ref=e672]
+            - paragraph [ref=e297]: مكالمات متابعة بعد الخدمة لضمان الرضا الكامل عن كل إصلاح.
+      - generic [ref=e299]:
+        - generic [ref=e300]:
+          - generic [ref=e303]: نقاط التميز
+          - heading "ما يميزنا" [level=2] [ref=e673]
+        - generic [ref=e306]:
+          - generic [ref=e308]: خدمة معتمدة
+          - generic [ref=e310]: قطع أصلية
+          - generic [ref=e312]: فنيون خبراء
+          - generic [ref=e314]: دعم الضمان
+          - generic [ref=e316]: إصلاح سريع
+          - generic [ref=e318]: رضا العملاء
+          - generic [ref=e320]: دعم طوارئ
+          - generic [ref=e322]: توريد بالجملة
+      - generic [ref=e325]:
+        - generic [ref=e326]:
+          - generic [ref=e329]: آراء العملاء
+          - heading "ماذا يقول عملاؤنا" [level=2] [ref=e674]
+          - generic [ref=e332]:
+            - generic [ref=e333]:
+              - img "Bajaj Logo" [ref=e335]
+              - generic [ref=e336]: "5.0"
+            - generic [ref=e337]:
+              - img [ref=e338]
+              - img [ref=e340]
+              - img [ref=e342]
+              - img [ref=e344]
+              - img [ref=e346]
+            - generic [ref=e348]: "|"
+            - generic [ref=e349]: (أكثر من 1052 زائر حقيقي للموقع)
+        - generic [ref=e350]:
+          - generic [ref=e675]:
+            - generic [ref=e676]:
+              - generic [ref=e677]:
+                - generic [ref=e678]:
+                  - img [ref=e679]
+                  - img [ref=e681]
+                  - img [ref=e683]
+                  - img [ref=e685]
+                  - img [ref=e687]
+                - generic [ref=e689]:
+                  - img [ref=e690]
+                  - text: موثق
+              - paragraph [ref=e693]: “خدمة احترافية وقطع غيار أصلية. الموتوسيكل بتاعي رجع كأنه جديد بعد الصيانة. أنصح بالتعامل معهم بشدة!”
+            - generic [ref=e694]:
+              - generic [ref=e695]:
+                - generic [ref=e696]: AH
+                - generic [ref=e697]: أحمد حسن
+              - generic [ref=e698]: 2026-05-10
+          - generic [ref=e699]:
+            - generic [ref=e700]:
+              - generic [ref=e701]:
+                - generic [ref=e702]:
+                  - img [ref=e703]
+                  - img [ref=e705]
+                  - img [ref=e707]
+                  - img [ref=e709]
+                  - img [ref=e711]
+                - generic [ref=e713]:
+                  - img [ref=e714]
+                  - text: موثق
+              - paragraph [ref=e717]: “تشخيص سريع للأعطال وأسعار عادلة جداً. الفريق فاهم موتوسيكلات باجاج بالتفصيل.”
+            - generic [ref=e718]:
+              - generic [ref=e719]:
+                - generic [ref=e720]: MS
+                - generic [ref=e721]: محمد صلاح
+              - generic [ref=e722]: 2026-04-28
+          - generic [ref=e723]:
+            - generic [ref=e724]:
+              - generic [ref=e725]:
+                - generic [ref=e726]:
+                  - img [ref=e727]
+                  - img [ref=e729]
+                  - img [ref=e731]
+                  - img [ref=e733]
+                  - img [ref=e735]
+                - generic [ref=e737]:
+                  - img [ref=e738]
+                  - text: موثق
+              - paragraph [ref=e741]: “تجربة ممتازة مع خدمة الطوارئ والإصلاح السريع. صلحوا دراجتي في نفس اليوم وبأمان تام.”
+            - generic [ref=e742]:
+              - generic [ref=e743]:
+                - generic [ref=e744]: KI
+                - generic [ref=e745]: خالد إبراهيم
+              - generic [ref=e746]: 2026-03-12
+          - generic [ref=e747]:
+            - generic [ref=e748]:
+              - generic [ref=e749]:
+                - generic [ref=e750]:
+                  - img [ref=e751]
+                  - img [ref=e753]
+                  - img [ref=e755]
+                  - img [ref=e757]
+                  - img [ref=e759]
+                - generic [ref=e761]:
+                  - img [ref=e762]
+                  - text: موثق
+              - paragraph [ref=e765]: “بصيانة دراجتي عندهم بقالي ٣ سنين. دايماً راضي عن الصيانة الدورية وقطع الغيار الأصلية.”
+            - generic [ref=e766]:
+              - generic [ref=e767]:
+                - generic [ref=e768]: OF
+                - generic [ref=e769]: عمر فاروق
+              - generic [ref=e770]: 2026-02-05
+          - generic [ref=e771]:
+            - generic [ref=e772]:
+              - generic [ref=e773]:
+                - generic [ref=e774]:
+                  - img [ref=e775]
+                  - img [ref=e777]
+                  - img [ref=e779]
+                  - img [ref=e781]
+                  - img [ref=e783]
+                - generic [ref=e785]:
+                  - img [ref=e786]
+                  - text: موثق
+              - paragraph [ref=e789]: “خدمة عملاء ممتازة وشفافية تامة في عرض الأسعار. شرحوا لي المشكلة بالتفصيل قبل البدء.”
+            - generic [ref=e790]:
+              - generic [ref=e791]:
+                - generic [ref=e792]: YA
+                - generic [ref=e793]: يوسف علي
+              - generic [ref=e794]: 2026-01-20
+        - generic [ref=e471]:
+          - button "اكتب تقييمًا على الموقع" [ref=e795] [cursor=pointer]:
+            - img [ref=e473]
+            - text: اكتب تقييمًا على الموقع
+          - link "اكتب تقييمًا على جوجل مابس" [ref=e796] [cursor=pointer]:
+            - /url: https://maps.app.goo.gl/Dy4NToGMJqeR7ymS7
+            - text: اكتب تقييمًا على جوجل مابس
+            - img [ref=e479]
+      - generic [ref=e485]:
+        - generic [ref=e486]:
+          - generic [ref=e489]: تواصل معنا
+          - heading "تواصل مع البرنس بجاج" [level=2] [ref=e797]
+          - paragraph [ref=e492]: تواصل معنا في أي وقت للصيانة أو قطع الغيار أو الاستفسارات. نحن هنا للمساعدة.
+        - generic [ref=e493]:
+          - link "Call Now الهاتف 1 0122 137 0120" [ref=e798] [cursor=pointer]:
+            - /url: tel:01221370120
+            - generic [ref=e495]:
+              - img [ref=e497]
+              - generic [ref=e499]: Call Now
+            - paragraph [ref=e500]: الهاتف 1
+            - paragraph [ref=e501]: 0122 137 0120
+          - link "Call Now الهاتف 2 0155 123 3908" [ref=e799] [cursor=pointer]:
+            - /url: tel:01551233908
+            - generic [ref=e503]:
+              - img [ref=e505]
+              - generic [ref=e507]: Call Now
+            - paragraph [ref=e508]: الهاتف 2
+            - paragraph [ref=e509]: 0155 123 3908
+          - link "Open Map الموقع 35JH+PC مركز أوسيم" [ref=e800] [cursor=pointer]:
+            - /url: https://maps.app.goo.gl/Dy4NToGMJqeR7ymS7
+            - generic [ref=e511]:
+              - img [ref=e513]
+              - generic [ref=e516]: Open Map
+            - paragraph [ref=e517]: الموقع
+            - paragraph [ref=e518]: 35JH+PC مركز أوسيم
+        - generic [ref=e519]:
+          - paragraph [ref=e520]: تابعنا على وسائل التواصل
+          - generic [ref=e521]:
+            - link "Facebook" [ref=e522] [cursor=pointer]:
+              - /url: https://www.facebook.com/elprince.bajaj
+              - img [ref=e523]
+            - link "Instagram" [ref=e525] [cursor=pointer]:
+              - /url: https://www.instagram.com/elprincebajaj
+              - img [ref=e526]
+            - link "TikTok" [ref=e528] [cursor=pointer]:
+              - /url: https://www.tiktok.com/@elprince.bajajj
+              - img [ref=e529]
+            - link "WhatsApp" [ref=e531] [cursor=pointer]:
+              - /url: https://wa.me/201221370120
+              - img [ref=e532]
+      - generic [ref=e536]:
+        - generic [ref=e537]:
+          - generic [ref=e540]: خيارات الدفع
+          - heading "طرق دفع مرنة" [level=2] [ref=e801]
+        - generic [ref=e543]:
+          - generic [ref=e544]:
+            - img [ref=e546]
+            - heading "إنستاباي" [level=3] [ref=e802]
+            - paragraph [ref=e549]: تحويلات رقمية سريعة عبر إنستاباي لمدفوعات آمنة وسريعة.
+          - generic [ref=e550]:
+            - img [ref=e552]
+            - heading "فودافون كاش" [level=3] [ref=e803]
+            - paragraph [ref=e555]: ادفع بسهولة باستخدام خدمة محفظة فودافون كاش المحمولة.
+          - generic [ref=e556]:
+            - img [ref=e558]
+            - heading "الدفع النقدي" [level=3] [ref=e804]
+            - paragraph [ref=e562]: نقبل الدفع النقدي التقليدي في مركز خدماتنا.
+      - generic [ref=e565]:
+        - generic [ref=e568]: ابدأ الآن
+        - heading "تحتاج صيانة أو قطع غيار أصلية؟" [level=2] [ref=e805]
+        - paragraph [ref=e571]: اتصل بالبرنس بجاج اليوم ودع المتخصصين لدينا يساعدونك. خدمة سريعة وموثوقة واحترافية مضمونة.
+        - generic [ref=e572]:
+          - link "اتصل الآن" [ref=e806] [cursor=pointer]:
+            - /url: tel:01221370120
+            - img [ref=e574]
+            - text: اتصل الآن
+            - img [ref=e576]
+          - link "واتساب" [ref=e807] [cursor=pointer]:
+            - /url: https://wa.me/201221370120
+            - img [ref=e579]
+            - text: واتساب
+          - link "احصل على الاتجاهات" [ref=e808] [cursor=pointer]:
+            - /url: https://maps.app.goo.gl/Dy4NToGMJqeR7ymS7
+            - img [ref=e582]
+            - text: احصل على الاتجاهات
+          - link "احجز صيانة" [ref=e809] [cursor=pointer]:
+            - /url: /booking/
+            - img [ref=e586]
+            - text: احجز صيانة
+  - contentinfo [ref=e588]:
+    - generic [ref=e589]:
+      - generic [ref=e590]:
+        - generic [ref=e591]:
+          - generic [ref=e593]:
+            - img "El Prince Bajaj Logo" [ref=e595]
+            - generic [ref=e596]:
+              - generic [ref=e597]: EL PRINCE
+              - generic [ref=e598]: BAJAJ
+          - paragraph [ref=e599]: البرنس بجاج — وجهتك الموثوقة لبيع وصيانة وقطع غيار أصلية وتشخيص دراجات باجاج. نخدم راكبي الدراجات بالشغف منذ 2019.
+        - generic [ref=e600]:
+          - heading "روابط سريعة" [level=3] [ref=e810]
+          - navigation [ref=e602]:
+            - link "قصتنا" [ref=e811] [cursor=pointer]:
+              - /url: /#story
+            - link "خدماتنا" [ref=e812] [cursor=pointer]:
+              - /url: /#services
+            - link "الآراء" [ref=e813] [cursor=pointer]:
+              - /url: /#reviews
+            - link "المتجر" [ref=e814] [cursor=pointer]:
+              - /url: /market/
+            - link "احجز الآن" [ref=e815] [cursor=pointer]:
+              - /url: /booking/
+        - generic [ref=e608]:
+          - heading "تواصل معنا" [level=3] [ref=e816]
+          - generic [ref=e610]:
+            - link "0122 137 0120" [ref=e611] [cursor=pointer]:
+              - /url: tel:01221370120
+              - img [ref=e612]
+              - text: 0122 137 0120
+            - link "0155 123 3908" [ref=e614] [cursor=pointer]:
+              - /url: tel:01551233908
+              - img [ref=e615]
+              - text: 0155 123 3908
+            - link "35JH+PC \\u0645\\u0631\\u0643\\u0632 \\u0623\\u0648\\u0633\\u064a\\u0645" [ref=e617] [cursor=pointer]:
+              - /url: https://maps.app.goo.gl/Dy4NToGMJqeR7ymS7
+              - img [ref=e618]
+              - generic [ref=e621]: 35JH+PC \u0645\u0631\u0643\u0632 \u0623\u0648\u0633\u064a\u0645
+            - generic [ref=e622]:
+              - link "تواصل معنا عبر واتساب" [ref=e817] [cursor=pointer]:
+                - /url: https://wa.me/201221370120
+                - img [ref=e624]
+              - link "تابعنا على فيسبوك" [ref=e818] [cursor=pointer]:
+                - /url: https://www.facebook.com/elprince.bajaj
+                - img [ref=e627]
+              - link "تابعنا على إنستغرام" [ref=e819] [cursor=pointer]:
+                - /url: https://www.instagram.com/elprincebajaj
+                - img [ref=e630]
+              - link "تابعنا على تيك توك" [ref=e820] [cursor=pointer]:
+                - /url: https://www.tiktok.com/@elprince.bajajj
+                - img [ref=e633]
+      - paragraph [ref=e636]: © 2026 El Prince Bajaj. جميع الحقوق محفوظة.
+  - button [ref=e637]:
+    - img [ref=e638]
+  - alert [ref=e640]

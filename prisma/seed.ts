@@ -52,6 +52,11 @@ async function main() {
     { event: 'booking_completed', message: 'مرحباً {{name}}، تم إنجاز صيانة {{model}} بنجاح في مركز باجاج الأمير. شكراً لثقتك! 🏍️✅' },
     { event: 'issue_changed', message: 'مرحباً {{name}}، تم تحديث وصف المشكلة لحجزك في مركز باجاج الأمير.\nالمشكلة الجديدة: {{issue}}' },
     { event: 'vehicle_added', message: 'مرحباً {{name}}، تم إضافة مركبة جديدة لملفك في مركز باجاج الأمير.\nالماركة: {{make}}\nالموديل: {{model}}\nنتطلع لخدمتك! 🏍️' },
+    { event: 'work_order_created', message: 'مرحباً {{name}}، تم إنشاء أمر صيانة لمركبتك {{model}}.\nالعمل: {{work}}\nالتكلفة: {{cost}}\nسيتم البدء في العمل قريباً. 🏍️🔧' },
+    { event: 'work_order_started', message: 'مرحباً {{name}}، تم بدء العمل في أمر الصيانة لمركبتك {{model}}.\nالعمل: {{work}}\nسنقوم بإعلامك عند الانتهاء. 🏍️🔧' },
+    { event: 'work_order_cancelled', message: 'مرحباً {{name}}، تم إلغاء أمر الصيانة لمركبتك {{model}}.\nنعتذر عن الإزعاج. يرجى التواصل معنا للمزيد من التفاصيل.' },
+    { event: 'work_order_completed', message: 'مرحباً {{name}}، تم إنجاز أمر الصيانة لمركبتك {{model}} بنجاح.\nالعمل: {{work}}\nالتكلفة: {{cost}}\nشكراً لثقتك في مركز باجاج الأمير! 🏍️✅' },
+    { event: 'work_order_updated', message: 'مرحباً {{name}}، تم تحديث أمر الصيانة لمركبتك {{model}}.\nالعمل: {{work}}\nالتكلفة: {{cost}}\nلمزيد من المعلومات، يرجى الاتصال بنا.' },
   ];
 
   for (const tmpl of defaultTemplates) {

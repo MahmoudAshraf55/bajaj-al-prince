@@ -1,0 +1,1 @@
+ALTER TABLE "Product" ADD COLUMN "taxRate" DECIMAL(3,1);

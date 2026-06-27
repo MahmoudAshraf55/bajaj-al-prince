@@ -9,10 +9,19 @@ import { withSecurityHeaders } from '@/lib/security';
 
 const productSchema = z.object({
   name: sanitizedString(z.string().min(1).max(200)),
+  nameAr: sanitizedString(z.string().max(200)).optional().nullable(),
   description: sanitizedString(z.string().max(1000)).optional().nullable(),
+  barcode: z.string().max(100).optional().nullable(),
+  sku: z.string().max(100).optional().nullable(),
   price: z.number().positive(),
   stock: z.number().int().min(0).optional(),
   category: z.string().min(1).max(100),
+  unit: z.string().max(50).optional(),
+  vehicleModel: sanitizedString(z.string().max(200)).optional().nullable(),
+  costPrice: z.number().min(0).optional().nullable(),
+  lowStockThreshold: z.number().int().min(0).optional(),
+  taxExempt: z.boolean().optional(),
+  taxRate: z.number().min(0).max(100).optional().nullable(),
   image: z.string().max(500).optional().nullable(),
   available: z.boolean().optional(),
 });
@@ -21,12 +30,12 @@ export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10));
-    const limit = Math.max(1, Math.min(100, parseInt(searchParams.get('limit') || '10', 10)));
+    const limit = Math.max(1, Math.min(10000, parseInt(searchParams.get('limit') || '10', 10)));
     const skip = (page - 1) * limit;
 
     const [products, total] = await Promise.all([
-      prisma.product.findMany({ skip, take: limit, orderBy: { createdAt: 'desc' } }),
-      prisma.product.count(),
+      prisma.product.findMany({ where: { isDeleted: false }, skip, take: limit, orderBy: { createdAt: 'desc' } }),
+      prisma.product.count({ where: { isDeleted: false } }),
     ]);
 
     return withSecurityHeaders(NextResponse.json({

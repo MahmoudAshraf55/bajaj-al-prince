@@ -1,0 +1,402 @@
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - generic [ref=e3]:
+      - link "El Prince Bajaj Logo EL PRINCE BAJAJ" [ref=e4] [cursor=pointer]:
+        - /url: /
+        - generic [ref=e5]:
+          - img "El Prince Bajaj Logo" [ref=e7]
+          - generic [ref=e8]:
+            - generic [ref=e9]: EL PRINCE
+            - generic [ref=e10]: BAJAJ
+      - navigation [ref=e11]:
+        - link "Our Story" [ref=e12] [cursor=pointer]:
+          - /url: /#story
+        - link "Services" [ref=e13] [cursor=pointer]:
+          - /url: /#services
+        - link "Reviews" [ref=e14] [cursor=pointer]:
+          - /url: /#reviews
+        - link "TikTok" [ref=e15] [cursor=pointer]:
+          - /url: /#tiktok
+        - link "Contact" [ref=e16] [cursor=pointer]:
+          - /url: /#contact
+        - link "Market" [ref=e17] [cursor=pointer]:
+          - /url: /market/
+        - link "Book Now" [ref=e18] [cursor=pointer]:
+          - /url: /booking/
+      - generic [ref=e19]:
+        - button "تغيير اللغة إلى العربية" [ref=e20]:
+          - generic [ref=e21]: EN
+          - generic [ref=e23]: AR
+        - link "0122 137 0120" [ref=e24] [cursor=pointer]:
+          - /url: tel:01221370120
+          - img [ref=e25]
+          - generic [ref=e27]: 0122 137 0120
+  - main [ref=e28]:
+    - generic [ref=e29]:
+      - generic [ref=e30]:
+        - generic [ref=e34]: LOADING 3D MODEL
+        - generic [ref=e35]:
+          - generic [ref=e36]:
+            - generic [ref=e37]:
+              - img [ref=e38]
+              - generic [ref=e40]: Trusted Bajaj Service Center
+              - img [ref=e41]
+            - heading "EL PRINCE BAJAJ" [level=1] [ref=e43]:
+              - text: EL PRINCE
+              - text: BAJAJ
+            - paragraph [ref=e44]: Your trusted destination for Bajaj motorcycle sales, maintenance, genuine parts, and diagnostics. Serving riders with passion and expertise since 2019.
+            - generic [ref=e45]:
+              - link "Call Now" [ref=e46] [cursor=pointer]:
+                - /url: tel:01221370120
+                - text: Call Now
+                - img [ref=e47]
+              - link "Book Service" [ref=e49] [cursor=pointer]:
+                - /url: /booking/
+          - generic:
+            - generic: Scroll to Explore
+            - img
+        - generic [ref=e50]:
+          - generic [ref=e51]:
+            - paragraph [ref=e52]: Authorized Service Center
+            - paragraph [ref=e53]: Since 2019
+          - generic [ref=e55]:
+            - generic [ref=e57]:
+              - img [ref=e59]
+              - generic [ref=e61]: Our Expertise
+            - heading "Professional Service" [level=3] [ref=e62]
+            - paragraph [ref=e63]: Certified technicians with years of hands-on experience repairing and maintaining Bajaj motorcycles.
+        - generic [ref=e69]:
+          - generic [ref=e71]:
+            - img [ref=e73]
+            - generic [ref=e76]: Quality Promise
+          - heading "Genuine Parts Only" [level=3] [ref=e77]
+          - paragraph [ref=e78]: We use and supply authentic Bajaj parts to ensure the longevity and safety of your motorcycle.
+        - generic [ref=e84]:
+          - generic [ref=e86]:
+            - img [ref=e88]
+            - generic [ref=e91]: Full Service
+          - heading "Complete Solutions" [level=3] [ref=e92]
+          - paragraph [ref=e93]: From sales and maintenance to diagnostics and spare parts — your one-stop Bajaj destination.
+      - generic [ref=e98]:
+        - generic [ref=e99]:
+          - img [ref=e100]
+          - generic [ref=e102]: TIKTOK
+          - img [ref=e103]
+        - generic [ref=e106]:
+          - generic [ref=e107]:
+            - heading "تابعنا على TikTok" [level=3] [ref=e108]
+            - paragraph [ref=e109]: أحدث الفيديوهات والعروض
+          - iframe [ref=e112]:
+            - generic [active] [ref=f6e1]:
+              - main [ref=f6e3]:
+                - generic [ref=f6e5]:
+                  - generic [ref=f6e9]:
+                    - generic:
+                      - link [ref=f6e10] [cursor=pointer]:
+                        - /url: https://www.tiktok.com?referer_url=windsurf-project-three-topaz.vercel.app%2F&refer=embed&embed_source=121374463%2C121468991%2C121439635%2C121749182%2C121433650%2C121404359%2C121497414%2C122349556%2C122221973%2C122122240%2C121351166%2C121811500%2C121960941%2C122122244%2C122122243%2C122122242%2C121487028%2C122258714%2C121331973%2C120811592%2C120810756%2C121885509%3Bnull%3Bembed_logo&referer_video_id=7611079884860919060
+                      - img [ref=f6e13] [cursor=pointer]
+                      - generic [ref=f6e23]:
+                        - link [ref=f6e24] [cursor=pointer]:
+                          - /url: https://www.tiktok.com/@elprince.bajajj?referer_url=windsurf-project-three-topaz.vercel.app%2F&refer=embed&embed_source=121374463%2C121468991%2C121439635%2C121749182%2C121433650%2C121404359%2C121497414%2C122349556%2C122221973%2C122122240%2C121351166%2C121811500%2C121960941%2C122122244%2C122122243%2C122122242%2C121487028%2C122258714%2C121331973%2C120811592%2C120810756%2C121885509%3Bnull%3Bembed_head&referer_video_id=7611079884860919060
+                        - link:
+                          - /url: https://www.tiktok.com/@elprince.bajajj?referer_url=windsurf-project-three-topaz.vercel.app%2F&refer=embed&embed_source=121374463%2C121468991%2C121439635%2C121749182%2C121433650%2C121404359%2C121497414%2C122349556%2C122221973%2C122122240%2C121351166%2C121811500%2C121960941%2C122122244%2C122122243%2C122122242%2C121487028%2C122258714%2C121331973%2C120811592%2C120810756%2C121885509%3Bnull%3Bembed_head&referer_video_id=7611079884860919060
+                          - img [ref=f6e27] [cursor=pointer]
+                        - link "1597" [ref=f6e32] [cursor=pointer]:
+                          - /url: https://www.tiktok.com/@elprince.bajajj/video/7611079884860919060?referer_url=windsurf-project-three-topaz.vercel.app%2F&refer=embed&embed_source=121374463%2C121468991%2C121439635%2C121749182%2C121433650%2C121404359%2C121497414%2C122349556%2C122221973%2C122122240%2C121351166%2C121811500%2C121960941%2C122122244%2C122122243%2C122122242%2C121487028%2C122258714%2C121331973%2C120811592%2C120810756%2C121885509%3Bnull%3Bembed_like&referer_video_id=7611079884860919060
+                          - generic [ref=f6e33]:
+                            - img [ref=f6e34]
+                            - generic [ref=f6e38]: "1597"
+                        - link "112" [ref=f6e39] [cursor=pointer]:
+                          - /url: https://www.tiktok.com/@elprince.bajajj/video/7611079884860919060?referer_url=windsurf-project-three-topaz.vercel.app%2F&refer=embed&embed_source=121374463%2C121468991%2C121439635%2C121749182%2C121433650%2C121404359%2C121497414%2C122349556%2C122221973%2C122122240%2C121351166%2C121811500%2C121960941%2C122122244%2C122122243%2C122122242%2C121487028%2C122258714%2C121331973%2C120811592%2C120810756%2C121885509%3Bnull%3Bembed_comment_button&referer_video_id=7611079884860919060
+                          - generic [ref=f6e40]:
+                            - img [ref=f6e41]
+                            - generic [ref=f6e45]: "112"
+                        - link "173" [ref=f6e46] [cursor=pointer]:
+                          - /url: https://www.tiktok.com/@elprince.bajajj/video/7611079884860919060?referer_url=windsurf-project-three-topaz.vercel.app%2F&refer=embed&embed_source=121374463%2C121468991%2C121439635%2C121749182%2C121433650%2C121404359%2C121497414%2C122349556%2C122221973%2C122122240%2C121351166%2C121811500%2C121960941%2C122122244%2C122122243%2C122122242%2C121487028%2C122258714%2C121331973%2C120811592%2C120810756%2C121885509%3Bnull%3Bembed_share&referer_video_id=7611079884860919060
+                          - generic [ref=f6e47]:
+                            - img [ref=f6e48]
+                            - generic [ref=f6e53]: "173"
+                  - generic [ref=f6e54]:
+                    - link "Watch more exciting videos on TikTok Watch more exciting videos on TikTokWatch more exciting videos on TikTok Watch now" [ref=f6e56] [cursor=pointer]:
+                      - /url: https://www.tiktok.com?referer_url=windsurf-project-three-topaz.vercel.app%2F&refer=embed&embed_source=121374463%2C121468991%2C121439635%2C121749182%2C121433650%2C121404359%2C121497414%2C122349556%2C122221973%2C122122240%2C121351166%2C121811500%2C121960941%2C122122244%2C122122243%2C122122242%2C121487028%2C122258714%2C121331973%2C120811592%2C120810756%2C121885509%3Bnull%3Bembed_discover_button
+                      - generic [ref=f6e58]:
+                        - text: Watch more exciting videos on TikTok
+                        - generic [ref=f6e59]: Watch more exciting videos on TikTokWatch more exciting videos on TikTok
+                      - button "Watch now" [ref=f6e60]
+                    - link "@elprince.bajajj 🚨 اوعي الميكانيكي يضحك عليكى!!! 🚨 لو هتعمل صيانة كاملة لموتوسيكلِك لازم تبقي عارف ايه اللي ...See more الصوت الأصلي - مركز البرنس بجاج" [ref=f6e62] [cursor=pointer]:
+                      - /url: https://www.tiktok.com/@elprince.bajajj/video/7611079884860919060?referer_url=windsurf-project-three-topaz.vercel.app%2F&refer=embed&embed_source=121374463%2C121468991%2C121439635%2C121749182%2C121433650%2C121404359%2C121497414%2C122349556%2C122221973%2C122122240%2C121351166%2C121811500%2C121960941%2C122122244%2C122122243%2C122122242%2C121487028%2C122258714%2C121331973%2C120811592%2C120810756%2C121885509%3Bnull%3Bembed_blank&referer_video_id=7611079884860919060
+                      - generic [ref=f6e63]:
+                        - link "@elprince.bajajj" [ref=f6e64]:
+                          - /url: https://www.tiktok.com/@elprince.bajajj?referer_url=windsurf-project-three-topaz.vercel.app%2F&refer=embed&embed_source=121374463%2C121468991%2C121439635%2C121749182%2C121433650%2C121404359%2C121497414%2C122349556%2C122221973%2C122122240%2C121351166%2C121811500%2C121960941%2C122122244%2C122122243%2C122122242%2C121487028%2C122258714%2C121331973%2C120811592%2C120810756%2C121885509%3Bnull%3Bembed_name&referer_video_id=7611079884860919060
+                          - generic [ref=f6e66]: "@elprince.bajajj"
+                        - generic [ref=f6e67]:
+                          - text: 🚨 اوعي الميكانيكي يضحك عليكى!!! 🚨 لو هتعمل صيانة كاملة لموتوسيكلِك لازم تبقي عارف ايه اللي
+                          - text: ...See more
+                        - link "الصوت الأصلي - مركز البرنس بجاج" [ref=f6e68]:
+                          - /url: https://www.tiktok.com/music/الصوت-الأصلي-7611079970883210005?referer_url=windsurf-project-three-topaz.vercel.app%2F&refer=embed&embed_source=121374463%2C121468991%2C121439635%2C121749182%2C121433650%2C121404359%2C121497414%2C122349556%2C122221973%2C122122240%2C121351166%2C121811500%2C121960941%2C122122244%2C122122243%2C122122242%2C121487028%2C122258714%2C121331973%2C120811592%2C120810756%2C121885509%3Bnull%3Bembed_song_name
+                          - generic [ref=f6e69]: الصوت الأصلي - مركز البرنس بجاج
+              - text: 🚨 اوعي الميكانيكي يضحك عليكى!!! 🚨 لو هتعمل صيانة كاملة لموتوسيكلك لزم تبقي عارف ايه اللي ...See more
+          - link "@elprince.bajajj" [ref=e113] [cursor=pointer]:
+            - /url: https://www.tiktok.com/@elprince.bajajj/video/7611079884860919060
+            - img [ref=e114]
+            - text: "@elprince.bajajj"
+      - generic [ref=e117]:
+        - generic [ref=e118]:
+          - generic [ref=e121]: Our Journey
+          - heading "The Story of El Prince Bajaj" [level=2] [ref=e123]
+          - paragraph [ref=e124]: From a small parts shop to a trusted full-service Bajaj center. Our journey is built on passion, expertise, and customer trust.
+        - generic [ref=e128]:
+          - generic [ref=e131]:
+            - generic [ref=e132]:
+              - img [ref=e134]
+              - generic [ref=e139]: "2019"
+            - heading "Started as Retail Outlet" [level=3] [ref=e140]
+            - paragraph [ref=e141]: Began as a small retail motorcycle parts outlet serving the local community.
+          - generic [ref=e146]:
+            - generic [ref=e147]:
+              - img [ref=e149]
+              - generic [ref=e152]: "2020"
+            - heading "Authorized Bajaj Sales Point" [level=3] [ref=e153]
+            - paragraph [ref=e154]: Earned authorization as an official Bajaj motorcycle sales point.
+          - generic [ref=e159]:
+            - generic [ref=e160]:
+              - img [ref=e162]
+              - generic [ref=e165]: "2021"
+            - heading "Expanded to Wholesale" [level=3] [ref=e166]
+            - paragraph [ref=e167]: Grew into wholesale distribution, supplying parts to shops across the region.
+          - generic [ref=e172]:
+            - generic [ref=e173]:
+              - img [ref=e175]
+              - generic [ref=e177]: "2022"
+            - heading "Certified Maintenance Services" [level=3] [ref=e178]
+            - paragraph [ref=e179]: Added professional maintenance and repair services with certified technicians.
+          - generic [ref=e184]:
+            - generic [ref=e185]:
+              - img [ref=e187]
+              - generic [ref=e189]: "2023"
+            - heading "Trusted Service Provider" [level=3] [ref=e190]
+            - paragraph [ref=e191]: Became one of the most trusted Bajaj service providers in the area.
+          - generic [ref=e196]:
+            - generic [ref=e197]:
+              - img [ref=e199]
+              - generic [ref=e204]: Today
+            - heading "Complete Destination" [level=3] [ref=e205]
+            - paragraph [ref=e206]: A full-service center for Sales, Maintenance, Genuine Parts, Diagnostics & Technical Support.
+      - generic [ref=e211]:
+        - generic [ref=e212]:
+          - generic [ref=e215]: What We Offer
+          - heading "Why Choose El Prince Bajaj" [level=2] [ref=e217]
+          - paragraph [ref=e218]: From routine maintenance to complete rebuilds, we offer comprehensive services tailored to keep your Bajaj motorcycle in peak condition.
+        - generic [ref=e219]:
+          - generic [ref=e221]:
+            - img [ref=e223]
+            - heading "Motorcycle Maintenance" [level=3] [ref=e225]
+            - paragraph [ref=e226]: Regular servicing, tune-ups, and preventive care to keep your bike running perfectly.
+          - generic [ref=e228]:
+            - img [ref=e230]
+            - heading "Engine Rebuilds" [level=3] [ref=e233]
+            - paragraph [ref=e234]: Complete engine overhauls and rebuilds by experienced technicians using genuine parts.
+          - generic [ref=e236]:
+            - img [ref=e238]
+            - heading "Frame Restoration" [level=3] [ref=e241]
+            - paragraph [ref=e242]: Structural repairs and frame restoration to bring damaged motorcycles back to life.
+          - generic [ref=e244]:
+            - img [ref=e246]
+            - heading "Electrical Troubleshooting" [level=3] [ref=e248]
+            - paragraph [ref=e249]: Advanced diagnostics and repair for all electrical systems, wiring, and components.
+          - generic [ref=e251]:
+            - img [ref=e253]
+            - heading "Complex Diagnostics" [level=3] [ref=e255]
+            - paragraph [ref=e256]: Computerized diagnostic equipment to identify and resolve the most challenging issues.
+          - generic [ref=e258]:
+            - img [ref=e260]
+            - heading "Rare Spare Part Sourcing" [level=3] [ref=e264]
+            - paragraph [ref=e265]: We source hard-to-find genuine Bajaj parts from our extensive supplier network.
+          - generic [ref=e267]:
+            - img [ref=e269]
+            - heading "Periodic Maintenance" [level=3] [ref=e271]
+            - paragraph [ref=e272]: Scheduled maintenance programs designed to extend your motorcycle's lifespan.
+          - generic [ref=e274]:
+            - img [ref=e276]
+            - heading "Emergency Repair Support" [level=3] [ref=e280]
+            - paragraph [ref=e281]: Urgent repair services when you need them most. Fast turnaround guaranteed.
+          - generic [ref=e283]:
+            - img [ref=e285]
+            - heading "Technical Consultation" [level=3] [ref=e287]
+            - paragraph [ref=e288]: Expert advice on upgrades, modifications, and optimal maintenance schedules.
+          - generic [ref=e290]:
+            - img [ref=e292]
+            - heading "Customer Follow-Up" [level=3] [ref=e296]
+            - paragraph [ref=e297]: Post-service follow-up calls to ensure complete satisfaction with every repair.
+      - generic [ref=e299]:
+        - generic [ref=e300]:
+          - generic [ref=e303]: Highlights
+          - heading "What Makes Us Different" [level=2] [ref=e305]
+        - generic [ref=e306]:
+          - generic [ref=e308]: Certified Service
+          - generic [ref=e310]: Genuine Parts
+          - generic [ref=e312]: Expert Mechanics
+          - generic [ref=e314]: Warranty Support
+          - generic [ref=e316]: Fast Repairs
+          - generic [ref=e318]: Customer Satisfaction
+          - generic [ref=e320]: Emergency Support
+          - generic [ref=e322]: Wholesale Supply
+      - generic [ref=e325]:
+        - generic [ref=e326]:
+          - generic [ref=e329]: Testimonials
+          - heading "What Our Customers Say" [level=2] [ref=e331]
+          - generic [ref=e332]:
+            - generic [ref=e333]:
+              - img "Bajaj Logo" [ref=e335]
+              - generic [ref=e336]: "4.9"
+            - generic [ref=e337]:
+              - img [ref=e338]
+              - img [ref=e340]
+              - img [ref=e342]
+              - img [ref=e344]
+              - img [ref=e346]
+            - generic [ref=e348]: "|"
+            - generic [ref=e349]: (Over 1050 unique site visitors)
+        - generic [ref=e399]:
+          - button "Write a Review on Website" [ref=e400] [cursor=pointer]:
+            - img [ref=e401]
+            - text: Write a Review on Website
+          - link "Write a Review on Google" [ref=e406] [cursor=pointer]:
+            - /url: https://maps.app.goo.gl/Dy4NToGMJqeR7ymS7
+            - text: Write a Review on Google
+            - img [ref=e407]
+      - generic [ref=e413]:
+        - generic [ref=e414]:
+          - generic [ref=e417]: Get In Touch
+          - heading "Contact El Prince Bajaj" [level=2] [ref=e419]
+          - paragraph [ref=e420]: Reach us anytime for maintenance, parts, or sales inquiries. We are here to help.
+        - generic [ref=e421]:
+          - link "Call Now Phone 1 0122 137 0120" [ref=e422] [cursor=pointer]:
+            - /url: tel:01221370120
+            - generic [ref=e423]:
+              - img [ref=e425]
+              - generic [ref=e427]: Call Now
+            - paragraph [ref=e428]: Phone 1
+            - paragraph [ref=e429]: 0122 137 0120
+          - link "Call Now Phone 2 0155 123 3908" [ref=e430] [cursor=pointer]:
+            - /url: tel:01551233908
+            - generic [ref=e431]:
+              - img [ref=e433]
+              - generic [ref=e435]: Call Now
+            - paragraph [ref=e436]: Phone 2
+            - paragraph [ref=e437]: 0155 123 3908
+          - link "Open Map Location 35JH+PC مركز أوسيم" [ref=e438] [cursor=pointer]:
+            - /url: https://maps.app.goo.gl/Dy4NToGMJqeR7ymS7
+            - generic [ref=e439]:
+              - img [ref=e441]
+              - generic [ref=e444]: Open Map
+            - paragraph [ref=e445]: Location
+            - paragraph [ref=e446]: 35JH+PC مركز أوسيم
+        - generic [ref=e447]:
+          - paragraph [ref=e448]: Follow us on social media
+          - generic [ref=e449]:
+            - link "Facebook" [ref=e450] [cursor=pointer]:
+              - /url: https://www.facebook.com/elprince.bajaj
+              - img [ref=e451]
+            - link "Instagram" [ref=e453] [cursor=pointer]:
+              - /url: https://www.instagram.com/elprincebajaj
+              - img [ref=e454]
+            - link "TikTok" [ref=e456] [cursor=pointer]:
+              - /url: https://www.tiktok.com/@elprince.bajajj
+              - img [ref=e457]
+            - link "WhatsApp" [ref=e459] [cursor=pointer]:
+              - /url: https://wa.me/201221370120
+              - img [ref=e460]
+      - generic [ref=e464]:
+        - generic [ref=e465]:
+          - generic [ref=e468]: Payment Options
+          - heading "Flexible Payment Methods" [level=2] [ref=e470]
+        - generic [ref=e471]:
+          - generic [ref=e472]:
+            - img [ref=e474]
+            - heading "Instapay" [level=3] [ref=e476]
+            - paragraph [ref=e477]: Fast digital transfers via Instapay for quick and secure payments.
+          - generic [ref=e478]:
+            - img [ref=e480]
+            - heading "Vodafone Cash" [level=3] [ref=e482]
+            - paragraph [ref=e483]: Pay conveniently using Vodafone Cash mobile wallet service.
+          - generic [ref=e484]:
+            - img [ref=e486]
+            - heading "Cash Payment" [level=3] [ref=e489]
+            - paragraph [ref=e490]: Traditional cash payment accepted at our service center.
+      - generic [ref=e493]:
+        - generic [ref=e496]: Get Started
+        - heading "Need Maintenance or Genuine Parts?" [level=2] [ref=e498]
+        - paragraph [ref=e499]: Contact El Prince Bajaj today and let our specialists help you. Fast, reliable, and professional service guaranteed.
+        - generic [ref=e500]:
+          - link "Call Now" [ref=e501] [cursor=pointer]:
+            - /url: tel:01221370120
+            - img [ref=e502]
+            - text: Call Now
+            - img [ref=e504]
+          - link "WhatsApp" [ref=e506] [cursor=pointer]:
+            - /url: https://wa.me/201221370120
+            - img [ref=e507]
+            - text: WhatsApp
+          - link "Get Directions" [ref=e509] [cursor=pointer]:
+            - /url: https://maps.app.goo.gl/Dy4NToGMJqeR7ymS7
+            - img [ref=e510]
+            - text: Get Directions
+          - link "Book Service" [ref=e513] [cursor=pointer]:
+            - /url: /booking/
+            - img [ref=e514]
+            - text: Book Service
+  - contentinfo [ref=e516]:
+    - generic [ref=e517]:
+      - generic [ref=e518]:
+        - generic [ref=e519]:
+          - generic [ref=e521]:
+            - img "El Prince Bajaj Logo" [ref=e523]
+            - generic [ref=e524]:
+              - generic [ref=e525]: EL PRINCE
+              - generic [ref=e526]: BAJAJ
+          - paragraph [ref=e527]: El Prince Bajaj — your trusted destination for Bajaj motorcycle sales, maintenance, genuine parts, and diagnostics. Serving riders with passion since 2019.
+        - generic [ref=e528]:
+          - heading "Quick Links" [level=3] [ref=e529]
+          - navigation [ref=e530]:
+            - link "Our Story" [ref=e531] [cursor=pointer]:
+              - /url: /#story
+            - link "Services" [ref=e532] [cursor=pointer]:
+              - /url: /#services
+            - link "Reviews" [ref=e533] [cursor=pointer]:
+              - /url: /#reviews
+            - link "Market" [ref=e534] [cursor=pointer]:
+              - /url: /market/
+            - link "Book Now" [ref=e535] [cursor=pointer]:
+              - /url: /booking/
+        - generic [ref=e536]:
+          - heading "Contact" [level=3] [ref=e537]
+          - generic [ref=e538]:
+            - link "0122 137 0120" [ref=e539] [cursor=pointer]:
+              - /url: tel:01221370120
+              - img [ref=e540]
+              - text: 0122 137 0120
+            - link "0155 123 3908" [ref=e542] [cursor=pointer]:
+              - /url: tel:01551233908
+              - img [ref=e543]
+              - text: 0155 123 3908
+            - link "35JH+PC \\u0645\\u0631\\u0643\\u0632 \\u0623\\u0648\\u0633\\u064a\\u0645" [ref=e545] [cursor=pointer]:
+              - /url: https://maps.app.goo.gl/Dy4NToGMJqeR7ymS7
+              - img [ref=e546]
+              - generic [ref=e549]: 35JH+PC \u0645\u0631\u0643\u0632 \u0623\u0648\u0633\u064a\u0645
+            - generic [ref=e550]:
+              - link "Contact us on WhatsApp" [ref=e551] [cursor=pointer]:
+                - /url: https://wa.me/201221370120
+                - img [ref=e552]
+              - link "Follow us on Facebook" [ref=e554] [cursor=pointer]:
+                - /url: https://www.facebook.com/elprince.bajaj
+                - img [ref=e555]
+              - link "Follow us on Instagram" [ref=e557] [cursor=pointer]:
+                - /url: https://www.instagram.com/elprincebajaj
+                - img [ref=e558]
+              - link "Follow us on TikTok" [ref=e560] [cursor=pointer]:
+                - /url: https://www.tiktok.com/@elprince.bajajj
+                - img [ref=e561]
+      - paragraph [ref=e564]: © 2024 El Prince Bajaj. All rights reserved.
+  - button [ref=e565]:
+    - img [ref=e566]

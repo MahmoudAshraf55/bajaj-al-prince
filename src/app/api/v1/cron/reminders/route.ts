@@ -143,7 +143,13 @@ export async function GET(req: NextRequest) {
           scheduleFailed++;
           continue;
         }
-        const sendResult = await sendWhatsAppMessageViaService(phone, message);
+
+        let sendResult: { success: boolean; error?: string } = { success: false, error: 'Unknown' };
+        try {
+          sendResult = await sendWhatsAppMessageViaService(phone, message);
+        } catch (err) {
+          sendResult = { success: false, error: err instanceof Error ? err.message : 'Exception during send' };
+        }
 
         await prisma.reminderLog.create({
           data: {

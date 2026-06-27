@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { AlertTriangle, Package, Search, Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -19,8 +20,14 @@ interface Product {
 
 const categoryKeys = ['All', 'Motorcycles', 'Spare Parts', 'Accessories'];
 
+const CAT_TRANSLATE: Record<string, string> = {
+  Motorcycles: 'market_cat_motorcycles',
+  'Spare Parts': 'market_cat_spareparts',
+  Accessories: 'market_cat_accessories',
+};
+
 export default function MarketPage() {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   const [activeCategory, setActiveCategory] = useState('All');
   const [search, setSearch] = useState('');
   const [products, setProducts] = useState<Product[]>([]);
@@ -32,6 +39,11 @@ export default function MarketPage() {
     Motorcycles: t('market_cat_motorcycles'),
     'Spare Parts': t('market_cat_spareparts'),
     Accessories: t('market_cat_accessories'),
+  };
+
+  const translateCat = (cat: string) => {
+    const key = CAT_TRANSLATE[cat];
+    return key ? t(key) : cat;
   };
 
   useEffect(() => {
@@ -59,8 +71,16 @@ export default function MarketPage() {
     return matchCat && matchSearch;
   });
 
+  const openWhatsApp = (product: Product) => {
+    const phone = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || '201015544084';
+    const msg = language === 'ar'
+      ? `السلام عليكم، أستفسر عن منتج: ${product.name}\n${product.description || ''}\nالسعر: ${product.price.toLocaleString()} ج.م\nالرابط: ${window.location.origin}/market/`
+      : `Hello, I am inquiring about: ${product.name}\n${product.description || ''}\nPrice: ${product.price.toLocaleString()} EGP\nLink: ${window.location.origin}/market/`;
+    window.open(`https://wa.me/${phone.replace(/\D/g, '')}?text=${encodeURIComponent(msg)}`, '_blank');
+  };
+
   return (
-    <div className="min-h-screen pt-24 pb-16">
+    <div className="min-h-screen pt-24 pb-16" dir={language === 'ar' ? 'rtl' : 'ltr'}>
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="mb-6">
           <BackButton fallback="/" />
@@ -138,8 +158,12 @@ export default function MarketPage() {
                   transition={{ delay: i * 0.05 }}
                   className="glass rounded-2xl overflow-hidden group hover:border-primary/30 transition-all duration-500"
                 >
-                  <div className="aspect-4/3 bg-secondary flex items-center justify-center relative">
-                    <Package className="w-12 h-12 text-muted-foreground/30" />
+                  <div className="aspect-4/3 bg-secondary flex items-center justify-center relative overflow-hidden">
+                    {product.image ? (
+                      <Image src={product.image} alt={product.name} fill className="object-cover" sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw" unoptimized />
+                    ) : (
+                      <Package className="w-12 h-12 text-muted-foreground/30" />
+                    )}
                     {!product.stock && (
                       <div className="absolute top-3 right-3 px-2 py-1 rounded-lg bg-red-500/20 border border-red-500/30 text-red-400 text-xs font-medium">
                         {t('market_out_of_stock')}
@@ -148,7 +172,7 @@ export default function MarketPage() {
                   </div>
                   <div className="p-5">
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs text-primary font-medium uppercase tracking-wider">{product.category}</span>
+                      <span className="text-xs text-primary font-medium uppercase tracking-wider">{translateCat(product.category)}</span>
                       <span className={`text-xs px-2 py-0.5 rounded-full ${product.stock > 0 ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}`}>
                         {product.stock > 0 ? `${product.stock} ${t('market_in_stock')}` : t('market_unavailable')}
                       </span>
@@ -157,7 +181,10 @@ export default function MarketPage() {
                     <p className="text-muted-foreground text-sm mb-4">{product.description || t('market_no_description')}</p>
                     <div className="flex items-center justify-between">
                       <span className="text-xl font-bold text-primary">{product.price.toLocaleString()} EGP</span>
-                      <button className="px-4 py-2 rounded-lg bg-primary/10 border border-primary/20 text-primary text-sm font-medium hover:bg-primary/20 transition-colors">
+                      <button
+                        onClick={() => openWhatsApp(product)}
+                        className="px-4 py-2 rounded-lg bg-primary/10 border border-primary/20 text-primary text-sm font-medium hover:bg-primary/20 transition-colors"
+                      >
                         {t('market_inquire')}
                       </button>
                     </div>

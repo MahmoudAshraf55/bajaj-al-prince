@@ -625,7 +625,7 @@ export default function WhatsAppAdminPage() {
                           <span className="text-[10px] font-semibold text-zinc-500 ml-1">
                             {t('wa_template_vars')}:
                           </span>
-                          {['name', 'model', 'date', 'time', 'issue', 'make'].map((v) => (
+                          {['name', 'model', 'date', 'time', 'issue', 'make', 'cost', 'work'].map((v) => (
                             <button
                               key={v}
                               onClick={() => {

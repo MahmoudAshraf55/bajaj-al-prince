@@ -1,9 +1,9 @@
 # BAJAJ AL PRINCE — Motorcycle Service Center Management Platform
 
-[![Next.js](https://img.shields.io/badge/Next.js-16.2.6-black?logo=next.js)](https://nextjs.org/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue?logo=typescript)](https://www.typescriptlang.org/)
+[![Next.js](https://img.shields.io/badge/Next.js-15.3.6-black?logo=next.js)](https://nextjs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue?logo=typescript)](https://www.typescriptlang.org/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind%20CSS-4.0-38B2AC?logo=tailwind-css)](https://tailwindcss.com/)
-[![Prisma](https://img.shields.io/badge/Prisma-6.7-2D3748?logo=prisma)](https://prisma.io/)
+[![Prisma](https://img.shields.io/badge/Prisma-6.19-2D3748?logo=prisma)](https://prisma.io/)
 [![License](https://img.shields.io/badge/license-Proprietary-red)]()
 
 > **Enterprise-grade ERP platform for motorcycle service centers.**
@@ -34,6 +34,8 @@
 **BAJAJ AL PRINCE** is a comprehensive management platform designed for authorized Bajaj motorcycle service centers. It combines a stunning public-facing website with a powerful back-office system for managing every aspect of the service center business.
 
 ### Current Capabilities (v0.2.0)
+
+> **Note:** The project is currently at **v0.1.0** in `package.json`. Capabilities reflect v0.2.0 feature set.
 
 - **Public Website** — Product showcase with immersive 3D motorcycle experience
 - **Service Booking** — Online appointment scheduling for customers
@@ -95,20 +97,20 @@ Full ERP platform covering: Work Orders, Inventory, POS, Cashier, Customer Porta
 
 | Layer | Technology | Version |
 |-------|------------|---------|
-| Framework | Next.js App Router | 16.2.6 |
+| Framework | Next.js App Router | 15.3.6 |
 | Language | TypeScript | 5.x |
-| UI Library | React | 19.2.4 |
+| UI Library | React | 19.x |
 | Styling | Tailwind CSS | 4.x |
 | UI Animation | Framer Motion | 12.x |
 | Scroll Animation | GSAP + ScrollTrigger | 3.x |
 | 3D Rendering | Three.js + React Three Fiber + Drei | 0.184 / 9.6 |
-| Database ORM | Prisma | 6.7 |
+| Database ORM | Prisma | 6.19 |
 | Database | SQLite (dev) / PostgreSQL (prod) | — |
-| Auth | JWT via jose + bcryptjs | 6.2 / 3.0 |
-| Validation | Zod | 4.4 |
-| Icons | Lucide React | 1.16 |
+| Auth | JWT via jose + bcryptjs | 6.0 / 3.0 |
+| Validation | Zod | 3.24 |
+| Icons | Lucide React | 0.487 |
 | Testing | Playwright | 1.60 |
-| WhatsApp Web | @whiskeysockets/baileys | 6.x |
+| WhatsApp Web | @whiskeysockets/baileys | 7.x |
 | QR Code | qrcode | 1.x |
 
 ---
@@ -118,7 +120,7 @@ Full ERP platform covering: Work Orders, Inventory, POS, Cashier, Customer Porta
 ```
 windsurf-project/
 ├── prisma/
-│   ├── schema.prisma       # Database schema (7 models + enum)
+│   ├── schema.prisma       # Database schema (16 models + UserRole enum)
 │   └── migrations/         # Migration history
 ├── public/                 # Static assets (3D models, images)
 ├── src/
@@ -165,18 +167,26 @@ windsurf-project/
 
 **Pattern:** Feature-based grouping with shared `lib/` and `types/` folders. Admin is a separate sub-route. API routes mirror frontend features.
 
-### Database Models
+### Full Database Models (16 models + 1 enum)
 
 | Model | Purpose | Key Fields |
 |-------|---------|------------|
 | `User` | Admin/staff authentication | `username`, `password`, `role`, `failedAttempts`, `lockedUntil` |
 | `ContactMessage` | Customer inquiries | `name`, `phone`, `email`, `message` |
-| `Booking` | Service appointments | `name`, `phone`, `model`, `issue`, `date`, `time`, `status` |
+| `Booking` | Service appointments | `name`, `phone`, `model`, `issue`, `date`, `time`, `status`, `customerId`, `vehicleId` |
 | `Product` | Marketplace inventory | `name`, `description`, `price` (Decimal), `stock`, `category` |
 | `Transaction` | Cashier income/expense | `type`, `amount` (Decimal), `description` |
 | `Customer` | CRM customer profiles | `name`, `phone`, `email`, `address` |
 | `Vehicle` | Motorcycle registry | `make`, `model`, `year`, `chassisNumber`, `plateNumber`, `customerId` |
+| `VehicleModel` | Pre-defined vehicle models | `name`, `make`, `isActive` |
+| `WorkOrder` | Service work tracking | `description`, `status`, `cost` (Decimal), `vehicleId` |
+| `AuditLog` | Audit trail | `userId`, `action`, `entity`, `entityId`, `oldValue`, `newValue` |
+| `Review` | Customer reviews | `name`, `rating`, `review`, `date`, `verified` |
+| `UniqueVisitor` | Site visitor tracking | `ipHash`, `userAgent` |
 | `ReminderLog` | WhatsApp reminder tracking | `customerId`, `phone`, `message`, `status`, `sentAt` |
+| `WhatsAppSettings` | Anti-ban configuration | `delayMin`, `delayMax`, `dailyCap`, `batchSize` |
+| `WhatsAppMessageTemplate` | Per-event message templates | `event`, `message`, `isActive` |
+| `ReminderSchedule` | Automated reminder scheduling | `intervalDays`, `message`, `isActive` |
 
 **Foundation fields on every model:** `id` (UUID), `createdAt`, `updatedAt`, `isDeleted`, `deletedAt`, `tenantId`
 
@@ -323,14 +333,14 @@ npx playwright show-report
 
 | Version | Focus | Status |
 |---------|-------|--------|
-| v0.1.0 | Prototype — Public site, booking, market, admin auth | Current |
-| v0.2.0 | Branding — BAJAJ AL PRINCE identity system | Planned |
-| v0.3.0 | Security — RBAC, audit log, 2FA | Planned |
-| v0.4.0 | Work Orders — Service intake, mechanic assignment | Planned |
-| v0.5.0 | Inventory — Stock tracking, parts catalog | Planned |
-| v0.6.0 | Customer Portal — Self-service, history, invoices | Planned |
-| v0.7.0 | POS — In-person sales, receipt generation | Planned |
-| v1.0.0 | Commercial — Complete ERP platform | Target |
+| v0.1.0 | Prototype — Public site, booking, market, admin auth | ✅ Complete |
+| v0.2.0 | Branding — BAJAJ AL PRINCE identity, WhatsApp reminders, bilingual | ✅ Complete |
+| v0.3.0 | Security — RBAC, audit log, 2FA | 🔄 In Progress |
+| v0.4.0 | Work Orders — Service intake, mechanic assignment | 📅 Planned |
+| v0.5.0 | Inventory — Stock tracking, parts catalog | 📅 Planned |
+| v0.6.0 | Customer Portal — Self-service, history, invoices | 📅 Planned |
+| v0.7.0 | POS — In-person sales, receipt generation | 📅 Planned |
+| v1.0.0 | Commercial — Complete ERP platform | 🎯 Target |
 
 Full roadmap: [`docs/VERSIONING_STRATEGY.md`](./docs/VERSIONING_STRATEGY.md)
 
@@ -404,4 +414,4 @@ Unauthorized copying, distribution, or use of this software is strictly prohibit
 
 ---
 
-**Last updated:** June 21, 2026
+**Last updated:** June 26, 2026

@@ -10,7 +10,7 @@ Use docs/SYSTEM_RULES.md for security, CI, and operational controls. Use docs/PR
 
 ## Protected Feature Guardrails
 
-- Treat the Hero 3D Motorcycle experience as protected. Protected scope includes files under src/components/hero/**, src/three/heroScene.tsx, related model assets in public/models/hero/**, and any routes that mount these components. Do not modify files in these paths without explicit approval.
+- Treat the Hero 3D Motorcycle experience as protected. Protected scope includes files under src/components/3d/**, related model assets in public/models/**, and any routes that mount these components. Do not modify files in these paths without explicit approval.
 - Do not change Hero, GSAP ScrollTrigger, React Three Fiber, camera, model positioning, opacity, or scroll behavior unless the repository owner or an approved maintainer explicitly requests it in an issue or PR comment that references the change. If the requester is not an approved maintainer, refuse the change and respond with: "Protected feature change denied: request must come from an approved maintainer. To proceed, open an issue and get an approver's confirmation."
 - When a protected feature change is requested, require an issue or PR from the repository owner or a maintainer with the label allow-protected-change, and attach a testing report (visual diffs, perf metrics) before merging.
 - Before touching protected 3D behavior, run: (1) visual regression tests using the project's visual regression tool for hero routes; (2) unit/e2e tests with `npm run test`; (3) performance profiling measuring FPS and main-thread frame times; (4) verify scroll behavior matches baseline with no >5px layout shift. Include a short report with results and CI artifacts.

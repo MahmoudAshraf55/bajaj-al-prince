@@ -2,6 +2,7 @@
 
 import { useEffect, useState, Suspense, forwardRef } from 'react';
 import MotorcycleScene from '@/components/3d/MotorcycleScene';
+import { MotorcycleSceneErrorBoundary } from '@/components/3d/MotorcycleSceneErrorBoundary';
 import type { SceneRef } from '@/components/3d/MotorcycleScene';
 
 function LoadingFallback() {
@@ -27,9 +28,11 @@ const MotorcycleSceneClient = forwardRef<SceneRef>(function MotorcycleSceneClien
   }
 
   return (
-    <Suspense fallback={<LoadingFallback />}>
-      <MotorcycleScene ref={ref} />
-    </Suspense>
+    <MotorcycleSceneErrorBoundary>
+      <Suspense fallback={<LoadingFallback />}>
+        <MotorcycleScene ref={ref} />
+      </Suspense>
+    </MotorcycleSceneErrorBoundary>
   );
 });
 

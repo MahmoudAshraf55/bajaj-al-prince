@@ -88,3 +88,4 @@ worktree-*/
 # runtime session credentials
 .baileys_auth/
 services/whatsapp/.baileys_auth/
+.env*

@@ -45,7 +45,7 @@ const redisLimits: Record<string, Ratelimit> = useRedis ? {
 const windowMap: Record<string, { max: number; ms: number }> = {
   contact: { max: 20, ms: 15 * 60 * 1000 },
   booking: { max: 10, ms: 15 * 60 * 1000 },
-  login:   { max: 5,  ms: 15 * 60 * 1000 },
+  login:   { max: 20, ms: 15 * 60 * 1000 },
   admin:   { max: 100, ms: 15 * 60 * 1000 },
 };
 

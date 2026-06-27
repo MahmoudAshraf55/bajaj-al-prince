@@ -51,7 +51,7 @@ const nextConfig = {
           },
           {
             key: 'Content-Security-Policy',
-            value: `default-src 'self'; script-src 'self' 'unsafe-eval'${isDev ? " 'unsafe-inline'" : ''} https://www.gstatic.com; style-src 'self'${isDev ? " 'unsafe-inline'" : ''}; img-src 'self' data: blob:; font-src 'self'; media-src 'self' blob:; connect-src 'self' blob: https://raw.githack.com https://raw.githubusercontent.com https://www.gstatic.com; frame-src 'self' https://www.tiktok.com https://www.youtube.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self';`,
+            value: `default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline' https://www.gstatic.com; worker-src 'self' blob: https://www.gstatic.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; media-src 'self' blob:; connect-src 'self' blob: https://raw.githubusercontent.com https://www.gstatic.com https://raw.githack.com; frame-src 'self' https://www.tiktok.com https://www.youtube.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self';`,
           },
         ],
       },

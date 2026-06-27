@@ -9,7 +9,7 @@ import type { LucideIcon } from 'lucide-react';
 import {
   LayoutDashboard, Mail, Calendar, Package, Receipt, LogOut,
   Trash2, Search, Plus, Minus,
-  DollarSign, MessageSquare, Users, Car, List, MessageCircle,
+  DollarSign, MessageSquare, Users, Car, List,   MessageCircle, Wrench, ShoppingCart, TrendingUp, Camera,
 } from 'lucide-react';
 
 interface ContactMessage {
@@ -124,6 +124,12 @@ export default function AdminDashboard() {
     { id: 'cashier', labelKey: 'admin_cashier', icon: Receipt },
   ];
 
+  // Add sidebar links for POS and Warehouse
+  const sidebarLinks: { href: string; labelKey: string; icon: LucideIcon }[] = [
+    { href: '/admin/pos/', labelKey: 'pos_title', icon: ShoppingCart },
+    { href: '/admin/warehouse/', labelKey: 'wh_title', icon: TrendingUp },
+  ];
+
   return (
     <div className="min-h-screen flex">
       <aside className="w-64 glass border-r border-border flex-shrink-0 hidden md:flex flex-col">
@@ -144,8 +150,28 @@ export default function AdminDashboard() {
             </button>
           ))}
           <div className="mt-4 mb-1 px-4 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60">
+            POS & Warehouse
+          </div>
+          {sidebarLinks.map((link) => (
+            <button
+              key={link.href}
+              onClick={() => router.push(link.href)}
+              className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-white/5 transition-all"
+            >
+              <link.icon className="w-4 h-4" />
+              {t(link.labelKey as string)}
+            </button>
+          ))}
+          <div className="mt-4 mb-1 px-4 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60">
             CRM
           </div>
+          <button
+            onClick={() => router.push('/admin/market/')}
+            className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-white/5 transition-all"
+          >
+            <Package className="w-4 h-4" />
+            {t('admin_market')}
+          </button>
           <button
             onClick={() => router.push('/admin/customers/')}
             className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-white/5 transition-all"
@@ -168,11 +194,25 @@ export default function AdminDashboard() {
             {t('admin_vehicle_models')}
           </button>
           <button
+            onClick={() => router.push('/admin/work-orders/')}
+            className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-white/5 transition-all"
+          >
+            <Wrench className="w-4 h-4" />
+            {t('wo_title')}
+          </button>
+          <button
             onClick={() => router.push('/admin/whatsapp/')}
             className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-white/5 transition-all"
           >
             <MessageCircle className="w-4 h-4" />
             {t('admin_whatsapp')}
+          </button>
+          <button
+            onClick={() => router.push('/admin/devices/')}
+            className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-white/5 transition-all"
+          >
+            <Camera className="w-4 h-4" />
+            {t('admin_devices')}
           </button>
         </nav>
         <div className="p-4 border-t border-border">
@@ -222,7 +262,7 @@ export default function AdminDashboard() {
                             <p className="font-medium text-sm">{b.name}</p>
                             <p className="text-xs text-muted-foreground">{b.model} &bull; {b.date} {b.time}</p>
                           </div>
-                          <span className={`text-xs px-2 py-1 rounded-full ${b.status === 'accepted' ? 'bg-green-500/10 text-green-400' : b.status === 'rejected' ? 'bg-red-500/10 text-red-400' : 'bg-amber-500/10 text-amber-400'}`}>{b.status}</span>
+                          <span className={`text-xs px-2 py-1 rounded-full ${b.status === 'accepted' ? 'bg-green-500/10 text-green-400' : b.status === 'rejected' ? 'bg-red-500/10 text-red-400' : 'bg-amber-500/10 text-amber-400'}`}>{t('crm_status_' + b.status)}</span>
                         </div>
                       ))}
                       {bookings.length === 0 && <p className="text-muted-foreground text-sm">{t('admin_no_bookings')}</p>}
@@ -297,7 +337,7 @@ export default function AdminDashboard() {
                       </div>
                       <p className="text-sm text-muted-foreground bg-white/5 rounded-lg p-3">{b.issue}</p>
                       <div className="mt-3 flex items-center gap-2">
-                        <span className={`text-xs px-2 py-1 rounded-full ${b.status === 'accepted' ? 'bg-green-500/10 text-green-400' : b.status === 'rejected' ? 'bg-red-500/10 text-red-400' : 'bg-amber-500/10 text-amber-400'}`}>{b.status}</span>
+                        <span className={`text-xs px-2 py-1 rounded-full ${b.status === 'accepted' ? 'bg-green-500/10 text-green-400' : b.status === 'rejected' ? 'bg-red-500/10 text-red-400' : 'bg-amber-500/10 text-amber-400'}`}>{t('crm_status_' + b.status)}</span>
                       </div>
                     </div>
                   ))}

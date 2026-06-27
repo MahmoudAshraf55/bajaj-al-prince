@@ -1,0 +1,12 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e15]:
+    - heading "500" [level=1] [ref=e16]
+    - heading "Something went wrong" [level=2] [ref=e17]
+    - paragraph [ref=e18]: We encountered an unexpected error. Please try again or return to the homepage.
+    - generic [ref=e19]:
+      - button "Try Again" [ref=e20]
+      - link "Go Home" [ref=e21] [cursor=pointer]:
+        - /url: /
+  - button [ref=e10]:
+    - img [ref=e11]
+  - alert [ref=e13]
