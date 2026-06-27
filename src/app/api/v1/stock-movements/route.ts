@@ -91,6 +91,18 @@ export async function POST(req: NextRequest) {
           createdById: payload.userId,
         },
       });
+
+      await tx.journalEntry.create({
+        data: {
+          type: 'STOCK_ADJUSTMENT',
+          amount: 0,
+          description: `Stock ${data.type}: ${product.name} x${data.quantity}${data.notes ? ` - ${data.notes}` : ''}`,
+          referenceType: 'stock_movement',
+          referenceId: data.productId,
+          date: new Date(),
+          createdById: payload.userId,
+        },
+      });
     });
 
     const { ipAddress, userAgent } = getClientInfo(req);

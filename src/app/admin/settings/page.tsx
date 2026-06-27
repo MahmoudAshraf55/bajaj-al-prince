@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from '@/components/useTranslation';
 import {
   Settings, Menu, ShoppingBag, ClipboardList, BarChart3, Package,
-  MessageCircle, Wrench, Users, Car, List,
+  MessageCircle, Wrench, Users, Car, List, DollarSign,
   Save, Loader2, X, Percent, Camera,
 } from 'lucide-react';
 
@@ -68,6 +68,7 @@ export default function SettingsPage() {
 
   const sidebarLinks = [
     { href: '/admin/dashboard', icon: BarChart3, labelKey: 'admin_dashboard' },
+    { href: '/admin/accounting', icon: DollarSign, labelKey: 'admin_accounting' },
     { href: '/admin/market', icon: ShoppingBag, labelKey: 'admin_market' },
     { href: '/admin/pos', icon: ClipboardList, labelKey: 'admin_pos' },
     { href: '/admin/warehouse', icon: Package, labelKey: 'admin_warehouse' },

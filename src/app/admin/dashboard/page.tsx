@@ -128,6 +128,7 @@ export default function AdminDashboard() {
   const sidebarLinks: { href: string; labelKey: string; icon: LucideIcon }[] = [
     { href: '/admin/pos/', labelKey: 'pos_title', icon: ShoppingCart },
     { href: '/admin/warehouse/', labelKey: 'wh_title', icon: TrendingUp },
+    { href: '/admin/accounting/', labelKey: 'admin_accounting', icon: DollarSign },
   ];
 
   return (
@@ -165,6 +166,13 @@ export default function AdminDashboard() {
           <div className="mt-4 mb-1 px-4 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60">
             CRM
           </div>
+          <button
+            onClick={() => router.push('/admin/accounting/')}
+            className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-white/5 transition-all"
+          >
+            <DollarSign className="w-4 h-4" />
+            {t('admin_accounting')}
+          </button>
           <button
             onClick={() => router.push('/admin/market/')}
             className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-white/5 transition-all"

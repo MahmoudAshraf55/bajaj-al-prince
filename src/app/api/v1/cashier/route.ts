@@ -59,6 +59,18 @@ export async function POST(req: NextRequest) {
     const transaction = await prisma.transaction.create({
       data: { ...data, createdBy: payload.userId },
     });
+    const jeType = data.type === 'income' ? 'INCOME' as const : 'EXPENSE' as const;
+    await prisma.journalEntry.create({
+      data: {
+        type: jeType,
+        amount: data.amount,
+        description: data.description || `${data.type === 'income' ? 'Income' : 'Expense'} transaction`,
+        referenceType: 'transaction',
+        referenceId: transaction.id,
+        date: new Date(),
+        createdById: payload.userId,
+      },
+    });
     const { ipAddress, userAgent } = getClientInfo(req);
     await logAudit({
       userId: payload.userId,

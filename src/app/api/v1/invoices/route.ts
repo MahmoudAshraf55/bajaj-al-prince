@@ -218,6 +218,21 @@ export async function POST(req: NextRequest) {
         include: { items: true },
       });
 
+      const jeType = data.type === 'sale' ? 'SALE' as const : data.type === 'return' ? 'RETURN' as const : 'PURCHASE' as const;
+      await tx.journalEntry.create({
+        data: {
+          type: jeType,
+          amount: total,
+          description: `Invoice ${invoice.number}`,
+          referenceType: 'invoice',
+          referenceId: invoice.id,
+          referenceNumber: invoice.number,
+          paymentMethod: data.paymentMethod,
+          date: new Date(),
+          createdById: payload.userId,
+        },
+      });
+
       return invoice;
     });
 

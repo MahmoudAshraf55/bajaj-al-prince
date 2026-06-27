@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Logo from '@/components/ui/Logo';
 import { useTranslation } from '@/components/useTranslation';
 import {
-  Camera, Search, LogOut, Loader2, LayoutDashboard, Mail, Calendar,
+  Camera, Search, LogOut, Loader2, LayoutDashboard, Mail, Calendar, DollarSign,
   MessageCircle, Wrench, Users, Car, List, ShoppingCart, TrendingUp,
   Package, BarChart3, Smartphone, Monitor,
 } from 'lucide-react';
@@ -112,6 +112,9 @@ export default function AdminDevices() {
           </button>
           <button onClick={() => router.push('/admin/pos/')} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-white/5 transition-all">
             <ShoppingCart className="w-4 h-4" />{t('pos_title')}
+          </button>
+          <button onClick={() => router.push('/admin/accounting/')} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-white/5 transition-all">
+            <DollarSign className="w-4 h-4" />{t('admin_accounting')}
           </button>
           <div className="mt-4 mb-1 px-4 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60">CRM</div>
           <button onClick={() => router.push('/admin/market/')} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-white/5 transition-all">
