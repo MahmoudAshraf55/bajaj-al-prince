@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { Html5Qrcode } from 'html5-qrcode';
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
@@ -20,6 +20,7 @@ export default function MobileScannerPage() {
   const { t, language } = useTranslation();
   const router = useRouter();
   const scannerRef = useRef<Html5Qrcode | null>(null);
+  const scanningRef = useRef(false);
   const [scanning, setScanning] = useState(false);
   const [starting, setStarting] = useState(false);
   const [lastResult, setLastResult] = useState<ScannedProduct | null>(null);
@@ -43,10 +44,14 @@ export default function MobileScannerPage() {
       const scanner = new Html5Qrcode('scanner-element');
       scannerRef.current = scanner;
 
+      scanningRef.current = true;
       await scanner.start(
         { facingMode: 'environment' },
-        { fps: 15, qrbox: { width: 300, height: 200 }, aspectRatio: 1.777 },
+        { fps: 10, qrbox: { width: 250, height: 150 } },
         async (decodedText) => {
+          if (!scanningRef.current) return;
+          scanningRef.current = false;
+          try { scanner.stop(); } catch {}
           try {
             const res = await fetch('/api/v1/barcode', {
               method: 'POST',
@@ -97,6 +102,7 @@ export default function MobileScannerPage() {
   };
 
   const stopScanning = () => {
+    scanningRef.current = false;
     if (scannerRef.current) {
       scannerRef.current.stop().then(() => {
         scannerRef.current = null;
@@ -104,6 +110,10 @@ export default function MobileScannerPage() {
       }).catch(() => setScanning(false));
     }
   };
+
+  const scanBarcode = useCallback((barcode: string) => {
+    router.push(`/admin/pos?newBarcode=${encodeURIComponent(barcode)}`);
+  }, [router]);
 
   return (
     <div className="min-h-screen bg-black" dir={language === 'ar' ? 'rtl' : 'ltr'}>
@@ -148,7 +158,7 @@ export default function MobileScannerPage() {
                 animate={{ y: 0, opacity: 1 }}
                 className="absolute bottom-4 left-4 right-4 glass rounded-2xl p-4 z-10"
               >
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between mb-3">
                   <div>
                     <p className="font-bold text-lg">{language === 'ar' && lastResult.nameAr ? lastResult.nameAr : lastResult.name}</p>
                     <p className="text-xs text-muted-foreground">{lastResult.barcode}</p>
@@ -157,6 +167,20 @@ export default function MobileScannerPage() {
                     <p className="font-bold text-lg">{Number(lastResult.price).toFixed(2)} EGP</p>
                     <p className="text-xs text-muted-foreground">{t('wh_stock')}: {lastResult.stock} {lastResult.unit}</p>
                   </div>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => scanBarcode(lastResult.barcode)}
+                    className="flex-1 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-bold hover:opacity-90 transition-opacity"
+                  >
+                    {t('pos_add_to_cart')}
+                  </button>
+                  <button
+                    onClick={startScanning}
+                    className="py-2.5 px-4 rounded-xl border border-border text-sm font-medium hover:bg-muted transition-colors"
+                  >
+                    {t('pos_scan_another')}
+                  </button>
                 </div>
               </motion.div>
             )}

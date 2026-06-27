@@ -34,6 +34,7 @@ export default function BarcodeWebcam({ onScan, onClose, t }: BarcodeWebcamProps
         { facingMode: 'environment' },
         { fps: 10, qrbox: { width: 250, height: 150 } },
         (decodedText) => {
+          try { scanner.stop(); } catch {}
           setStatus('found');
           setTimeout(() => onScan(decodedText), 500);
         },
