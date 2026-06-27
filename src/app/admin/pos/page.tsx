@@ -11,7 +11,7 @@ import {
   Search, Plus, Minus, Trash2, X, ShoppingCart, LogOut,
   LayoutDashboard, Mail, Calendar, Receipt, Package, Loader2,
   MessageCircle, Wrench, Users, Car, List, Check, Printer, FileText, Camera,
-  TrendingUp, DollarSign,
+  TrendingUp, DollarSign, Barcode,
 } from 'lucide-react';
 
 interface Product {
@@ -104,6 +104,8 @@ export default function AdminPOS() {
   const [showWebcamScanner, setShowWebcamScanner] = useState(false);
   const [quickCreateBarcode, setQuickCreateBarcode] = useState<string | null>(null);
   const [quickCreateSaving, setQuickCreateSaving] = useState(false);
+  const [manualBarcode, setManualBarcode] = useState('');
+  const barcodeInputRef = useRef<HTMLInputElement>(null);
 
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [invSearch, setInvSearch] = useState('');
@@ -325,6 +327,19 @@ export default function AdminPOS() {
         setSearch('');
       }
     }
+  };
+
+  const handleBarcodeEnter = (barcode: string) => {
+    const trimmed = barcode.trim();
+    if (!trimmed) return;
+    const product = products.find((p) => p.barcode === trimmed && p.available);
+    if (product) {
+      handleSelectProduct(product);
+    } else {
+      setQuickCreateBarcode(trimmed);
+    }
+    setManualBarcode('');
+    barcodeInputRef.current?.focus();
   };
 
   const handleBarcodeFromScan = (barcode: string) => {
@@ -630,16 +645,25 @@ export default function AdminPOS() {
                 </div>
 
                 <div className="flex gap-2 mb-4">
-                  <button
-                    onClick={() => router.push('/admin/pos/scanner')}
-                    className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl bg-white/5 text-sm font-medium hover:bg-white/10 transition-colors"
-                  >
-                    <Camera className="w-4 h-4" />
-                    {t('pos_scan_mobile')}
-                  </button>
+                  <div className="flex-1 relative">
+                    <input
+                      ref={barcodeInputRef}
+                      type="text"
+                      placeholder={t('pos_manual_barcode')}
+                      value={manualBarcode}
+                      onChange={(e) => setManualBarcode(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && manualBarcode) {
+                          handleBarcodeEnter(manualBarcode);
+                        }
+                      }}
+                      className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-input border border-border text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                    />
+                    <Barcode className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  </div>
                   <button
                     onClick={() => setShowWebcamScanner(true)}
-                    className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl bg-white/5 text-sm font-medium hover:bg-white/10 transition-colors"
+                    className="flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl bg-white/5 text-sm font-medium hover:bg-white/10 transition-colors"
                   >
                     <Camera className="w-4 h-4" />
                     {t('pos_scan_webcam')}
