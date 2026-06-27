@@ -147,7 +147,32 @@ export default function AdminPOS() {
       fetch('/api/v1/products/', { credentials: 'include' }).then((r) => r.json()),
       fetch('/api/v1/customers/', { credentials: 'include' }).then((r) => r.json()),
     ]).then(([pRes, cRes]) => {
-      if (pRes.success) setProducts(pRes.data.products);
+      if (pRes.success) {
+        setProducts(pRes.data.products);
+        const params = new URLSearchParams(window.location.search);
+        const addBc = params.get('addBarcode');
+        if (addBc) {
+          const product = pRes.data.products.find(
+            (p: Product) => p.barcode === addBc && p.available
+          );
+          if (product) {
+            setCart((prev) => {
+              const existing = prev.find((item) => item.productId === product.id);
+              if (existing) {
+                if (existing.quantity >= product.stock) return prev;
+                return prev.map((item) =>
+                  item.productId === product.id
+                    ? { ...item, quantity: item.quantity + 1, total: (item.quantity + 1) * item.unitPrice }
+                    : item
+                );
+              }
+              if (product.stock < 1) return prev;
+              return [...prev, { productId: product.id, barcode: product.barcode, productName: product.name, unitPrice: product.price, quantity: 1, total: product.price }];
+            });
+          }
+          window.history.replaceState({}, '', '/admin/pos');
+        }
+      }
       if (cRes.success) setCustomers(cRes.data.customers || []);
     });
   }, [loading]);
@@ -805,7 +830,7 @@ export default function AdminPOS() {
             <AnimatePresence>
               {confirmSale && (
                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-40 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-                  <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} exit={{ scale: 0.95 }} onClick={(e) => e.stopPropagation()} className="glass rounded-2xl p-6 w-full max-w-md">
+            <motion.div key="quick-create-inner" initial={{ scale: 0.95 }} animate={{ scale: 1, transition: { duration: 0.15 } }} exit={{ scale: 0.95, transition: { duration: 0.15 } }} onClick={(e) => e.stopPropagation()} className="glass rounded-2xl p-6 w-full max-w-md">
                     <h3 className="text-lg font-bold mb-4">{t('pos_confirm_sale')}</h3>
                     <div className="space-y-2 text-sm mb-4">
                       <div className="flex justify-between"><span>{t('pos_cart')}</span><span>{cart.length} items</span></div>
@@ -1168,7 +1193,7 @@ export default function AdminPOS() {
 
       <AnimatePresence>
         {quickCreateBarcode && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-40 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setQuickCreateBarcode(null)}>
+          <motion.div key="quick-create" initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { duration: 0.15 } }} exit={{ opacity: 0, transition: { duration: 0.15 } }} className="fixed inset-0 z-40 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setQuickCreateBarcode(null)}>
             <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} exit={{ scale: 0.95 }} onClick={(e) => e.stopPropagation()} className="glass rounded-2xl p-6 w-full max-w-md">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="font-bold">{t('pos_quick_create_title')}</h3>
