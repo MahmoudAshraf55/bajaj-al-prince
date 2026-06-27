@@ -7,7 +7,7 @@ import { useTranslation } from '@/components/useTranslation';
 import Logo from '@/components/ui/Logo';
 import type { AccountingSummary, AccountingTransaction, AccountingPeriod } from '@/types';
 import {
-  LayoutDashboard, Mail, Calendar, Receipt, Package, ShoppingCart,
+  LayoutDashboard, Mail, Calendar, Package, ShoppingCart,
   MessageCircle, Wrench, Users, Car, TrendingUp, DollarSign,
   LogOut, ArrowUpRight, ArrowDownRight, Loader2, ChevronLeft, ChevronRight,
 } from 'lucide-react';
