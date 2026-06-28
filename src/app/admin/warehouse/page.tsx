@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from '@/components/useTranslation';
+import { useToast } from '@/components/ToastContext';
 import {
   Package, Search, X, Plus, Minus, Loader2, AlertTriangle, Pencil,
   History, Upload,
@@ -43,16 +44,11 @@ interface StockMovement {
   product: { id: string; name: string; barcode: string | null };
 }
 
-interface Toast {
-  id: number;
-  type: 'success' | 'error';
-  message: string;
-}
-
 type Tab = 'inventory' | 'movements' | 'import';
 
 export default function AdminWarehouse() {
   const { t, language } = useTranslation();
+  const { addToast } = useToast();
   const router = useRouter();
 
   const [loading, setLoading] = useState(true);
@@ -60,8 +56,6 @@ export default function AdminWarehouse() {
   const [products, setProducts] = useState<Product[]>([]);
   const [movements, setMovements] = useState<StockMovement[]>([]);
   const [search, setSearch] = useState('');
-  const [toasts, setToasts] = useState<Toast[]>([]);
-
   const [showAdjustModal, setShowAdjustModal] = useState(false);
   const [adjustProduct, setAdjustProduct] = useState<Product | null>(null);
   const [adjustType, setAdjustType] = useState<'in' | 'out'>('in');
@@ -86,12 +80,6 @@ export default function AdminWarehouse() {
   const [editSaving, setEditSaving] = useState(false);
   const [editForm, setEditForm] = useState<Record<string, string | number | boolean | null>>({} as Record<string, string | number | boolean | null>);
   const [categoryFilter, setCategoryFilter] = useState('');
-
-  const addToast = useCallback((type: 'success' | 'error', message: string) => {
-    const id = Date.now();
-    setToasts((prev) => [...prev, { id, type, message }]);
-    setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 4000);
-  }, []);
 
   useEffect(() => {
     fetch('/api/auth/me/', { credentials: 'include' })
@@ -760,21 +748,6 @@ export default function AdminWarehouse() {
         )}
       </AnimatePresence>
 
-      <div className="fixed top-4 right-4 z-50 flex flex-col gap-2">
-        {toasts.map((toast) => (
-          <motion.div
-            key={toast.id}
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            className={`px-4 py-2.5 rounded-xl text-sm font-medium ${
-              toast.type === 'success' ? 'bg-green-500/20 text-green-400 border border-green-500/30' : 'bg-red-500/20 text-red-400 border border-red-500/30'
-            }`}
-          >
-            {toast.message}
-          </motion.div>
-        ))}
-      </div>
     </>
   );
 }

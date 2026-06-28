@@ -3,23 +3,19 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { useTranslation } from '@/components/useTranslation';
+import { useToast } from '@/components/ToastContext';
 import BackButton from '@/components/BackButton';
 import type { Vehicle } from '@/types';
 import {
   Search, Car, ChevronLeft, ChevronRight, Hash,
-  AlertCircle, CheckCircle2, User,
+  AlertCircle, User,
 } from 'lucide-react';
-
-interface Toast {
-  id: number;
-  type: 'success' | 'error';
-  message: string;
-}
 
 export default function VehiclesPage() {
   const { t } = useTranslation();
+  const { addToast } = useToast();
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -27,13 +23,6 @@ export default function VehiclesPage() {
   const [meta, setMeta] = useState({ total: 0, page: 1, limit: 10, totalPages: 1 });
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
-  const [toasts, setToasts] = useState<Toast[]>([]);
-
-  const addToast = (type: 'success' | 'error', message: string) => {
-    const id = Date.now();
-    setToasts((prev) => [...prev, { id, type, message }]);
-    setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 4000);
-  };
 
   const fetchVehicles = useCallback(async (p: number, q?: string) => {
     setError('');
@@ -56,7 +45,7 @@ export default function VehiclesPage() {
       setError(msg);
       addToast('error', msg);
     }
-  }, [t]);
+  }, [t, addToast]);
 
   useEffect(() => {
     fetch('/api/auth/me/', { credentials: 'include' })
@@ -108,28 +97,6 @@ export default function VehiclesPage() {
 
   return (
     <div className="min-h-screen p-6 sm:p-8">
-      {/* Toasts */}
-      <div className="fixed top-4 right-4 z-50 flex flex-col gap-2">
-        <AnimatePresence>
-          {toasts.map((toast) => (
-            <motion.div
-              key={toast.id}
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 20 }}
-              className={`flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-medium shadow-lg ${
-                toast.type === 'success'
-                  ? 'bg-green-500/10 text-green-400 border border-green-500/20'
-                  : 'bg-red-500/10 text-red-400 border border-red-500/20'
-              }`}
-            >
-              {toast.type === 'success' ? <CheckCircle2 className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
-              {toast.message}
-            </motion.div>
-          ))}
-        </AnimatePresence>
-      </div>
-
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="max-w-6xl mx-auto space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-4">

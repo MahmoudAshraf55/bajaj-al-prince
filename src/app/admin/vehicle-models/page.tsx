@@ -4,20 +4,16 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from '@/components/useTranslation';
+import { useToast } from '@/components/ToastContext';
 import BackButton from '@/components/BackButton';
 import type { VehicleModel } from '@/types';
 import {
-  Plus, X, AlertCircle, CheckCircle2, List, Trash2, Pencil,
+  Plus, X, AlertCircle, List, Trash2, Pencil,
 } from 'lucide-react';
-
-interface Toast {
-  id: number;
-  type: 'success' | 'error';
-  message: string;
-}
 
 export default function VehicleModelsPage() {
   const { t } = useTranslation();
+  const { addToast } = useToast();
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -25,15 +21,8 @@ export default function VehicleModelsPage() {
   const [showModal, setShowModal] = useState(false);
   const [editingModel, setEditingModel] = useState<VehicleModel | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [toasts, setToasts] = useState<Toast[]>([]);
   const [form, setForm] = useState({ name: '', make: 'Bajaj' });
   const [formError, setFormError] = useState('');
-
-  const addToast = (type: 'success' | 'error', message: string) => {
-    const id = Date.now();
-    setToasts((prev) => [...prev, { id, type, message }]);
-    setTimeout(() => setToasts((prev) => prev.filter((toast) => toast.id !== id)), 4000);
-  };
 
   const fetchModels = useCallback(async () => {
     setError('');
@@ -155,28 +144,6 @@ export default function VehicleModelsPage() {
 
   return (
     <div className="min-h-screen p-6 sm:p-8">
-      {/* Toasts */}
-      <div className="fixed top-4 right-4 z-50 flex flex-col gap-2">
-        <AnimatePresence>
-          {toasts.map((toast) => (
-            <motion.div
-              key={toast.id}
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 20 }}
-              className={`flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-medium shadow-lg ${
-                toast.type === 'success'
-                  ? 'bg-green-500/10 text-green-400 border border-green-500/20'
-                  : 'bg-red-500/10 text-red-400 border border-red-500/20'
-              }`}
-            >
-              {toast.type === 'success' ? <CheckCircle2 className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
-              {toast.message}
-            </motion.div>
-          ))}
-        </AnimatePresence>
-      </div>
-
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="max-w-4xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">

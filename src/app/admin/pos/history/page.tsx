@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import Logo from '@/components/ui/Logo';
 import { useTranslation } from '@/components/useTranslation';
+import { useToast } from '@/components/ToastContext';
 import {
   FileText, Search, X, LogOut, Printer, ArrowLeft,
   LayoutDashboard, Mail, Calendar, Package, ShoppingCart,
@@ -40,14 +41,9 @@ interface Invoice {
   createdAt: string;
 }
 
-interface Toast {
-  id: number;
-  type: 'success' | 'error';
-  message: string;
-}
-
 export default function InvoiceHistory() {
   const { t, isRTL } = useTranslation();
+  const { addToast } = useToast();
   const router = useRouter();
 
   const [loading, setLoading] = useState(true);
@@ -57,14 +53,7 @@ export default function InvoiceHistory() {
   const [statusFilter, setStatusFilter] = useState('');
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [toasts, setToasts] = useState<Toast[]>([]);
   const [detailInvoice, setDetailInvoice] = useState<Invoice | null>(null);
-
-  const addToast = useCallback((type: 'success' | 'error', message: string) => {
-    const id = Date.now();
-    setToasts((prev) => [...prev, { id, type, message }]);
-    setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 4000);
-  }, []);
 
   useEffect(() => {
     fetch('/api/auth/me/', { credentials: 'include' })
@@ -376,22 +365,6 @@ export default function InvoiceHistory() {
           </motion.div>
         </motion.div>
       )}
-
-      <div className="fixed top-4 right-4 z-50 flex flex-col gap-2">
-        {toasts.map((toast) => (
-          <motion.div
-            key={toast.id}
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            className={`px-4 py-2.5 rounded-xl text-sm font-medium ${
-              toast.type === 'success' ? 'bg-green-500/20 text-green-400 border border-green-500/30' : 'bg-red-500/20 text-red-400 border border-red-500/30'
-            }`}
-          >
-            {toast.message}
-          </motion.div>
-        ))}
-      </div>
     </div>
   );
 }

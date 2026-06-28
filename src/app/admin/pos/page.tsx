@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from '@/components/useTranslation';
+import { useToast } from '@/components/ToastContext';
 import BarcodeWebcam from '@/components/BarcodeWebcam';
 import {
   Search, Plus, Minus, Trash2, X, ShoppingCart,
@@ -40,12 +41,6 @@ interface Customer {
   phone: string | null;
 }
 
-interface Toast {
-  id: number;
-  type: 'success' | 'error';
-  message: string;
-}
-
 interface InvoiceItem {
   id: string;
   productId: string;
@@ -77,6 +72,7 @@ interface Invoice {
 
 export default function AdminPOS() {
   const { t, language, isRTL } = useTranslation();
+  const { addToast } = useToast();
   const router = useRouter();
   const searchRef = useRef<HTMLInputElement>(null);
 
@@ -91,7 +87,6 @@ export default function AdminPOS() {
   const [paid, setPaid] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'transfer' | ''>('cash');
   const [notes, setNotes] = useState('');
-  const [toasts, setToasts] = useState<Toast[]>([]);
   const [saving, setSaving] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -125,12 +120,6 @@ export default function AdminPOS() {
     todayDiscount: number;
     todayTax: number;
   }>({ todaySales: 0, todayCount: 0, cashTotal: 0, cardTotal: 0, transferTotal: 0, todayDiscount: 0, todayTax: 0 });
-
-  const addToast = useCallback((type: 'success' | 'error', message: string) => {
-    const id = Date.now();
-    setToasts((prev) => [...prev, { id, type, message }]);
-    setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 4000);
-  }, []);
 
   useEffect(() => {
     fetch('/api/auth/me/', { credentials: 'include' })
@@ -351,8 +340,6 @@ export default function AdminPOS() {
       setQuickCreateBarcode(barcode);
     }
   };
-
-
 
   const loadInvoices = useCallback(async () => {
     setInvLoading(true);
@@ -1251,22 +1238,6 @@ export default function AdminPOS() {
           t={t}
         />
       )}
-
-      <div className="fixed top-4 right-4 z-50 flex flex-col gap-2">
-        {toasts.map((toast) => (
-          <motion.div
-            key={toast.id}
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            className={`px-4 py-2.5 rounded-xl text-sm font-medium ${
-              toast.type === 'success' ? 'bg-green-500/20 text-green-400 border border-green-500/30' : 'bg-red-500/20 text-red-400 border border-red-500/30'
-            }`}
-          >
-            {toast.message}
-          </motion.div>
-        ))}
-      </div>
 
       <style>{receiptPrintStyles}</style>
       {receiptHTML && <div id="receipt-print-area" dangerouslySetInnerHTML={{ __html: receiptHTML }} />}

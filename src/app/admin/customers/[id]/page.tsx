@@ -5,6 +5,7 @@ import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from '@/components/useTranslation';
+import { useToast } from '@/components/ToastContext';
 import type { Customer, Vehicle, VehicleModel, Booking } from '@/types';
 import {
   ArrowLeft, User, Phone, Mail, MapPin, Car, Plus, Calendar,
@@ -12,14 +13,9 @@ import {
   Wrench, ClipboardList, Clock, Bell,
 } from 'lucide-react';
 
-interface Toast {
-  id: number;
-  type: 'success' | 'error';
-  message: string;
-}
-
 export default function CustomerDetailPage() {
   const { t } = useTranslation();
+  const { addToast } = useToast();
   const router = useRouter();
   const params = useParams();
   const customerId = params.id as string;
@@ -30,7 +26,6 @@ export default function CustomerDetailPage() {
   const [showVehicleModal, setShowVehicleModal] = useState(false);
   const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [toasts, setToasts] = useState<Toast[]>([]);
 
   const [form, setForm] = useState({
     make: 'Bajaj', model: '', year: '', chassisNumber: '', plateNumber: '',
@@ -43,12 +38,6 @@ export default function CustomerDetailPage() {
   const [showBookingModal, setShowBookingModal] = useState(false);
   const [editingBooking, setEditingBooking] = useState<Booking | null>(null);
   const [bookingForm, setBookingForm] = useState({ issue: '' });
-
-  const addToast = (type: 'success' | 'error', message: string) => {
-    const id = Date.now();
-    setToasts((prev) => [...prev, { id, type, message }]);
-    setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 4000);
-  };
 
   const fetchCustomer = useCallback(async () => {
     setError('');
@@ -67,7 +56,7 @@ export default function CustomerDetailPage() {
       setError(msg);
       addToast('error', msg);
     }
-  }, [customerId, t]);
+  }, [customerId, t, addToast]);
 
   useEffect(() => {
     fetch('/api/vehicle-models/')
@@ -294,28 +283,6 @@ export default function CustomerDetailPage() {
 
   return (
     <div className="min-h-screen p-6 sm:p-8">
-      {/* Toasts */}
-      <div className="fixed top-4 right-4 z-50 flex flex-col gap-2">
-        <AnimatePresence>
-          {toasts.map((toast) => (
-            <motion.div
-              key={toast.id}
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 20 }}
-              className={`flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-medium shadow-lg ${
-                toast.type === 'success'
-                  ? 'bg-green-500/10 text-green-400 border border-green-500/20'
-                  : 'bg-red-500/10 text-red-400 border border-red-500/20'
-              }`}
-            >
-              {toast.type === 'success' ? <CheckCircle2 className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
-              {toast.message}
-            </motion.div>
-          ))}
-        </AnimatePresence>
-      </div>
-
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="max-w-5xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex items-center gap-3">

@@ -1,13 +1,14 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { useTranslation } from '@/components/useTranslation';
+import { useToast } from '@/components/ToastContext';
 import BackButton from '@/components/BackButton';
 import Image from 'next/image';
 import {
   MessageCircle, QrCode, Smartphone, Loader2, Unplug,
-  Send, CheckCircle2, XCircle, AlertCircle, Mail, CalendarClock,
+  Send, CheckCircle2, XCircle, Mail, CalendarClock,
   Wifi, WifiOff, Shield, AlertTriangle, Info,
 } from 'lucide-react';
 
@@ -66,10 +67,10 @@ function PremiumToggle({ checked, onChange, disabled, label }: { checked: boolea
 
 export default function WhatsAppAdminPage() {
   const { t } = useTranslation();
+  const { addToast } = useToast();
   const [state, setState] = useState<WhatsAppState | null>(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
-  const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [testPhone, setTestPhone] = useState('');
   const [testMessage, setTestMessage] = useState('');
   const [settings, setSettings] = useState<{ delayMin: number; delayMax: number; dailyCap: number; batchSize: number } | null>(null);
@@ -140,11 +141,6 @@ export default function WhatsAppAdminPage() {
     return () => clearInterval(interval);
   }, [fetchStatus, fetchSettings, fetchTemplates, fetchSchedules]);
 
-  const showToast = (type: 'success' | 'error', message: string) => {
-    setToast({ type, message });
-    setTimeout(() => setToast(null), 4000);
-  };
-
   const handleDisconnect = async () => {
     setActionLoading(true);
     try {
@@ -154,13 +150,13 @@ export default function WhatsAppAdminPage() {
       });
       const data = await res.json();
       if (data.success) {
-        showToast('success', t('wa_disconnect_success'));
+        addToast('success', t('wa_disconnect_success'));
         await fetchStatus();
       } else {
-        showToast('error', data?.error || t('wa_disconnect_failed'));
+        addToast('error', data?.error || t('wa_disconnect_failed'));
       }
     } catch {
-      showToast('error', t('wa_network_error'));
+      addToast('error', t('wa_network_error'));
     } finally {
       setActionLoading(false);
     }
@@ -174,12 +170,12 @@ export default function WhatsAppAdminPage() {
       });
       const data = await res.json();
       if (data.success) {
-        showToast('success', `${t('wa_cron_success')}: ${data.data.sent}/${data.data.total}`);
+        addToast('success', `${t('wa_cron_success')}: ${data.data.sent}/${data.data.total}`);
       } else {
-        showToast('error', data?.error || t('wa_cron_failed'));
+        addToast('error', data?.error || t('wa_cron_failed'));
       }
     } catch {
-      showToast('error', t('wa_network_error'));
+      addToast('error', t('wa_network_error'));
     } finally {
       setActionLoading(false);
     }
@@ -198,12 +194,12 @@ export default function WhatsAppAdminPage() {
       const data = await res.json();
       if (data.success) {
         setSettings(data.data);
-        showToast('success', t('wa_settings_saved'));
+        addToast('success', t('wa_settings_saved'));
       } else {
-        showToast('error', data?.error || t('wa_settings_failed'));
+        addToast('error', data?.error || t('wa_settings_failed'));
       }
     } catch {
-      showToast('error', t('wa_network_error'));
+      addToast('error', t('wa_network_error'));
     } finally {
       setSettingsLoading(false);
     }
@@ -221,12 +217,12 @@ export default function WhatsAppAdminPage() {
       const data = await res.json();
       if (data.success) {
         setTemplates((prev) => prev.map((t) => (t.id === id ? data.data : t)));
-        showToast('success', t('wa_template_saved'));
+        addToast('success', t('wa_template_saved'));
       } else {
-        showToast('error', data?.error || t('wa_template_failed'));
+        addToast('error', data?.error || t('wa_template_failed'));
       }
     } catch {
-      showToast('error', t('wa_network_error'));
+      addToast('error', t('wa_network_error'));
     } finally {
       setTemplatesLoading(false);
     }
@@ -244,12 +240,12 @@ export default function WhatsAppAdminPage() {
       const data = await res.json();
       if (data.success) {
         setSchedules((prev) => prev.map((s) => (s.id === id ? data.data : s)));
-        showToast('success', t('wa_schedule_saved'));
+        addToast('success', t('wa_schedule_saved'));
       } else {
-        showToast('error', data?.error || t('wa_schedule_failed'));
+        addToast('error', data?.error || t('wa_schedule_failed'));
       }
     } catch {
-      showToast('error', t('wa_network_error'));
+      addToast('error', t('wa_network_error'));
     } finally {
       setSchedulesLoading(false);
     }
@@ -257,7 +253,7 @@ export default function WhatsAppAdminPage() {
 
   const handleSendTest = async () => {
     if (!testPhone.trim() || !testMessage.trim()) {
-      showToast('error', t('wa_test_fill_fields'));
+      addToast('error', t('wa_test_fill_fields'));
       return;
     }
     setActionLoading(true);
@@ -270,14 +266,14 @@ export default function WhatsAppAdminPage() {
       });
       const data = await res.json();
       if (data.success) {
-        showToast('success', t('wa_test_sent'));
+        addToast('success', t('wa_test_sent'));
         setTestPhone('');
         setTestMessage('');
       } else {
-        showToast('error', data?.error || t('wa_test_failed'));
+        addToast('error', data?.error || t('wa_test_failed'));
       }
     } catch {
-      showToast('error', t('wa_network_error'));
+      addToast('error', t('wa_network_error'));
     } finally {
       setActionLoading(false);
     }
@@ -295,32 +291,7 @@ export default function WhatsAppAdminPage() {
 
   return (
     <div className="min-h-screen bg-[#070709] text-zinc-100 selection:bg-emerald-500/30 selection:text-emerald-200">
-      {/* Toast Alert */}
-      <AnimatePresence>
-        {toast && (
-          <motion.div
-            initial={{ opacity: 0, y: -20, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -20, scale: 0.95 }}
-            className="fixed top-6 left-6 z-50 max-w-md shadow-2xl"
-          >
-            <div className={`flex items-center gap-3 rounded-2xl border px-4 py-3.5 backdrop-blur-xl ${
-              toast.type === 'success'
-                ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
-                : 'bg-red-500/10 border-red-500/20 text-red-400'
-            }`}>
-              {toast.type === 'success' ? (
-                <CheckCircle2 className="w-5 h-5 shrink-0" />
-              ) : (
-                <AlertCircle className="w-5 h-5 shrink-0" />
-              )}
-              <p className="text-sm font-medium">{toast.message}</p>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 space-y-8">
+        <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 space-y-8">
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: -10 }}
@@ -630,7 +601,7 @@ export default function WhatsAppAdminPage() {
                               key={v}
                               onClick={() => {
                                 navigator.clipboard.writeText(`{{${v}}}`);
-                                showToast('success', t('wa_copied').replace('{{var}}', `{{${v}}}`));
+                                addToast('success', t('wa_copied').replace('{{var}}', `{{${v}}}`));
                               }}
                               className="text-[10px] font-mono text-zinc-400 bg-white/3 border border-white/5 hover:border-emerald-500/20 hover:text-emerald-400 px-1.5 py-0.5 rounded transition-all cursor-pointer"
                               title={t('wa_click_copy')}
@@ -711,7 +682,7 @@ export default function WhatsAppAdminPage() {
                               key={v}
                               onClick={() => {
                                 navigator.clipboard.writeText(`{{${v}}}`);
-                                showToast('success', t('wa_copied').replace('{{var}}', `{{${v}}}`));
+                                addToast('success', t('wa_copied').replace('{{var}}', `{{${v}}}`));
                               }}
                               className="text-[10px] font-mono text-zinc-500 bg-white/2 border border-white/4 px-1.5 py-0.5 rounded hover:text-emerald-400 hover:border-emerald-500/10 transition-all"
                             >

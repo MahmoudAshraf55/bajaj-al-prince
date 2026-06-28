@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { useTranslation } from '@/components/useTranslation';
+import { useToast } from '@/components/ToastContext';
 import {
   Settings, Menu, ShoppingBag, ClipboardList, BarChart3, Package,
   MessageCircle, Wrench, Users, Car, List, DollarSign,
@@ -13,17 +14,11 @@ import {
 export default function SettingsPage() {
   const router = useRouter();
   const { t, language, isRTL } = useTranslation();
+  const { addToast } = useToast();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [taxRate, setTaxRate] = useState('');
-  const [toasts, setToasts] = useState<Array<{ id: number; type: string; message: string }>>([]);
-
-  const addToast = useCallback((type: string, message: string) => {
-    const id = Date.now();
-    setToasts((prev) => [...prev, { id, type, message }]);
-    setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 3000);
-  }, []);
 
   useEffect(() => {
     fetch('/api/v1/settings')
@@ -164,24 +159,6 @@ export default function SettingsPage() {
             </motion.div>
           )}
         </main>
-      </div>
-
-      <div className="fixed top-4 right-4 z-50 flex flex-col gap-2">
-        <AnimatePresence>
-          {toasts.map((toast) => (
-            <motion.div
-              key={toast.id}
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              className={`px-4 py-2.5 rounded-xl text-sm font-medium ${
-                toast.type === 'success' ? 'bg-green-500/20 text-green-400 border border-green-500/30' : 'bg-red-500/20 text-red-400 border border-red-500/30'
-              }`}
-            >
-              {toast.message}
-            </motion.div>
-          ))}
-        </AnimatePresence>
       </div>
     </div>
   );
