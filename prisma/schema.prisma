@@ -76,6 +76,7 @@ model Product {
   invoiceItems      InvoiceItem[]
   stockMovements    StockMovement[]
   barcodeScanLogs   BarcodeScanLog[]
+  inventoryCountItems InventoryCountItem[]
   createdAt         DateTime        @default(now()) @db.Timestamp(6)
   updatedAt         DateTime        @updatedAt @db.Timestamp(6)
   isDeleted         Boolean         @default(false)
@@ -307,6 +308,9 @@ model User {
   journalEntries    JournalEntry[]
   barcodeScanLogs   BarcodeScanLog[]
   scannerSessions   ScannerSession[]
+  closedPeriods     AccountingPeriod[] @relation("PeriodClosedBy")
+  countSheetsCreated InventoryCount[] @relation("CountCreatedBy")
+  countSheetsCompleted InventoryCount[] @relation("CountCompletedBy")
   createdAt         DateTime           @default(now()) @db.Timestamp(6)
   updatedAt         DateTime?          @updatedAt @db.Timestamp(6)
   isDeleted         Boolean            @default(false)
@@ -547,5 +551,89 @@ model ReminderSchedule {
   updatedAt    DateTime  @updatedAt @db.Timestamp(6)
   tenantId     String?
 
+  @@index([tenantId])
+}
+
+enum PeriodStatus {
+  open
+  closed
+  locked
+}
+
+model AccountingPeriod {
+  id         String       @id @default(uuid())
+  name       String       // e.g. "January 2026"
+  startDate  DateTime     @db.Date
+  endDate    DateTime     @db.Date
+  status     PeriodStatus @default(open)
+  closedById String?
+  closedBy   User?        @relation("PeriodClosedBy", fields: [closedById], references: [id])
+  closedAt   DateTime?    @db.Timestamp(6)
+  notes      String?
+  createdAt  DateTime     @default(now()) @db.Timestamp(6)
+  updatedAt  DateTime     @updatedAt @db.Timestamp(6)
+  isDeleted  Boolean      @default(false)
+  deletedAt  DateTime?    @db.Timestamp(6)
+  tenantId   String?
+
+  @@unique([startDate, tenantId])
+  @@index([status])
+  @@index([startDate])
+  @@index([isDeleted])
+  @@index([tenantId])
+}
+
+enum CountSheetStatus {
+  draft
+  in_progress
+  completed
+  cancelled
+}
+
+model InventoryCount {
+  id         String             @id @default(uuid())
+  name       String             // e.g. "Monthly Count - June 2026"
+  status     CountSheetStatus   @default(draft)
+  items      InventoryCountItem[]
+  notes      String?
+  createdById String
+  createdBy  User               @relation("CountCreatedBy", fields: [createdById], references: [id])
+  completedById String?
+  completedBy User?             @relation("CountCompletedBy", fields: [completedById], references: [id])
+  completedAt DateTime?         @db.Timestamp(6)
+  createdAt  DateTime           @default(now()) @db.Timestamp(6)
+  updatedAt  DateTime           @updatedAt @db.Timestamp(6)
+  isDeleted  Boolean            @default(false)
+  deletedAt  DateTime?          @db.Timestamp(6)
+  tenantId   String?
+
+  @@index([status])
+  @@index([createdById])
+  @@index([createdAt])
+  @@index([isDeleted])
+  @@index([tenantId])
+}
+
+model InventoryCountItem {
+  id             String          @id @default(uuid())
+  countId        String
+  count          InventoryCount  @relation(fields: [countId], references: [id], onDelete: Cascade)
+  productId      String
+  product        Product         @relation(fields: [productId], references: [id])
+  expectedQty    Int
+  actualQty      Int             @default(0)
+  variance       Int             @default(0)
+  unit           String          @default("piece")
+  notes          String?
+  createdAt      DateTime        @default(now()) @db.Timestamp(6)
+  updatedAt      DateTime?       @updatedAt @db.Timestamp(6)
+  isDeleted      Boolean         @default(false)
+  deletedAt      DateTime?       @db.Timestamp(6)
+  tenantId       String?
+
+  @@unique([countId, productId])
+  @@index([countId])
+  @@index([productId])
+  @@index([isDeleted])
   @@index([tenantId])
 }

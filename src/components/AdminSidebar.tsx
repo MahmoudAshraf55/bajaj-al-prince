@@ -5,7 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import {
   LayoutDashboard, Mail, Calendar, ShoppingCart, DollarSign, TrendingUp,
   Package, Users, Car, List, Wrench, MessageCircle, Camera, Settings,
-  LogOut, Menu, X,
+  LogOut, Menu, X, ClipboardList,
 } from 'lucide-react';
 import Logo from '@/components/ui/Logo';
 import { useTranslation } from '@/components/useTranslation';
@@ -40,6 +40,7 @@ const sections: SidebarSection[] = [
       { href: '/admin/pos', icon: ShoppingCart, labelKey: 'pos_title' },
       { href: '/admin/accounting', icon: DollarSign, labelKey: 'admin_accounting' },
       { href: '/admin/warehouse', icon: TrendingUp, labelKey: 'wh_title' },
+      { href: '/admin/inventory-counts', icon: ClipboardList, labelKey: 'ic_title' },
     ],
   },
   {
