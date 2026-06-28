@@ -1,74 +1,21 @@
 'use client';
 
 import { useEffect, useState, useRef, useCallback } from 'react';
-import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from '@/components/useTranslation';
 import { useToast } from '@/components/ToastContext';
 import BarcodeWebcam from '@/components/BarcodeWebcam';
 import {
-  Search, Plus, Minus, Trash2, X, ShoppingCart,
-  Receipt, Package, Loader2,
-  Check, Printer, FileText, Camera,
-  TrendingUp, DollarSign, Barcode,
+  Search, X, ShoppingCart, Loader2,
+  Check, Printer, FileText, TrendingUp,
 } from 'lucide-react';
-
-interface Product {
-  id: string;
-  name: string;
-  nameAr: string | null;
-  barcode: string | null;
-  price: number;
-  stock: number;
-  category: string;
-  image: string | null;
-  available: boolean;
-}
-
-interface CartItem {
-  productId: string;
-  barcode: string | null;
-  productName: string;
-  unitPrice: number;
-  quantity: number;
-  total: number;
-}
-
-interface Customer {
-  id: string;
-  name: string;
-  phone: string | null;
-}
-
-interface InvoiceItem {
-  id: string;
-  productId: string;
-  productName: string;
-  unitPrice: number;
-  quantity: number;
-  total: number;
-}
-
-interface Invoice {
-  id: string;
-  number: string;
-  type: string;
-  status: string;
-  subtotal: number;
-  taxTotal: number;
-  discount: number;
-  total: number;
-  paid: number;
-  change: number;
-  paymentMethod: string | null;
-  customerName: string | null;
-  customerPhone: string | null;
-  notes: string | null;
-  items: InvoiceItem[];
-  createdBy: { id: string; username: string };
-  createdAt: string;
-}
+import { Product, CartItem, Customer, Invoice } from '@/types/pos';
+import POSProductGrid from '@/components/pos/POSProductGrid';
+import POSCart from '@/components/pos/POSCart';
+import POSInvoiceList from '@/components/pos/POSInvoiceList';
+import POSTreasury from '@/components/pos/POSTreasury';
+import { printReceipt, POSReceiptStyles, POSReceipt } from '@/components/pos/POSReceipt';
 
 export default function AdminPOS() {
   const { t, language, isRTL } = useTranslation();
@@ -424,108 +371,7 @@ export default function AdminPOS() {
     cancelled: 'bg-red-500/10 text-red-400',
   };
 
-  const escapeHtml = (s: string) => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 
-  const generateReceiptHtml = (inv: Invoice) => {
-    const customerInfo = inv.customerName
-      ? `<p style="margin:0;font-size:12px"><strong>${language === 'ar' ? 'العميل' : 'Customer'}:</strong> ${escapeHtml(inv.customerName)}${inv.customerPhone ? ` | ${escapeHtml(inv.customerPhone)}` : ''}</p>`
-      : '';
-
-    const itemsHtml = inv.items.map((item) =>
-      `<tr>
-        <td style="padding:4px 0;font-size:11px">${escapeHtml(item.productName)}</td>
-        <td style="padding:4px 0;font-size:11px;text-align:center">${item.quantity}</td>
-        <td style="padding:4px 0;font-size:11px;text-align:right">${Number(item.unitPrice).toFixed(2)}</td>
-        <td style="padding:4px 0;font-size:11px;text-align:right">${Number(item.total).toFixed(2)}</td>
-      </tr>`
-    ).join('');
-
-    return `
-      <div class="receipt-print">
-        <div class="header">
-          <h1>${t('pos_title')}</h1>
-          <p>${language === 'ar' ? 'فاتورة ضريبية مبسطة' : 'Simplified Tax Invoice'}</p>
-        </div>
-        <div class="divider"></div>
-        <div class="meta">
-          <p><strong>${t('pos_invoice_number')}:</strong> ${inv.number}</p>
-          <p><strong>${t('pos_date')}:</strong> ${new Date(inv.createdAt).toLocaleString()}</p>
-          <p><strong>${t('pos_payment_method')}:</strong> ${inv.paymentMethod ? t(`pos_${inv.paymentMethod}`) : '-'}</p>
-          ${customerInfo}
-        </div>
-        <div class="divider"></div>
-        <table>
-          <thead>
-            <tr>
-              <th>${language === 'ar' ? 'المنتج' : 'Item'}</th>
-              <th class="center">${t('pos_quantity')}</th>
-              <th class="right">${t('admin_market_price')}</th>
-              <th class="right">${t('pos_total')}</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${itemsHtml}
-          </tbody>
-        </table>
-        <div class="divider"></div>
-        <div class="totals">
-          <div class="row"><span>${t('pos_subtotal')}</span><span>${Number(inv.subtotal).toFixed(2)} EGP</span></div>
-          ${Number(inv.discount) > 0 ? `<div class="row"><span>${t('pos_discount')}</span><span>-${Number(inv.discount).toFixed(2)} EGP</span></div>` : ''}
-          <div class="row"><span>${t('pos_tax')} (14%)</span><span>${Number(inv.taxTotal).toFixed(2)} EGP</span></div>
-          <div class="row total"><span>${t('pos_total')}</span><span>${Number(inv.total).toFixed(2)} EGP</span></div>
-          <div class="row"><span>${t('pos_paid')}</span><span>${Number(inv.paid).toFixed(2)} EGP</span></div>
-          ${Number(inv.change) > 0 ? `<div class="row" style="color:#16a34a"><span>${t('pos_change')}</span><span>${Number(inv.change).toFixed(2)} EGP</span></div>` : ''}
-        </div>
-        <div class="payment">
-          <p>${language === 'ar' ? 'شكراً لتعاملكم معنا' : 'Thank you for your business'}</p>
-        </div>
-        <div class="footer">
-          <p>${new Date().toLocaleString()}</p>
-        </div>
-      </div>`;
-  };
-
-  const printReceipt = () => {
-    const inv = completedInvoiceData;
-    if (!inv) return;
-    setReceiptHTML(generateReceiptHtml(inv));
-    setTimeout(() => {
-      window.print();
-      window.onafterprint = () => {
-        setReceiptHTML('');
-        window.onafterprint = null;
-      };
-      setTimeout(() => setReceiptHTML(''), 1000);
-    }, 150);
-  };
-
-  const receiptPrintStyles = `
-    @page { margin: 0; size: 80mm auto; }
-    @media print {
-      body > *:not(#receipt-print-area) { display: none !important; }
-      #receipt-print-area { display: block !important; padding: 0; margin: 0; }
-      #receipt-print-area .receipt-print {
-        width: 80mm; padding: 8mm 4mm; font-size: 12px; color: #000;
-        font-family: 'Courier New', monospace; box-sizing: border-box;
-      }
-      #receipt-print-area .receipt-print * { margin: 0; padding: 0; box-sizing: border-box; }
-      #receipt-print-area .header { text-align: center; margin-bottom: 12px; }
-      #receipt-print-area .header h1 { font-size: 16px; font-weight: bold; margin-bottom: 2px; }
-      #receipt-print-area .header p { font-size: 11px; color: #555; margin: 1px 0; }
-      #receipt-print-area .divider { border-top: 1px dashed #000; margin: 8px 0; }
-      #receipt-print-area .meta { font-size: 11px; margin-bottom: 8px; }
-      #receipt-print-area .meta p { margin: 2px 0; }
-      #receipt-print-area table { width: 100%; border-collapse: collapse; font-size: 11px; }
-      #receipt-print-area th { text-align: left; padding: 4px 0; border-bottom: 1px solid #000; font-size: 10px; text-transform: uppercase; }
-      #receipt-print-area th.right { text-align: right; }
-      #receipt-print-area th.center { text-align: center; }
-      #receipt-print-area .totals { margin-top: 8px; }
-      #receipt-print-area .totals .row { display: flex; justify-content: space-between; font-size: 11px; padding: 2px 0; }
-      #receipt-print-area .totals .total { font-size: 14px; font-weight: bold; border-top: 1px solid #000; padding-top: 4px; margin-top: 4px; }
-      #receipt-print-area .payment { text-align: center; margin-top: 10px; font-size: 11px; }
-      #receipt-print-area .footer { text-align: center; margin-top: 12px; font-size: 10px; color: #888; border-top: 1px dashed #000; padding-top: 8px; }
-    }
-  `;
 
   const tabs = [
     { id: 'pos' as const, label: t('pos_title'), icon: ShoppingCart },
@@ -557,231 +403,45 @@ export default function AdminPOS() {
         {activeTab === 'pos' && (
           <>
             <div className="flex flex-col lg:flex-row">
-              <div className="flex-1 p-4 sm:p-6 lg:p-8">
-                <div className="relative mb-4">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                  <input
-                    ref={searchRef}
-                    type="text"
-                    placeholder={t('pos_search')}
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    onKeyDown={handleBarcodeSearch}
-                    className="w-full pl-12 pr-4 py-3.5 rounded-xl bg-input border border-border text-base focus:outline-none focus:ring-2 focus:ring-ring"
-                    autoFocus
-                  />
-                  {search && (
-                    <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
-                      <X className="w-4 h-4" />
-                    </button>
-                  )}
-                </div>
+              <POSProductGrid
+                search={search}
+                setSearch={setSearch}
+                manualBarcode={manualBarcode}
+                setManualBarcode={setManualBarcode}
+                filtered={filtered}
+                handleSelectProduct={handleSelectProduct}
+                handleBarcodeEnter={handleBarcodeEnter}
+                handleBarcodeSearch={handleBarcodeSearch}
+                setShowWebcamScanner={setShowWebcamScanner}
+                searchRef={searchRef}
+                barcodeInputRef={barcodeInputRef}
+                t={t}
+                language={language}
+                cart={cart}
+              />
 
-                <div className="flex gap-2 mb-4">
-                  <div className="flex-1 relative">
-                    <input
-                      ref={barcodeInputRef}
-                      type="text"
-                      placeholder={t('pos_manual_barcode')}
-                      value={manualBarcode}
-                      onChange={(e) => setManualBarcode(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' && manualBarcode) {
-                          handleBarcodeEnter(manualBarcode);
-                        }
-                      }}
-                      className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-input border border-border text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                    />
-                    <Barcode className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                  </div>
-                  <button
-                    onClick={() => setShowWebcamScanner(true)}
-                    className="flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl bg-white/5 text-sm font-medium hover:bg-white/10 transition-colors"
-                  >
-                    <Camera className="w-4 h-4" />
-                    {t('pos_scan_webcam')}
-                  </button>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
-                  {search && filtered.length === 0 && (
-                    <div className="col-span-full text-center py-12 text-muted-foreground">
-                      <Package className="w-12 h-12 mx-auto mb-3 opacity-30" />
-                      <p>{t('pos_no_products')}</p>
-                    </div>
-                  )}
-                  {search && filtered.map((product) => (
-                    <motion.button
-                      key={product.id}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      onClick={() => handleSelectProduct(product)}
-                      className="glass rounded-2xl p-4 text-left hover:bg-white/10 transition-all group"
-                      disabled={product.stock < 1}
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="w-14 h-14 rounded-xl bg-secondary overflow-hidden flex-shrink-0 relative">
-                          {product.image ? (
-                            <Image src={product.image} alt={product.name} fill className="object-cover" sizes="56px" unoptimized />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center">
-                              <Package className="w-6 h-6 text-muted-foreground/30" />
-                            </div>
-                          )}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">{language === 'ar' && product.nameAr ? product.nameAr : product.name}</p>
-                          {product.barcode && <p className="text-xs text-muted-foreground/60 font-mono">{product.barcode}</p>}
-                          <p className="text-sm font-bold text-primary mt-0.5">{Number(product.price).toFixed(2)} EGP</p>
-                        </div>
-                      </div>
-                    </motion.button>
-                  ))}
-                </div>
-
-                {!search && cart.length === 0 && (
-                  <div className="text-center py-16 text-muted-foreground">
-                    <ShoppingCart className="w-16 h-16 mx-auto mb-4 opacity-20" />
-                    <p className="text-lg font-medium mb-1">{t('pos_title')}</p>
-                    <p className="text-sm">{t('pos_search')}</p>
-                  </div>
-                )}
-              </div>
-
-              <div className="w-full lg:w-96 xl:w-[28rem] glass ltr:lg:border-l rtl:lg:border-r border-border lg:min-h-[calc(100vh-0px)] flex flex-col">
-                <div className="p-4 border-b border-border flex items-center justify-between">
-                  <h2 className="font-bold">{t('pos_cart')} ({cart.length})</h2>
-                </div>
-
-                <div className="flex-1 overflow-auto p-4 space-y-2">
-                  {cart.length === 0 && (
-                    <div className="text-center py-12 text-muted-foreground text-sm">
-                      <ShoppingCart className="w-10 h-10 mx-auto mb-2 opacity-20" />
-                      <p>{t('pos_empty_cart')}</p>
-                    </div>
-                  )}
-                  {cart.map((item) => (
-                    <div key={item.productId} className="glass-light rounded-xl p-3">
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">{item.productName}</p>
-                          <p className="text-xs text-muted-foreground">{Number(item.unitPrice).toFixed(2)} EGP</p>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <button onClick={() => updateQuantity(item.productId, -1)} className="w-7 h-7 rounded-lg bg-white/5 flex items-center justify-center hover:bg-white/10 transition-colors">
-                            <Minus className="w-3.5 h-3.5" />
-                          </button>
-                          <span className="w-8 text-center text-sm font-bold">{item.quantity}</span>
-                          <button onClick={() => updateQuantity(item.productId, 1)} className="w-7 h-7 rounded-lg bg-white/5 flex items-center justify-center hover:bg-white/10 transition-colors">
-                            <Plus className="w-3.5 h-3.5" />
-                          </button>
-                          <button onClick={() => removeFromCart(item.productId)} className="w-7 h-7 rounded-lg bg-red-500/10 flex items-center justify-center hover:bg-red-500/20 transition-colors ml-1">
-                            <Trash2 className="w-3.5 h-3.5 text-red-400" />
-                          </button>
-                        </div>
-                      </div>
-                      <div className="text-right mt-1">
-                        <span className="text-sm font-bold">{item.total.toFixed(2)} EGP</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="border-t border-border p-4 space-y-3">
-                  <button
-                    onClick={() => setShowCustomerModal(true)}
-                    className="w-full text-left px-3 py-2 rounded-xl bg-white/5 text-sm text-muted-foreground hover:bg-white/10 transition-colors"
-                  >
-                    {selectedCustomer ? `${selectedCustomer.name}${selectedCustomer.phone ? ` - ${selectedCustomer.phone}` : ''}` : t('pos_select_customer')}
-                  </button>
-
-                  <div className="space-y-1.5 text-sm">
-                    <div className="flex justify-between text-muted-foreground">
-                      <span>{t('pos_subtotal')}</span>
-                      <span>{subtotal.toFixed(2)} EGP</span>
-                    </div>
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-muted-foreground">{t('pos_discount')}</span>
-                      <div className="flex items-center gap-1">
-                        <input
-                          type="number"
-                          min="0"
-                          max={discountType === 'percent' ? 100 : subtotal}
-                          step="0.01"
-                          value={discount || ''}
-                          onChange={(e) => setDiscount(parseFloat(e.target.value) || 0)}
-                          className="w-24 text-right px-2 py-1 rounded-lg bg-input border border-border text-xs focus:outline-none focus:ring-1 focus:ring-ring"
-                        />
-                        <button
-                          onClick={() => setDiscountType(discountType === 'amount' ? 'percent' : 'amount')}
-                          className={`px-2 py-1 rounded text-xs font-medium transition-colors ${
-                            discountType === 'percent' ? 'bg-primary text-primary-foreground' : 'bg-white/5 text-muted-foreground'
-                          }`}
-                        >
-                          {discountType === 'percent' ? '%' : 'EGP'}
-                        </button>
-                      </div>
-                    </div>
-                    <div className="flex justify-between text-muted-foreground">
-                      <span>{t('pos_tax')}</span>
-                      <span>{taxTotal.toFixed(2)} EGP</span>
-                    </div>
-                    <div className="flex justify-between text-lg font-bold pt-1 border-t border-border">
-                      <span>{t('pos_total')}</span>
-                      <span>{total.toFixed(2)} EGP</span>
-                    </div>
-                  </div>
-
-                  <div className="flex gap-2">
-                    {(['cash', 'card', 'transfer'] as const).map((method) => (
-                      <button
-                        key={method}
-                        onClick={() => setPaymentMethod(method)}
-                        className={`flex-1 px-3 py-2 rounded-xl text-xs font-medium transition-all ${
-                          paymentMethod === method
-                            ? 'bg-primary text-primary-foreground'
-                            : 'bg-white/5 text-muted-foreground hover:bg-white/10'
-                        }`}
-                      >
-                        {t(`pos_${method}`)}
-                      </button>
-                    ))}
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-muted-foreground">{t('pos_paid')}</span>
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={paid}
-                      onChange={(e) => setPaid(e.target.value)}
-                      placeholder={total.toFixed(2)}
-                      className="flex-1 px-3 py-2 rounded-xl bg-input border border-border text-sm text-right focus:outline-none focus:ring-2 focus:ring-ring"
-                    />
-                  </div>
-
-                  {change > 0 && (
-                    <div className="flex justify-between text-sm text-green-400 font-bold">
-                      <span>{t('pos_change')}</span>
-                      <span>{change.toFixed(2)} EGP</span>
-                    </div>
-                  )}
-
-                  <button
-                    onClick={() => setConfirmSale(true)}
-                    disabled={cart.length === 0 || saving}
-                    className="w-full py-3 rounded-xl bg-primary text-primary-foreground text-sm font-bold hover:opacity-90 transition-opacity disabled:opacity-40 flex items-center justify-center gap-2"
-                  >
-                    {saving ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <Check className="w-4 h-4" />
-                    )}
-                    {saving ? t('admin_market_saving') : t('pos_complete_sale')}
-                  </button>
-                </div>
-              </div>
+              <POSCart
+                cart={cart}
+                t={t}
+                subtotal={subtotal}
+                taxTotal={taxTotal}
+                total={total}
+                paid={paid}
+                setPaid={setPaid}
+                paymentMethod={paymentMethod}
+                setPaymentMethod={setPaymentMethod}
+                discount={discount}
+                setDiscount={setDiscount}
+                discountType={discountType}
+                setDiscountType={setDiscountType}
+                selectedCustomer={selectedCustomer}
+                setShowCustomerModal={setShowCustomerModal}
+                setConfirmSale={setConfirmSale}
+                saving={saving}
+                updateQuantity={updateQuantity}
+                removeFromCart={removeFromCart}
+                change={change}
+              />
             </div>
 
             <AnimatePresence>
@@ -849,168 +509,31 @@ export default function AdminPOS() {
         )}
 
         {activeTab === 'invoices' && (
-          <div className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto">
-            <div className="flex flex-col sm:flex-row gap-3 mb-4">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <input
-                  type="text"
-                  placeholder={t('pos_search_invoices')}
-                  value={invSearch}
-                  onChange={(e) => { setInvSearch(e.target.value); setInvPage(1); }}
-                  className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-input border border-border text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                />
-              </div>
-              <select
-                value={invTypeFilter}
-                onChange={(e) => { setInvTypeFilter(e.target.value); setInvPage(1); }}
-                className="px-3 py-2.5 rounded-xl bg-input border border-border text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-              >
-                <option value="">{t('pos_invoice_type')}</option>
-                <option value="sale">{t('pos_type_sale')}</option>
-                <option value="return">{t('pos_type_return')}</option>
-                <option value="purchase">{t('pos_type_purchase')}</option>
-              </select>
-              <select
-                value={invStatusFilter}
-                onChange={(e) => { setInvStatusFilter(e.target.value); setInvPage(1); }}
-                className="px-3 py-2.5 rounded-xl bg-input border border-border text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-              >
-                <option value="">{t('pos_invoice_status')}</option>
-                <option value="confirmed">{t('pos_status_confirmed')}</option>
-                <option value="draft">{t('pos_status_draft')}</option>
-                <option value="cancelled">{t('pos_status_cancelled')}</option>
-              </select>
-            </div>
-
-            {invLoading ? (
-              <div className="flex justify-center py-12"><Loader2 className="w-8 h-8 animate-spin text-muted-foreground" /></div>
-            ) : invoices.length === 0 ? (
-              <div className="text-center py-12 text-muted-foreground">
-                <FileText className="w-12 h-12 mx-auto mb-3 opacity-30" />
-                <p>{t('pos_history_no_invoices')}</p>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {invoices.map((inv) => (
-                  <motion.div
-                    key={inv.id}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="glass rounded-2xl p-4 flex items-center gap-4 group"
-                  >
-                    <div className="w-12 h-12 rounded-xl bg-secondary flex items-center justify-center flex-shrink-0">
-                      <FileText className="w-5 h-5 text-muted-foreground/50" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-sm font-bold">{inv.number}</span>
-                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${statusColors[inv.status] || ''}`}>
-                          {inv.status === 'confirmed' ? t('pos_status_confirmed') : inv.status === 'cancelled' ? t('pos_status_cancelled') : inv.status}
-                        </span>
-                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/5 text-muted-foreground">
-                          {inv.type === 'sale' ? t('pos_type_sale') : inv.type === 'return' ? t('pos_type_return') : inv.type}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5 flex-wrap">
-                        <span>{new Date(inv.createdAt).toLocaleDateString()}</span>
-                        {inv.customerName && <span>{inv.customerName}</span>}
-                        <span>{inv.createdBy.username}</span>
-                        {inv.paymentMethod && <span>{t(`pos_${inv.paymentMethod}`)}</span>}
-                      </div>
-                    </div>
-                    <div className="text-right flex-shrink-0">
-                      <p className="text-sm font-bold">{Number(inv.total).toFixed(2)} EGP</p>
-                      <p className="text-xs text-muted-foreground">{inv.items.length} items</p>
-                    </div>
-                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button onClick={() => setDetailInvoice(inv)} className="p-2 rounded-lg bg-white/5 text-muted-foreground hover:bg-white/10 transition-colors" title={t('pos_view_detail')}>
-                        <FileText className="w-4 h-4" />
-                      </button>
-                      {inv.status === 'confirmed' && (
-                        <button onClick={() => handleCancelInvoice(inv)} className="p-2 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors" title={t('pos_cancel_invoice')}>
-                          <X className="w-4 h-4" />
-                        </button>
-                      )}
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
-            )}
-
-            {invTotalPages > 1 && (
-              <div className="flex items-center justify-center gap-4 mt-6">
-                <button
-                  onClick={() => setInvPage((p) => Math.max(1, p - 1))}
-                  disabled={invPage <= 1}
-                  className="px-4 py-2 rounded-xl bg-white/5 text-sm font-medium hover:bg-white/10 transition-colors disabled:opacity-30"
-                >
-                  {t('pos_previous')}
-                </button>
-                <span className="text-sm text-muted-foreground">{invPage} / {invTotalPages}</span>
-                <button
-                  onClick={() => setInvPage((p) => Math.min(invTotalPages, p + 1))}
-                  disabled={invPage >= invTotalPages}
-                  className="px-4 py-2 rounded-xl bg-white/5 text-sm font-medium hover:bg-white/10 transition-colors disabled:opacity-30"
-                >
-                  {t('pos_next')}
-                </button>
-              </div>
-            )}
-          </div>
+          <POSInvoiceList
+            invLoading={invLoading}
+            invoices={invoices}
+            invSearch={invSearch}
+            setInvSearch={setInvSearch}
+            invTypeFilter={invTypeFilter}
+            setInvTypeFilter={setInvTypeFilter}
+            invStatusFilter={invStatusFilter}
+            setInvStatusFilter={setInvStatusFilter}
+            invPage={invPage}
+            setInvPage={setInvPage}
+            invTotalPages={invTotalPages}
+            handleCancelInvoice={handleCancelInvoice}
+            setDetailInvoice={setDetailInvoice}
+            statusColors={statusColors}
+            t={t}
+          />
         )}
 
         {activeTab === 'treasury' && (
-          <div className="p-4 sm:p-6 lg:p-8 max-w-3xl mx-auto">
-            {treasuryLoading ? (
-              <div className="flex justify-center py-12"><Loader2 className="w-8 h-8 animate-spin text-muted-foreground" /></div>
-            ) : (
-              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                  <div className="glass rounded-2xl p-5 text-center">
-                    <DollarSign className="w-8 h-8 mx-auto mb-2 text-primary" />
-                    <p className="text-2xl font-bold">{treasuryData.todaySales.toFixed(2)}</p>
-                    <p className="text-xs text-muted-foreground">{t('pos_total_sales')}</p>
-                  </div>
-                  <div className="glass rounded-2xl p-5 text-center">
-                    <FileText className="w-8 h-8 mx-auto mb-2 text-blue-400" />
-                    <p className="text-2xl font-bold">{treasuryData.todayCount}</p>
-                    <p className="text-xs text-muted-foreground">{t('pos_invoices_count')}</p>
-                  </div>
-                  <div className="glass rounded-2xl p-5 text-center">
-                    <TrendingUp className="w-8 h-8 mx-auto mb-2 text-green-400" />
-                    <p className="text-2xl font-bold">{treasuryData.todayTax.toFixed(2)}</p>
-                    <p className="text-xs text-muted-foreground">{t('pos_tax')}</p>
-                  </div>
-                  <div className="glass rounded-2xl p-5 text-center">
-                    <Receipt className="w-8 h-8 mx-auto mb-2 text-amber-400" />
-                    <p className="text-2xl font-bold">{treasuryData.todayDiscount.toFixed(2)}</p>
-                    <p className="text-xs text-muted-foreground">{t('pos_discount')}</p>
-                  </div>
-                </div>
-
-                <div className="glass rounded-2xl p-5">
-                  <h3 className="font-bold mb-4">{t('pos_payment_breakdown')}</h3>
-                  <div className="space-y-3">
-                    {[
-                      { label: 'pos_cash', value: treasuryData.cashTotal, color: 'text-green-400' },
-                      { label: 'pos_card', value: treasuryData.cardTotal, color: 'text-blue-400' },
-                      { label: 'pos_transfer', value: treasuryData.transferTotal, color: 'text-amber-400' },
-                    ].map((item) => (
-                      <div key={item.label} className="flex items-center justify-between">
-                        <span className="text-sm text-muted-foreground">{t(item.label)}</span>
-                        <span className={`text-sm font-bold ${item.color}`}>{item.value.toFixed(2)} EGP</span>
-                      </div>
-                    ))}
-                    <div className="flex items-center justify-between pt-2 border-t border-border">
-                      <span className="font-bold">{t('pos_total')}</span>
-                      <span className="font-bold text-lg">{treasuryData.todaySales.toFixed(2)} EGP</span>
-                    </div>
-                  </div>
-                </div>
-              </motion.div>
-            )}
-          </div>
+          <POSTreasury
+            treasuryLoading={treasuryLoading}
+            treasuryData={treasuryData}
+            t={t}
+          />
         )}
 
       {completedInvoiceData && (
@@ -1085,7 +608,7 @@ export default function AdminPOS() {
             </div>
 
             <div className="flex gap-3">
-              <button onClick={printReceipt} className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-bold hover:opacity-90 transition-opacity">
+              <button onClick={() => printReceipt(completedInvoiceData, setReceiptHTML, t, language)} className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-bold hover:opacity-90 transition-opacity">
                 <Printer className="w-4 h-4" />
                 {t('pos_print')}
               </button>
@@ -1239,8 +762,8 @@ export default function AdminPOS() {
         />
       )}
 
-      <style>{receiptPrintStyles}</style>
-      {receiptHTML && <div id="receipt-print-area" dangerouslySetInnerHTML={{ __html: receiptHTML }} />}
+      <POSReceiptStyles />
+      <POSReceipt receiptHTML={receiptHTML} />
     </div>
   );
 }
