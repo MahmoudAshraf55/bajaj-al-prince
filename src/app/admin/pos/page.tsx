@@ -4,13 +4,12 @@ import { useEffect, useState, useRef, useCallback } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import Logo from '@/components/ui/Logo';
 import { useTranslation } from '@/components/useTranslation';
 import BarcodeWebcam from '@/components/BarcodeWebcam';
 import {
-  Search, Plus, Minus, Trash2, X, ShoppingCart, LogOut,
-  LayoutDashboard, Mail, Calendar, Receipt, Package, Loader2,
-  MessageCircle, Wrench, Users, Car, List, Check, Printer, FileText, Camera,
+  Search, Plus, Minus, Trash2, X, ShoppingCart,
+  Receipt, Package, Loader2,
+  Check, Printer, FileText, Camera,
   TrendingUp, DollarSign, Barcode,
 } from 'lucide-react';
 
@@ -353,10 +352,7 @@ export default function AdminPOS() {
     }
   };
 
-  const logout = async () => {
-    await fetch('/api/auth/logout/', { method: 'POST', credentials: 'include' });
-    router.push('/admin/');
-  };
+
 
   const loadInvoices = useCallback(async () => {
     setInvLoading(true);
@@ -441,14 +437,16 @@ export default function AdminPOS() {
     cancelled: 'bg-red-500/10 text-red-400',
   };
 
+  const escapeHtml = (s: string) => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+
   const generateReceiptHtml = (inv: Invoice) => {
     const customerInfo = inv.customerName
-      ? `<p style="margin:0;font-size:12px"><strong>${language === 'ar' ? 'العميل' : 'Customer'}:</strong> ${inv.customerName}${inv.customerPhone ? ` | ${inv.customerPhone}` : ''}</p>`
+      ? `<p style="margin:0;font-size:12px"><strong>${language === 'ar' ? 'العميل' : 'Customer'}:</strong> ${escapeHtml(inv.customerName)}${inv.customerPhone ? ` | ${escapeHtml(inv.customerPhone)}` : ''}</p>`
       : '';
 
     const itemsHtml = inv.items.map((item) =>
       `<tr>
-        <td style="padding:4px 0;font-size:11px">${item.productName}</td>
+        <td style="padding:4px 0;font-size:11px">${escapeHtml(item.productName)}</td>
         <td style="padding:4px 0;font-size:11px;text-align:center">${item.quantity}</td>
         <td style="padding:4px 0;font-size:11px;text-align:right">${Number(item.unitPrice).toFixed(2)}</td>
         <td style="padding:4px 0;font-size:11px;text-align:right">${Number(item.total).toFixed(2)}</td>
@@ -550,62 +548,7 @@ export default function AdminPOS() {
 
   return (
     <div className="min-h-screen bg-background" dir={isRTL ? 'rtl' : 'ltr'}>
-      <aside className="fixed top-0 ltr:left-0 rtl:right-0 h-full w-64 glass ltr:border-r rtl:border-l border-border hidden md:flex flex-col z-30">
-        <div className="p-6 border-b border-border">
-          <Logo size="sm" />
-        </div>
-        <nav className="flex-1 p-4 flex flex-col gap-1">
-          <button onClick={() => router.push('/admin/dashboard/')} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-white/5 transition-all">
-            <LayoutDashboard className="w-4 h-4" />{t('admin_overview')}
-          </button>
-          <button onClick={() => router.push('/admin/dashboard/?tab=messages')} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-white/5 transition-all">
-            <Mail className="w-4 h-4" />{t('admin_messages')}
-          </button>
-          <button onClick={() => router.push('/admin/dashboard/?tab=bookings')} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-white/5 transition-all">
-            <Calendar className="w-4 h-4" />{t('admin_bookings')}
-          </button>
-          <button onClick={() => router.push('/admin/pos/')} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium bg-primary text-primary-foreground transition-all">
-            <ShoppingCart className="w-4 h-4" />{t('pos_title')}
-          </button>
-          <button onClick={() => router.push('/admin/accounting/')} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-white/5 transition-all">
-            <DollarSign className="w-4 h-4" />{t('admin_accounting')}
-          </button>
-          <div className="mt-4 mb-1 px-4 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60">CRM</div>
-          <button onClick={() => router.push('/admin/market/')} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-white/5 transition-all">
-            <Package className="w-4 h-4" />{t('admin_market')}
-          </button>
-          <button onClick={() => router.push('/admin/customers/')} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-white/5 transition-all">
-            <Users className="w-4 h-4" />{t('admin_customers')}
-          </button>
-          <button onClick={() => router.push('/admin/vehicles/')} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-white/5 transition-all">
-            <Car className="w-4 h-4" />{t('admin_vehicles')}
-          </button>
-          <button onClick={() => router.push('/admin/vehicle-models/')} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-white/5 transition-all">
-            <List className="w-4 h-4" />{t('admin_vehicle_models')}
-          </button>
-          <button onClick={() => router.push('/admin/work-orders/')} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-white/5 transition-all">
-            <Wrench className="w-4 h-4" />{t('wo_title')}
-          </button>
-          <button onClick={() => router.push('/admin/whatsapp/')} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-white/5 transition-all">
-            <MessageCircle className="w-4 h-4" />{t('admin_whatsapp')}
-          </button>
-          <button onClick={() => router.push('/admin/settings/')} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-white/5 transition-all">
-            <LayoutDashboard className="w-4 h-4" />{t('admin_settings')}
-          </button>
-        </nav>
-        <div className="p-4 border-t border-border">
-          <button onClick={logout} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-white/5 transition-all w-full">
-            <LogOut className="w-4 h-4" />{t('admin_sign_out')}
-          </button>
-        </div>
-      </aside>
-
-      <main className="ltr:md:ml-64 rtl:md:mr-64 min-h-screen">
-        <header className="sticky top-0 z-30 bg-background/80 backdrop-blur-xl border-b border-border/50">
-          <div className="md:hidden glass border-b border-border p-4 flex items-center justify-between">
-            <span className="font-bold">{t('pos_title')}</span>
-            <button onClick={logout} className="text-muted-foreground"><LogOut className="w-5 h-5" /></button>
-          </div>
+      <header className="sticky top-0 z-30 bg-background/80 backdrop-blur-xl border-b border-border/50">
           <div className="flex">
             {tabs.map((tab) => (
               <button
@@ -1082,7 +1025,6 @@ export default function AdminPOS() {
             )}
           </div>
         )}
-      </main>
 
       {completedInvoiceData && (
         <motion.div

@@ -27,7 +27,11 @@ const productSchema = z.object({
 });
 
 export async function GET(req: NextRequest) {
+  const limit = await checkRateLimit(req, 'admin');
+  if (!limit.allowed) return withSecurityHeaders(limit.response!);
+
   try {
+    await requireRole(req, ['admin', 'staff']);
     const { searchParams } = new URL(req.url);
     const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10));
     const limit = Math.max(1, Math.min(10000, parseInt(searchParams.get('limit') || '10', 10)));

@@ -11,8 +11,12 @@ const settingSchema = z.object({
   value: z.string().min(1).max(500),
 });
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const limit = await checkRateLimit(req, 'admin');
+  if (!limit.allowed) return withSecurityHeaders(limit.response!);
+
   try {
+    await requireRole(req, ['admin']);
     const settings = await prisma.appSetting.findMany();
     const map: Record<string, string> = {};
     for (const s of settings) {

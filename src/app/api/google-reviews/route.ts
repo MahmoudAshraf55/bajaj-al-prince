@@ -1,6 +1,7 @@
 import { NextResponse, NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { withSecurityHeaders } from '@/lib/security';
+import { checkRateLimit } from '@/lib/rate-limit';
 import { z } from 'zod';
 import { logger } from '@/lib/logger';
 import crypto from 'crypto';
@@ -234,6 +235,9 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const limit = await checkRateLimit(request, 'contact');
+  if (!limit.allowed) return withSecurityHeaders(limit.response!);
+
   try {
     const body = await request.json();
     
