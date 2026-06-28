@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation';
 import { useTranslation } from '@/components/useTranslation';
 import {
   Camera, Search, Loader2, BarChart3,
-  Package, Smartphone, Monitor,
+  Smartphone, Monitor, LayoutDashboard, LogOut, Mail, Calendar, DollarSign,
+  ShoppingCart, MessageCircle, TrendingUp, Wrench, Users, Car, List,
 } from 'lucide-react';
 
 interface ScanLog {
@@ -20,7 +21,7 @@ interface ScanLog {
 }
 
 export default function AdminDevices() {
-  const { t, language, isRTL } = useTranslation();
+  const { t, language } = useTranslation();
   const router = useRouter();
 
   const [loading, setLoading] = useState(true);

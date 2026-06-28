@@ -52,7 +52,7 @@ interface Toast {
 type Tab = 'inventory' | 'movements' | 'import';
 
 export default function AdminWarehouse() {
-  const { t, language, isRTL } = useTranslation();
+  const { t, language } = useTranslation();
   const router = useRouter();
 
   const [loading, setLoading] = useState(true);
