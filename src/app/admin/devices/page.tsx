@@ -5,8 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useTranslation } from '@/components/useTranslation';
 import {
   Camera, Search, Loader2, BarChart3,
-  Smartphone, Monitor, LayoutDashboard, LogOut, Mail, Calendar, DollarSign,
-  ShoppingCart, MessageCircle, TrendingUp, Wrench, Users, Car, List,
+  Smartphone, Monitor,
 } from 'lucide-react';
 
 interface ScanLog {
