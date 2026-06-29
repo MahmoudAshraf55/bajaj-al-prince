@@ -1,10 +1,22 @@
-import { PrismaClient } from '@prisma/client';
 import { hashPassword } from '../src/lib/auth';
+import { prisma } from '../src/lib/prisma';
+import { PERMISSION_DEFINITIONS, DEFAULT_ROLE_PERMISSIONS } from '../src/lib/permissions';
+import { FEATURE_FLAGS } from '../src/lib/features';
+import { DEFAULT_TENANT_ID, setTenantContext } from '../src/lib/tenant-context';
 
-const prisma = new PrismaClient();
-
-async function main() {
+async function seed() {
   const adminPassword = process.env.ADMIN_INITIAL_PASSWORD || 'admin123';
+
+  // Ensure the default tenant exists
+  await prisma.tenant.upsert({
+    where: { slug: 'default' },
+    update: {},
+    create: {
+      id: DEFAULT_TENANT_ID,
+      name: 'Default Tenant',
+      slug: 'default',
+    },
+  });
 
   const existing = await prisma.user.findUnique({
     where: { username: 'admin' },
@@ -37,7 +49,7 @@ async function main() {
 
   for (const name of defaultModels) {
     await prisma.vehicleModel.upsert({
-      where: { name },
+      where: { tenantId_name: { tenantId: DEFAULT_TENANT_ID, name } },
       update: {},
       create: { name, make: 'Bajaj' },
     });
@@ -61,7 +73,7 @@ async function main() {
 
   for (const tmpl of defaultTemplates) {
     await prisma.whatsAppMessageTemplate.upsert({
-      where: { event: tmpl.event },
+      where: { tenantId_event: { tenantId: DEFAULT_TENANT_ID, event: tmpl.event } },
       update: {},
       create: { event: tmpl.event, message: tmpl.message, isActive: true },
     });
@@ -82,6 +94,86 @@ async function main() {
     }
   }
   console.log('Default reminder schedules seeded');
+
+  // Seed permissions
+  for (const def of PERMISSION_DEFINITIONS) {
+    await prisma.permission.upsert({
+      where: { tenantId_key: { tenantId: DEFAULT_TENANT_ID, key: def.key } },
+      update: {
+        name: def.name,
+        description: def.description,
+        category: def.category,
+        isDeleted: false,
+        deletedAt: null,
+      },
+      create: {
+        key: def.key,
+        name: def.name,
+        description: def.description,
+        category: def.category,
+      },
+    });
+  }
+  console.log('Default permissions seeded');
+
+  // Seed role-permission mappings
+  const allPermissions = await prisma.permission.findMany({ where: { isDeleted: false } });
+  const permissionMap = new Map(allPermissions.map((p) => [p.key, p.id]));
+
+  for (const [role, keys] of Object.entries(DEFAULT_ROLE_PERMISSIONS) as [keyof typeof DEFAULT_ROLE_PERMISSIONS, string[]][]) {
+    for (const key of keys) {
+      const permissionId = permissionMap.get(key);
+      if (!permissionId) continue;
+
+      const existing = await prisma.rolePermission.findUnique({
+        where: {
+          role_permissionId: {
+            role,
+            permissionId,
+          },
+        },
+      });
+
+      if (!existing) {
+        await prisma.rolePermission.create({
+          data: { role, permissionId },
+        });
+      } else if (existing.isDeleted) {
+        await prisma.rolePermission.update({
+          where: { id: existing.id },
+          data: { isDeleted: false, deletedAt: null },
+        });
+      }
+    }
+  }
+  console.log('Default role permissions seeded');
+
+  // Seed feature flags
+  for (const def of FEATURE_FLAGS) {
+    await prisma.featureFlag.upsert({
+      where: { tenantId_key: { tenantId: DEFAULT_TENANT_ID, key: def.key } },
+      update: {
+        name: def.name,
+        description: def.description,
+        category: def.category,
+        defaultEnabled: def.defaultEnabled,
+        isDeleted: false,
+        deletedAt: null,
+      },
+      create: {
+        key: def.key,
+        name: def.name,
+        description: def.description,
+        category: def.category,
+        defaultEnabled: def.defaultEnabled,
+      },
+    });
+  }
+  console.log('Default feature flags seeded');
+}
+
+async function main() {
+  await setTenantContext(DEFAULT_TENANT_ID, seed);
 }
 
 main()

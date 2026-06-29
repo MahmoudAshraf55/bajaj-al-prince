@@ -26,7 +26,7 @@ export default function WhyChooseUs() {
   const isInView = useInView(ref, { once: true, margin: '-100px' });
 
   return (
-    <section id="services" className="relative py-24 sm:py-32 overflow-hidden snap-start snap-always">
+    <section id="why-us" className="relative py-24 sm:py-32 overflow-hidden snap-start snap-always">
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_rgba(249,115,22,0.05),_transparent_60%)]" />
       <div className="absolute top-20 right-10 w-72 h-72 bg-primary/5 rounded-full blur-3xl pointer-events-none animate-float" />
       <div className="absolute bottom-20 left-10 w-96 h-96 bg-accent/5 rounded-full blur-3xl pointer-events-none animate-float" style={{ animationDelay: '3s' }} />

@@ -1,0 +1,1 @@
+-- Tables already created in 20260626113000_add_pos_warehouse_barcode

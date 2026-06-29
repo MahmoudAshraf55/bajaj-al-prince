@@ -234,12 +234,12 @@ export default function InventoryCountDetailPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border text-muted-foreground">
-                  <th className="text-left px-5 py-3 font-medium">Barcode</th>
-                  <th className="text-left px-5 py-3 font-medium">{t('ic_title')}</th>
-                  <th className="text-right px-5 py-3 font-medium">{t('ic_expected')}</th>
-                  <th className="text-right px-5 py-3 font-medium">{t('ic_actual')}</th>
-                  <th className="text-right px-5 py-3 font-medium">{t('ic_variance')}</th>
-                  <th className="text-left px-5 py-3 font-medium">Unit</th>
+                  <th scope="col" className="text-left px-5 py-3 font-medium">Barcode</th>
+                  <th scope="col" className="text-left px-5 py-3 font-medium">{t('ic_title')}</th>
+                  <th scope="col" className="text-right px-5 py-3 font-medium">{t('ic_expected')}</th>
+                  <th scope="col" className="text-right px-5 py-3 font-medium">{t('ic_actual')}</th>
+                  <th scope="col" className="text-right px-5 py-3 font-medium">{t('ic_variance')}</th>
+                  <th scope="col" className="text-left px-5 py-3 font-medium">Unit</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -327,6 +327,8 @@ export default function InventoryCountDetailPage() {
             initial={{ scale: 0.95, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             onClick={(e) => e.stopPropagation()}
+              role="dialog"
+              aria-modal="true"
             className="glass rounded-2xl p-6 w-full max-w-md border border-border"
           >
             <div className="flex items-center gap-3 mb-4">

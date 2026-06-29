@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import { usePathname } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MessageCircle, X, Send, Bot, ExternalLink } from 'lucide-react';
 import { useTranslation } from './useTranslation';
@@ -14,6 +15,7 @@ interface ChatMessage {
 
 export default function ChatBot() {
   const { t, language } = useTranslation();
+  const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
@@ -36,6 +38,8 @@ export default function ChatBot() {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  if (pathname?.startsWith('/admin')) return null;
 
   const send = async () => {
     if (!input.trim() || loading) return;

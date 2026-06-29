@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { requireAuth } from '@/lib/auth';
+import { withAuth } from '@/lib/auth';
 import { checkRateLimit } from '@/lib/rate-limit';
 import { validateOrigin, withSecurityHeaders } from '@/lib/security';
 import { logAudit, getClientInfo } from '@/lib/audit';
@@ -10,6 +10,7 @@ import { sendEmail } from '@/lib/email';
 import { Prisma } from '@prisma/client';
 import { sanitizedString } from '@/lib/sanitize';
 import { z } from 'zod';
+import { DEFAULT_TENANT_ID } from '@/lib/tenant-context';
 
 const bookingSchema = z.object({
   name: sanitizedString(z.string().min(2).max(100).regex(/^[-\p{L}\s']+$/u, 'Name must contain only letters')),
@@ -108,7 +109,7 @@ export async function POST(req: NextRequest) {
 
       if (!customer) {
         customer = await tx.customer.create({
-          data: { name: data.name, phone: data.phone, email: data.email || '' },
+          data: { name: data.name, phone: data.phone, email: data.email || '', tenantId: DEFAULT_TENANT_ID },
         });
       } else if (data.email && !customer.email) {
         customer = await tx.customer.update({
@@ -147,6 +148,7 @@ export async function POST(req: NextRequest) {
             plateNumber: data.plateNumber || null,
             chassisNumber: data.chassisNumber || null,
             customerId: customer.id,
+            tenantId: DEFAULT_TENANT_ID,
           },
         });
       }
@@ -164,6 +166,7 @@ export async function POST(req: NextRequest) {
           plateNumber: data.plateNumber || null,
           customerId: customer.id,
           vehicleId: vehicle.id,
+          tenantId: DEFAULT_TENANT_ID,
         },
         include: { customer: true, vehicle: true },
       });
@@ -218,31 +221,32 @@ export async function POST(req: NextRequest) {
 
 export async function GET(req: NextRequest) {
   try {
-    await requireAuth(req);
-    const { searchParams } = new URL(req.url);
-    const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10));
-    const limit = Math.max(1, Math.min(100, parseInt(searchParams.get('limit') || '10', 10)));
-    const skip = (page - 1) * limit;
+    return await withAuth(req, async () => {
+      const { searchParams } = new URL(req.url);
+      const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10));
+      const limit = Math.max(1, Math.min(100, parseInt(searchParams.get('limit') || '10', 10)));
+      const skip = (page - 1) * limit;
 
-    const [bookings, total] = await Promise.all([
-      prisma.booking.findMany({
-        skip,
-        take: limit,
-        orderBy: { createdAt: 'desc' },
-        include: {
-          customer: { where: { isDeleted: false } },
-          vehicle: { where: { isDeleted: false } },
+      const [bookings, total] = await Promise.all([
+        prisma.booking.findMany({
+          skip,
+          take: limit,
+          orderBy: { createdAt: 'desc' },
+          include: {
+            customer: { where: { isDeleted: false } },
+            vehicle: { where: { isDeleted: false } },
+          },
+        } as Parameters<typeof prisma.booking.findMany>[0]),
+        prisma.booking.count(),
+      ]);
+
+      return NextResponse.json({
+        success: true,
+        data: {
+          bookings,
+          meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
         },
-      } as Parameters<typeof prisma.booking.findMany>[0]),
-      prisma.booking.count(),
-    ]);
-
-    return NextResponse.json({
-      success: true,
-      data: {
-        bookings,
-        meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
-      },
+      });
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unauthorized';

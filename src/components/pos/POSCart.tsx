@@ -1,6 +1,6 @@
 'use client';
 
-import { ShoppingCart, Minus, Plus, Trash2, Check, Loader2 } from 'lucide-react';
+import { ShoppingCart, Minus, Plus, Trash2, Check, Loader2, PlusCircle, X } from 'lucide-react';
 import { CartItem, Customer } from '@/types/pos';
 
 interface POSCartProps {
@@ -13,10 +13,14 @@ interface POSCartProps {
   setPaid: (val: string) => void;
   paymentMethod: string;
   setPaymentMethod: (val: 'cash' | 'card' | 'transfer' | '') => void;
+  splitPayments: Array<{ method: 'cash' | 'card' | 'transfer'; amount: string }>;
+  setSplitPayments: (val: Array<{ method: 'cash' | 'card' | 'transfer'; amount: string }>) => void;
+  remaining: number;
   discount: number;
   setDiscount: (val: number) => void;
   discountType: string;
   setDiscountType: (val: 'amount' | 'percent') => void;
+  taxRate: number;
   selectedCustomer: Customer | null;
   setShowCustomerModal: (val: boolean) => void;
   setConfirmSale: (val: boolean) => void;
@@ -36,10 +40,14 @@ export default function POSCart({
   setPaid,
   paymentMethod,
   setPaymentMethod,
+  splitPayments,
+  setSplitPayments,
+  remaining,
   discount,
   setDiscount,
   discountType,
   setDiscountType,
+  taxRate,
   selectedCustomer,
   setShowCustomerModal,
   setConfirmSale,
@@ -48,6 +56,18 @@ export default function POSCart({
   removeFromCart,
   change,
 }: POSCartProps) {
+  const addSplitPayment = () => {
+    setSplitPayments([...splitPayments, { method: 'cash', amount: '' }]);
+  };
+
+  const removeSplitPayment = (idx: number) => {
+    setSplitPayments(splitPayments.filter((_, i) => i !== idx));
+  };
+
+  const updateSplitPayment = (idx: number, field: 'method' | 'amount', value: string) => {
+    setSplitPayments(splitPayments.map((p, i) => i === idx ? { ...p, [field]: value } : p));
+  };
+
   return (
     <div className="w-full lg:w-96 xl:w-[28rem] glass ltr:lg:border-l rtl:lg:border-r border-border lg:min-h-[calc(100vh-0px)] flex flex-col">
       <div className="p-4 border-b border-border flex items-center justify-between">
@@ -124,7 +144,7 @@ export default function POSCart({
             </div>
           </div>
           <div className="flex justify-between text-muted-foreground">
-            <span>{t('pos_tax')}</span>
+            <span>{t('pos_tax')} ({taxRate}%)</span>
             <span>{taxTotal.toFixed(2)} EGP</span>
           </div>
           <div className="flex justify-between text-lg font-bold pt-1 border-t border-border">
@@ -133,34 +153,91 @@ export default function POSCart({
           </div>
         </div>
 
-        <div className="flex gap-2">
-          {(['cash', 'card', 'transfer'] as const).map((method) => (
+        {/* Split Payments */}
+        {splitPayments.length > 0 ? (
+          <div className="space-y-2">
+            {splitPayments.map((p, idx) => (
+              <div key={idx} className="flex items-center gap-2 bg-white/5 rounded-xl p-2">
+                <select
+                  value={p.method}
+                  onChange={(e) => updateSplitPayment(idx, 'method', e.target.value)}
+                  className="px-2 py-1.5 rounded-lg bg-input border border-border text-xs focus:outline-none focus:ring-1 focus:ring-ring"
+                >
+                  {(['cash', 'card', 'transfer'] as const).map((m) => (
+                    <option key={m} value={m}>{t(`pos_${m}`)}</option>
+                  ))}
+                </select>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={p.amount}
+                  onChange={(e) => updateSplitPayment(idx, 'amount', e.target.value)}
+                  placeholder={remaining > 0 ? remaining.toFixed(2) : '0.00'}
+                  className="flex-1 px-3 py-1.5 rounded-lg bg-input border border-border text-sm text-right focus:outline-none focus:ring-1 focus:ring-ring"
+                />
+                <button
+                  onClick={() => removeSplitPayment(idx)}
+                  className="p-1 text-red-400 hover:text-red-300"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ))}
             <button
-              key={method}
-              onClick={() => setPaymentMethod(method)}
-              className={`flex-1 px-3 py-2 rounded-xl text-xs font-medium transition-all ${
-                paymentMethod === method
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-white/5 text-muted-foreground hover:bg-white/10'
-              }`}
+              onClick={addSplitPayment}
+              className="flex items-center gap-1 text-xs text-primary hover:underline"
             >
-              {t(`pos_${method}`)}
+              <PlusCircle className="w-3 h-3" />
+              {t('po_add_item') || 'Add Payment'}
             </button>
-          ))}
-        </div>
+            {remaining > 0 && (
+              <div className="flex justify-between text-sm text-yellow-400 font-medium">
+                <span>{t('pos_remaining') || 'Remaining'}</span>
+                <span>{remaining.toFixed(2)} EGP</span>
+              </div>
+            )}
+          </div>
+        ) : (
+          <>
+            <div className="flex gap-2">
+              {(['cash', 'card', 'transfer'] as const).map((method) => (
+                <button
+                  key={method}
+                  onClick={() => setPaymentMethod(method)}
+                  className={`flex-1 px-3 py-2 rounded-xl text-xs font-medium transition-all ${
+                    paymentMethod === method
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-white/5 text-muted-foreground hover:bg-white/10'
+                  }`}
+                >
+                  {t(`pos_${method}`)}
+                </button>
+              ))}
+            </div>
 
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-muted-foreground">{t('pos_paid')}</span>
-          <input
-            type="number"
-            min="0"
-            step="0.01"
-            value={paid}
-            onChange={(e) => setPaid(e.target.value)}
-            placeholder={total.toFixed(2)}
-            className="flex-1 px-3 py-2 rounded-xl bg-input border border-border text-sm text-right focus:outline-none focus:ring-2 focus:ring-ring"
-          />
-        </div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">{t('pos_paid')}</span>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={paid}
+                onChange={(e) => setPaid(e.target.value)}
+                placeholder={total.toFixed(2)}
+                className="flex-1 px-3 py-2 rounded-xl bg-input border border-border text-sm text-right focus:outline-none focus:ring-2 focus:ring-ring"
+              />
+            </div>
+
+            <button
+              onClick={addSplitPayment}
+              className="flex items-center justify-center gap-1 w-full text-xs text-primary hover:underline"
+            >
+              <PlusCircle className="w-3 h-3" />
+              {t('pos_split_payment') || 'Split Payment'}
+            </button>
+          </>
+        )}
 
         {change > 0 && (
           <div className="flex justify-between text-sm text-green-400 font-bold">
@@ -171,7 +248,7 @@ export default function POSCart({
 
         <button
           onClick={() => setConfirmSale(true)}
-          disabled={cart.length === 0 || saving}
+          disabled={cart.length === 0 || saving || remaining > 0}
           className="w-full py-3 rounded-xl bg-primary text-primary-foreground text-sm font-bold hover:opacity-90 transition-opacity disabled:opacity-40 flex items-center justify-center gap-2"
         >
           {saving ? (

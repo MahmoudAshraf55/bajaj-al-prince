@@ -22,6 +22,7 @@ model ContactMessage {
   @@index([createdAt])
   @@index([isDeleted])
   @@index([tenantId])
+  @@unique([id, tenantId])
 }
 
 model Booking {
@@ -40,17 +41,21 @@ model Booking {
   vehicleId   String?
   vehicle     Vehicle?    @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
   workOrders  WorkOrder[]
+  reminderLogs ReminderLog[]
   createdAt   DateTime    @default(now()) @db.Timestamp(6)
   updatedAt   DateTime    @updatedAt @db.Timestamp(6)
   isDeleted   Boolean     @default(false)
   deletedAt   DateTime?   @db.Timestamp(6)
-  tenantId    String?
+  tenantId  String?
 
-  @@unique([date, time], name: "Booking_date_time_unique")
+  @@unique([tenantId, date, time], name: "Booking_tenantId_date_time_unique")
+  @@index([tenantId, date, status])
+  @@index([tenantId, status, createdAt])
   @@index([date, status])
   @@index([createdAt])
   @@index([isDeleted])
   @@index([tenantId])
+  @@unique([id, tenantId])
 }
 
 model Product {
@@ -58,7 +63,7 @@ model Product {
   name              String
   nameAr            String?
   description       String?
-  barcode           String?         @unique
+  barcode           String?
   sku               String?
   price             Decimal         @db.Decimal(10, 2)
   costPrice         Decimal?        @db.Decimal(10, 2)
@@ -77,11 +82,13 @@ model Product {
   stockMovements    StockMovement[]
   barcodeScanLogs   BarcodeScanLog[]
   inventoryCountItems InventoryCountItem[]
+  purchaseOrderItems  PurchaseOrderItem[]
+  purchaseReceiptItems PurchaseReceiptItem[]
   createdAt         DateTime        @default(now()) @db.Timestamp(6)
   updatedAt         DateTime        @updatedAt @db.Timestamp(6)
   isDeleted         Boolean         @default(false)
   deletedAt         DateTime?       @db.Timestamp(6)
-  tenantId          String?
+  tenantId  String?
 
   @@index([barcode])
   @@index([sku])
@@ -89,7 +96,10 @@ model Product {
   @@index([available])
   @@index([createdAt])
   @@index([isDeleted])
+  @@unique([tenantId, barcode])
+  @@index([tenantId, category, available])
   @@index([tenantId])
+  @@unique([id, tenantId])
 }
 
 enum InvoiceType {
@@ -106,7 +116,7 @@ enum InvoiceStatus {
 
 model Invoice {
   id            String        @id @default(uuid())
-  number        String        @unique
+  number        String
   type          InvoiceType   @default(sale)
   status        InvoiceStatus @default(draft)
   subtotal      Decimal       @db.Decimal(10, 2)
@@ -123,12 +133,13 @@ model Invoice {
   createdById   String
   createdBy     User          @relation(fields: [createdById], references: [id])
   items         InvoiceItem[]
+  payments      InvoicePayment[]
   barcodeScanLogs BarcodeScanLog[]
   createdAt     DateTime      @default(now()) @db.Timestamp(6)
   updatedAt     DateTime      @updatedAt @db.Timestamp(6)
   isDeleted     Boolean       @default(false)
   deletedAt     DateTime?     @db.Timestamp(6)
-  tenantId      String?
+  tenantId  String?
 
   @@index([number])
   @@index([type])
@@ -137,7 +148,10 @@ model Invoice {
   @@index([customerId])
   @@index([createdAt])
   @@index([isDeleted])
+  @@unique([tenantId, number])
+  @@index([tenantId, status, createdAt])
   @@index([tenantId])
+  @@unique([id, tenantId])
 }
 
 model InvoiceItem {
@@ -156,13 +170,35 @@ model InvoiceItem {
   updatedAt   DateTime  @updatedAt @db.Timestamp(6)
   isDeleted   Boolean   @default(false)
   deletedAt   DateTime? @db.Timestamp(6)
-  tenantId    String?
+  tenantId  String?
 
   @@index([invoiceId])
   @@index([productId])
   @@index([createdAt])
   @@index([isDeleted])
+  @@unique([invoiceId, productId])
   @@index([tenantId])
+  @@unique([id, tenantId])
+}
+
+model InvoicePayment {
+  id          String    @id @default(uuid())
+  invoiceId   String
+  invoice     Invoice   @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  method      String    // "cash" | "card" | "transfer"
+  amount      Decimal   @db.Decimal(10, 2)
+  reference   String?   // transaction ref / card last 4
+  createdAt   DateTime  @default(now()) @db.Timestamp(6)
+  updatedAt   DateTime? @updatedAt @db.Timestamp(6)
+  isDeleted   Boolean   @default(false)
+  deletedAt   DateTime? @db.Timestamp(6)
+  tenantId    String?
+
+  @@index([invoiceId])
+  @@index([method])
+  @@index([isDeleted])
+  @@index([tenantId])
+  @@unique([id, tenantId])
 }
 
 enum MovementType {
@@ -185,7 +221,7 @@ model StockMovement {
   updatedAt   DateTime     @updatedAt @db.Timestamp(6)
   isDeleted   Boolean      @default(false)
   deletedAt   DateTime?    @db.Timestamp(6)
-  tenantId    String?
+  tenantId  String?
 
   @@index([productId])
   @@index([type])
@@ -193,6 +229,7 @@ model StockMovement {
   @@index([createdAt])
   @@index([isDeleted])
   @@index([tenantId])
+  @@unique([id, tenantId])
 }
 
 enum ScanSource {
@@ -224,7 +261,7 @@ model BarcodeScanLog {
   updatedAt  DateTime   @updatedAt @db.Timestamp(6)
   isDeleted  Boolean    @default(false)
   deletedAt  DateTime?  @db.Timestamp(6)
-  tenantId   String?
+  tenantId  String?
 
   @@index([barcode])
   @@index([source])
@@ -234,11 +271,12 @@ model BarcodeScanLog {
   @@index([createdAt])
   @@index([isDeleted])
   @@index([tenantId])
+  @@unique([id, tenantId])
 }
 
 model ScannerSession {
   id         String   @id @default(uuid())
-  token      String   @unique
+  token      String
   deviceName String?
   ipAddress  String?
   pin        String?
@@ -249,25 +287,30 @@ model ScannerSession {
   updatedAt  DateTime @updatedAt @db.Timestamp(6)
   isDeleted  Boolean  @default(false)
   deletedAt  DateTime? @db.Timestamp(6)
-  tenantId   String?
+  tenantId  String?
 
   @@index([token])
   @@index([status])
   @@index([createdById])
   @@index([createdAt])
   @@index([isDeleted])
+  @@unique([tenantId, token])
   @@index([tenantId])
+  @@unique([id, tenantId])
 }
 
 model AppSetting {
-  id        String   @id @default(uuid())
-  key       String   @unique
+  id        String    @id @default(uuid())
+  key       String
   value     String
-  createdAt DateTime @default(now()) @db.Timestamp(6)
-  updatedAt DateTime @updatedAt @db.Timestamp(6)
+  createdAt DateTime  @default(now()) @db.Timestamp(6)
+  updatedAt DateTime  @updatedAt @db.Timestamp(6)
+  isDeleted Boolean   @default(false)
+  deletedAt DateTime? @db.Timestamp(6)
   tenantId  String?
 
   @@index([key])
+  @@unique([tenantId, key])
   @@index([tenantId])
 }
 
@@ -276,17 +319,32 @@ model Transaction {
   type        String
   amount      Decimal   @db.Decimal(10, 2)
   description String?
-  createdBy   String?
+  createdById String?
+  createdBy   User?    @relation(fields: [createdById], references: [id], onDelete: SetNull)
   createdAt   DateTime  @default(now()) @db.Timestamp(6)
   updatedAt   DateTime? @updatedAt @db.Timestamp(6)
   isDeleted   Boolean   @default(false)
   deletedAt   DateTime? @db.Timestamp(6)
-  tenantId    String?
+  tenantId  String?
 
   @@index([type])
   @@index([createdAt])
   @@index([isDeleted])
   @@index([tenantId])
+  @@unique([id, tenantId])
+}
+
+model Tenant {
+  id        String    @id @default(uuid())
+  name      String
+  slug      String    @unique
+  settings  String?   // JSON blob for tenant-specific config
+  isActive  Boolean   @default(true)
+  createdAt DateTime  @default(now()) @db.Timestamp(6)
+  updatedAt DateTime  @updatedAt @db.Timestamp(6)
+
+  @@index([slug])
+  @@index([isActive])
 }
 
 enum UserRole {
@@ -307,19 +365,23 @@ model User {
   stockMovements    StockMovement[]
   journalEntries    JournalEntry[]
   barcodeScanLogs   BarcodeScanLog[]
+  purchaseOrders    PurchaseOrder[]
+  purchaseReceipts  PurchaseReceipt[]
   scannerSessions   ScannerSession[]
   closedPeriods     AccountingPeriod[] @relation("PeriodClosedBy")
   countSheetsCreated InventoryCount[] @relation("CountCreatedBy")
   countSheetsCompleted InventoryCount[] @relation("CountCompletedBy")
+  transactions      Transaction[]
   createdAt         DateTime           @default(now()) @db.Timestamp(6)
   updatedAt         DateTime?          @updatedAt @db.Timestamp(6)
   isDeleted         Boolean            @default(false)
   deletedAt         DateTime?          @db.Timestamp(6)
-  tenantId          String?
+  tenantId  String?
 
   @@index([username])
   @@index([isDeleted])
   @@index([tenantId])
+  @@unique([id, tenantId])
 }
 
 model Customer {
@@ -331,6 +393,7 @@ model Customer {
   vehicles  Vehicle[]
   bookings  Booking[]
   invoices  Invoice[]
+  reminderLogs ReminderLog[]
   createdAt DateTime   @default(now()) @db.Timestamp(6)
   updatedAt DateTime   @updatedAt @db.Timestamp(6)
   isDeleted Boolean    @default(false)
@@ -340,7 +403,9 @@ model Customer {
   @@index([email])
   @@index([createdAt])
   @@index([isDeleted])
+  @@index([tenantId, phone, isDeleted])
   @@index([tenantId])
+  @@unique([id, tenantId])
 }
 
 model Vehicle {
@@ -358,7 +423,7 @@ model Vehicle {
   updatedAt     DateTime?   @updatedAt @db.Timestamp(6)
   isDeleted     Boolean     @default(false)
   deletedAt     DateTime?   @db.Timestamp(6)
-  tenantId      String?
+  tenantId  String?
 
   @@unique([chassisNumber, tenantId])
   @@index([make])
@@ -366,11 +431,12 @@ model Vehicle {
   @@index([customerId])
   @@index([isDeleted])
   @@index([tenantId])
+  @@unique([id, tenantId])
 }
 
 model VehicleModel {
   id        String    @id @default(uuid())
-  name      String    @unique
+  name      String
   make      String    @default("Bajaj")
   isActive  Boolean   @default(true)
   createdAt DateTime  @default(now()) @db.Timestamp(6)
@@ -381,7 +447,9 @@ model VehicleModel {
 
   @@index([isActive])
   @@index([isDeleted])
+  @@unique([tenantId, name])
   @@index([tenantId])
+  @@unique([id, tenantId])
 }
 
 model WorkOrder {
@@ -397,17 +465,19 @@ model WorkOrder {
   updatedAt   DateTime? @updatedAt @db.Timestamp(6)
   isDeleted   Boolean   @default(false)
   deletedAt   DateTime? @db.Timestamp(6)
-  tenantId    String?
+  tenantId  String?
 
   @@index([status])
   @@index([vehicleId])
   @@index([bookingId])
+  @@index([tenantId, status, createdAt])
   @@index([isDeleted])
   @@index([tenantId])
+  @@unique([id, tenantId])
 }
 
 model AuditLog {
-  id          String   @id @default(uuid())
+  id          String    @id @default(uuid())
   userId      String?
   action      String
   entity      String
@@ -416,13 +486,95 @@ model AuditLog {
   newValue    String?
   ipAddress   String?
   userAgent   String?
-  createdAt   DateTime @default(now()) @db.Timestamp(6)
-  tenantId    String?
+  createdAt   DateTime  @default(now()) @db.Timestamp(6)
+  isDeleted   Boolean   @default(false)
+  deletedAt   DateTime? @db.Timestamp(6)
+  tenantId  String?
 
   @@index([entity, entityId])
   @@index([createdAt])
   @@index([userId])
   @@index([tenantId])
+}
+
+model FeatureFlag {
+  id             String              @id @default(uuid())
+  key            String
+  name           String
+  description    String?
+  category       String              @default("general")
+  defaultEnabled Boolean             @default(false)
+  createdAt      DateTime            @default(now()) @db.Timestamp(6)
+  updatedAt      DateTime            @updatedAt @db.Timestamp(6)
+  isDeleted      Boolean             @default(false)
+  deletedAt      DateTime?           @db.Timestamp(6)
+  tenantId  String?
+  tenantOverrides TenantFeatureFlag[]
+
+  @@index([key])
+  @@index([category])
+  @@unique([tenantId, key])
+  @@index([isDeleted])
+  @@index([tenantId])
+  @@unique([id, tenantId])
+}
+
+model TenantFeatureFlag {
+  id        String      @id @default(uuid())
+  tenantId  String?
+  featureId String
+  feature   FeatureFlag @relation(fields: [featureId], references: [id])
+  enabled   Boolean     @default(false)
+  createdAt DateTime    @default(now()) @db.Timestamp(6)
+  updatedAt DateTime    @updatedAt @db.Timestamp(6)
+  isDeleted Boolean     @default(false)
+  deletedAt DateTime?   @db.Timestamp(6)
+
+  @@unique([tenantId, featureId])
+  @@index([tenantId])
+  @@index([featureId])
+  @@index([isDeleted])
+  @@unique([id, tenantId])
+}
+
+model Permission {
+  id          String           @id @default(uuid())
+  key         String
+  name        String
+  description String?
+  category    String           @default("general")
+  rolePermissions RolePermission[]
+  createdAt   DateTime         @default(now()) @db.Timestamp(6)
+  updatedAt   DateTime         @updatedAt @db.Timestamp(6)
+  isDeleted   Boolean          @default(false)
+  deletedAt   DateTime?        @db.Timestamp(6)
+  tenantId  String?
+
+  @@index([key])
+  @@index([category])
+  @@unique([tenantId, key])
+  @@index([isDeleted])
+  @@index([tenantId])
+  @@unique([id, tenantId])
+}
+
+model RolePermission {
+  id           String     @id @default(uuid())
+  role         UserRole
+  permissionId String
+  permission   Permission @relation(fields: [permissionId], references: [id])
+  createdAt    DateTime   @default(now()) @db.Timestamp(6)
+  updatedAt    DateTime   @updatedAt @db.Timestamp(6)
+  isDeleted    Boolean    @default(false)
+  deletedAt    DateTime?  @db.Timestamp(6)
+  tenantId  String?
+
+  @@unique([role, permissionId])
+  @@index([role])
+  @@index([permissionId])
+  @@index([isDeleted])
+  @@index([tenantId])
+  @@unique([id, tenantId])
 }
 
 enum JournalEntryType {
@@ -444,6 +596,11 @@ model JournalEntry {
   referenceNumber String?          // Human-readable ref (e.g., INV-20260627-0001)
   category        String?          // Product category or expense category
   paymentMethod   String?          // "cash" | "card" | "transfer"
+  debitAccountId  String?
+  debitAccount    Account?         @relation("DebitEntries", fields: [debitAccountId], references: [id])
+  creditAccountId String?
+  creditAccount   Account?         @relation("CreditEntries", fields: [creditAccountId], references: [id])
+  lines           JournalEntryLine[]
   createdById     String
   createdBy       User             @relation(fields: [createdById], references: [id])
   date            DateTime         @db.Timestamp(6)
@@ -451,15 +608,41 @@ model JournalEntry {
   updatedAt       DateTime?        @updatedAt @db.Timestamp(6)
   isDeleted       Boolean          @default(false)
   deletedAt       DateTime?        @db.Timestamp(6)
-  tenantId        String?
+  tenantId  String?
 
   @@index([type])
   @@index([date])
   @@index([referenceType, referenceId])
   @@index([createdById])
   @@index([category])
+  @@index([debitAccountId])
+  @@index([creditAccountId])
+  @@index([tenantId, date])
   @@index([isDeleted])
   @@index([tenantId])
+  @@unique([id, tenantId])
+}
+
+model JournalEntryLine {
+  id              String         @id @default(uuid())
+  journalEntryId  String
+  journalEntry    JournalEntry   @relation(fields: [journalEntryId], references: [id], onDelete: Cascade)
+  accountId       String
+  account         Account        @relation("JournalEntryLines", fields: [accountId], references: [id])
+  debit           Decimal        @default(0) @db.Decimal(12, 2)
+  credit          Decimal        @default(0) @db.Decimal(12, 2)
+  description     String?
+  createdAt       DateTime       @default(now()) @db.Timestamp(6)
+  updatedAt       DateTime?      @updatedAt @db.Timestamp(6)
+  isDeleted       Boolean        @default(false)
+  deletedAt       DateTime?      @db.Timestamp(6)
+  tenantId        String?
+
+  @@index([journalEntryId])
+  @@index([accountId])
+  @@index([isDeleted])
+  @@index([tenantId])
+  @@unique([id, tenantId])
 }
 
 model Review {
@@ -480,11 +663,12 @@ model Review {
   @@index([createdAt])
   @@index([isDeleted])
   @@index([tenantId])
+  @@unique([id, tenantId])
 }
 
 model UniqueVisitor {
   id        String    @id @default(uuid())
-  ipHash    String    @unique
+  ipHash    String
   userAgent String?
   createdAt DateTime  @default(now()) @db.Timestamp(6)
   isDeleted Boolean   @default(false)
@@ -493,25 +677,30 @@ model UniqueVisitor {
 
   @@index([createdAt])
   @@index([isDeleted])
+  @@unique([tenantId, ipHash])
   @@index([tenantId])
+  @@unique([id, tenantId])
 }
 
 model ReminderLog {
   id         String   @id @default(uuid())
   customerId String
+  customer   Customer  @relation(fields: [customerId], references: [id], onDelete: Cascade)
   bookingId  String?
+  booking    Booking?  @relation(fields: [bookingId], references: [id], onDelete: SetNull)
   phone      String
   message    String
   status     String   @default("sent")
   sentAt     DateTime @default(now()) @db.Timestamp(6)
   isDeleted  Boolean  @default(false)
   deletedAt  DateTime? @db.Timestamp(6)
-  tenantId   String?
+  tenantId  String?
 
   @@index([customerId])
   @@index([sentAt])
   @@index([isDeleted])
   @@index([tenantId])
+  @@unique([id, tenantId])
 }
 
 model WhatsAppSettings {
@@ -521,14 +710,16 @@ model WhatsAppSettings {
   dailyCap   Int      @default(50)
   batchSize  Int      @default(20)
   updatedAt  DateTime @updatedAt @db.Timestamp(6)
-  tenantId   String?
+  tenantId  String?
 
+  @@unique([tenantId, id])
   @@index([tenantId])
+  @@unique([id, tenantId])
 }
 
 model WhatsAppMessageTemplate {
   id        String    @id @default(cuid())
-  event     String    @unique // e.g. booking_created, booking_accepted, booking_rejected, booking_completed, issue_changed, vehicle_added
+  event     String // e.g. booking_created, booking_accepted, booking_rejected, booking_completed, issue_changed, vehicle_added
   message   String
   isActive  Boolean   @default(true)
   isDeleted Boolean   @default(false)
@@ -536,7 +727,9 @@ model WhatsAppMessageTemplate {
   updatedAt DateTime  @updatedAt @db.Timestamp(6)
   tenantId  String?
 
+  @@unique([tenantId, event])
   @@index([tenantId])
+  @@unique([id, tenantId])
 }
 
 model ReminderSchedule {
@@ -549,9 +742,10 @@ model ReminderSchedule {
   deletedAt    DateTime? @db.Timestamp(6)
   createdAt    DateTime  @default(now()) @db.Timestamp(6)
   updatedAt    DateTime  @updatedAt @db.Timestamp(6)
-  tenantId     String?
+  tenantId  String?
 
   @@index([tenantId])
+  @@unique([id, tenantId])
 }
 
 enum PeriodStatus {
@@ -574,13 +768,14 @@ model AccountingPeriod {
   updatedAt  DateTime     @updatedAt @db.Timestamp(6)
   isDeleted  Boolean      @default(false)
   deletedAt  DateTime?    @db.Timestamp(6)
-  tenantId   String?
+  tenantId  String?
 
   @@unique([startDate, tenantId])
   @@index([status])
   @@index([startDate])
   @@index([isDeleted])
   @@index([tenantId])
+  @@unique([id, tenantId])
 }
 
 enum CountSheetStatus {
@@ -605,13 +800,14 @@ model InventoryCount {
   updatedAt  DateTime           @updatedAt @db.Timestamp(6)
   isDeleted  Boolean            @default(false)
   deletedAt  DateTime?          @db.Timestamp(6)
-  tenantId   String?
+  tenantId  String?
 
   @@index([status])
   @@index([createdById])
   @@index([createdAt])
   @@index([isDeleted])
   @@index([tenantId])
+  @@unique([id, tenantId])
 }
 
 model InventoryCountItem {
@@ -629,11 +825,175 @@ model InventoryCountItem {
   updatedAt      DateTime?       @updatedAt @db.Timestamp(6)
   isDeleted      Boolean         @default(false)
   deletedAt      DateTime?       @db.Timestamp(6)
-  tenantId       String?
+  tenantId  String?
 
   @@unique([countId, productId])
   @@index([countId])
   @@index([productId])
   @@index([isDeleted])
   @@index([tenantId])
+  @@unique([id, tenantId])
+}
+
+model Supplier {
+  id              String          @id @default(uuid())
+  name            String
+  nameAr          String?
+  email           String?
+  phone           String?
+  address         String?
+  taxId           String?
+  notes           String?
+  isActive        Boolean         @default(true)
+  purchaseOrders  PurchaseOrder[]
+  createdAt       DateTime        @default(now()) @db.Timestamp(6)
+  updatedAt       DateTime?       @updatedAt @db.Timestamp(6)
+  isDeleted       Boolean         @default(false)
+  deletedAt       DateTime?       @db.Timestamp(6)
+  tenantId  String?
+
+  @@unique([tenantId, name])
+  @@index([tenantId, isActive])
+  @@index([isDeleted])
+  @@index([tenantId])
+  @@unique([id, tenantId])
+}
+
+model PurchaseOrder {
+  id              String              @id @default(uuid())
+  number          String
+  supplierId      String
+  supplier        Supplier            @relation(fields: [supplierId], references: [id])
+  status          String              @default("draft") // draft | ordered | partially_received | received | cancelled
+  notes           String?
+  subtotal        Decimal             @db.Decimal(10, 2)
+  taxTotal        Decimal             @db.Decimal(10, 2) @default(0)
+  discount        Decimal             @db.Decimal(10, 2) @default(0)
+  total           Decimal             @db.Decimal(10, 2)
+  createdById     String
+  createdBy       User                @relation(fields: [createdById], references: [id])
+  items           PurchaseOrderItem[]
+  receipts        PurchaseReceipt[]
+  createdAt       DateTime            @default(now()) @db.Timestamp(6)
+  updatedAt       DateTime?           @updatedAt @db.Timestamp(6)
+  isDeleted       Boolean             @default(false)
+  deletedAt       DateTime?           @db.Timestamp(6)
+  tenantId  String?
+
+  @@unique([tenantId, number])
+  @@index([tenantId, status])
+  @@index([tenantId, supplierId])
+  @@index([isDeleted])
+  @@index([tenantId])
+  @@unique([id, tenantId])
+}
+
+model PurchaseOrderItem {
+  id              String          @id @default(uuid())
+  purchaseOrderId String
+  purchaseOrder   PurchaseOrder   @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  productId       String
+  product         Product         @relation(fields: [productId], references: [id])
+  quantity        Int
+  receivedQty     Int             @default(0)
+  unitPrice       Decimal               @db.Decimal(10, 2)
+  total           Decimal               @db.Decimal(10, 2)
+  receiptItems    PurchaseReceiptItem[]
+  createdAt       DateTime              @default(now()) @db.Timestamp(6)
+  updatedAt       DateTime?             @updatedAt @db.Timestamp(6)
+  isDeleted       Boolean               @default(false)
+  deletedAt       DateTime?             @db.Timestamp(6)
+  tenantId  String?
+
+  @@unique([purchaseOrderId, productId])
+  @@index([purchaseOrderId])
+  @@index([productId])
+  @@index([isDeleted])
+  @@index([tenantId])
+  @@unique([id, tenantId])
+}
+
+model PurchaseReceipt {
+  id              String                @id @default(uuid())
+  purchaseOrderId String
+  purchaseOrder   PurchaseOrder         @relation(fields: [purchaseOrderId], references: [id])
+  receiptNumber   String
+  notes           String?
+  receivedById    String
+  receivedBy      User                  @relation(fields: [receivedById], references: [id])
+  items           PurchaseReceiptItem[]
+  createdAt       DateTime              @default(now()) @db.Timestamp(6)
+  updatedAt       DateTime?             @updatedAt @db.Timestamp(6)
+  isDeleted       Boolean               @default(false)
+  deletedAt       DateTime?             @db.Timestamp(6)
+  tenantId  String?
+
+  @@unique([tenantId, receiptNumber])
+  @@index([tenantId, purchaseOrderId])
+  @@index([isDeleted])
+  @@index([tenantId])
+  @@unique([id, tenantId])
+}
+
+model PurchaseReceiptItem {
+  id              String            @id @default(uuid())
+  receiptId       String
+  receipt         PurchaseReceipt   @relation(fields: [receiptId], references: [id], onDelete: Cascade)
+  orderItemId     String
+  orderItem       PurchaseOrderItem @relation(fields: [orderItemId], references: [id])
+  productId       String
+  product         Product           @relation(fields: [productId], references: [id])
+  quantity        Int
+  unitPrice       Decimal           @db.Decimal(10, 2)
+  total           Decimal           @db.Decimal(10, 2)
+  createdAt       DateTime          @default(now()) @db.Timestamp(6)
+  updatedAt       DateTime?         @updatedAt @db.Timestamp(6)
+  isDeleted       Boolean           @default(false)
+  deletedAt       DateTime?         @db.Timestamp(6)
+  tenantId  String?
+
+  @@index([receiptId])
+  @@index([orderItemId])
+  @@index([productId])
+  @@index([isDeleted])
+  @@index([tenantId])
+  @@unique([id, tenantId])
+}
+
+enum AccountType {
+  asset
+  liability
+  equity
+  revenue
+  expense
+}
+
+model Account {
+  id              String          @id @default(uuid())
+  code            String
+  name            String
+  nameAr          String?
+  type            AccountType
+  isActive        Boolean         @default(true)
+  parentId        String?
+  parent          Account?        @relation("AccountHierarchy", fields: [parentId], references: [id])
+  children        Account[]       @relation("AccountHierarchy")
+  description     String?
+  debitEntries    JournalEntry[]  @relation("DebitEntries")
+  creditEntries   JournalEntry[]  @relation("CreditEntries")
+  journalLines    JournalEntryLine[] @relation("JournalEntryLines")
+  createdAt       DateTime        @default(now()) @db.Timestamp(6)
+  updatedAt       DateTime?       @updatedAt @db.Timestamp(6)
+  isDeleted       Boolean         @default(false)
+  deletedAt       DateTime?       @db.Timestamp(6)
+  tenantId        String?
+
+  @@index([type])
+  @@index([code])
+  @@index([parentId])
+  @@index([isActive])
+  @@index([isDeleted])
+  @@index([tenantId])
+  @@unique([tenantId, code])
+  @@unique([id, tenantId])
 }

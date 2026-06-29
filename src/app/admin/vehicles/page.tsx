@@ -7,6 +7,7 @@ import { motion } from 'framer-motion';
 import { useTranslation } from '@/components/useTranslation';
 import { useToast } from '@/components/ToastContext';
 import BackButton from '@/components/BackButton';
+import { fetchWithRetry } from '@/lib/fetchWithRetry';
 import type { Vehicle } from '@/types';
 import {
   Search, Car, ChevronLeft, ChevronRight, Hash,
@@ -24,14 +25,14 @@ export default function VehiclesPage() {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
 
-  const fetchVehicles = useCallback(async (p: number, q?: string) => {
+  const fetchVehicles = useCallback(async (p: number, q?: string, signal?: AbortSignal) => {
     setError('');
     try {
       const url = new URL('/api/vehicles/', window.location.origin);
       url.searchParams.set('page', String(p));
       url.searchParams.set('limit', '10');
       if (q) url.searchParams.set('search', q);
-      const res = await fetch(url.toString(), { credentials: 'include' });
+      const res = await fetchWithRetry(url.toString(), { credentials: 'include', signal });
       const data = await res.json();
       if (data?.success && Array.isArray(data?.data?.vehicles)) {
         setVehicles(data.data.vehicles);
@@ -41,6 +42,7 @@ export default function VehiclesPage() {
         addToast('error', data?.error || t('crm_failed_load_vehicles'));
       }
     } catch (err) {
+      if (err instanceof Error && err.name === 'AbortError') return;
       const msg = err instanceof Error ? err.message : t('crm_failed_load_vehicles');
       setError(msg);
       addToast('error', msg);
@@ -57,10 +59,13 @@ export default function VehiclesPage() {
       .catch(() => {
         router.push('/admin/');
       });
-  }, [router, fetchVehicles]);
+  }, [router]);
 
   useEffect(() => {
-    if (!loading) fetchVehicles(page, search);
+    if (loading) return;
+    const controller = new AbortController();
+    fetchVehicles(page, search, controller.signal);
+    return () => controller.abort();
   }, [page, loading, search, fetchVehicles]);
 
   const handleSearch = (val: string) => {
@@ -124,12 +129,12 @@ export default function VehiclesPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border text-muted-foreground">
-                  <th className="text-left px-5 py-3 font-medium">{t('crm_vehicle')}</th>
-                  <th className="text-left px-5 py-3 font-medium">{t('crm_vehicle_year_col')}</th>
-                  <th className="text-left px-5 py-3 font-medium">{t('crm_vehicle_plate')}</th>
-                  <th className="text-left px-5 py-3 font-medium">{t('crm_vehicle_chassis')}</th>
-                  <th className="text-left px-5 py-3 font-medium">{t('crm_vehicle_owner')}</th>
-                  <th className="text-right px-5 py-3 font-medium">{t('crm_customer_actions')}</th>
+                  <th scope="col" className="text-left px-5 py-3 font-medium">{t('crm_vehicle')}</th>
+                  <th scope="col" className="text-left px-5 py-3 font-medium">{t('crm_vehicle_year_col')}</th>
+                  <th scope="col" className="text-left px-5 py-3 font-medium">{t('crm_vehicle_plate')}</th>
+                  <th scope="col" className="text-left px-5 py-3 font-medium">{t('crm_vehicle_chassis')}</th>
+                  <th scope="col" className="text-left px-5 py-3 font-medium">{t('crm_vehicle_owner')}</th>
+                  <th scope="col" className="text-right px-5 py-3 font-medium">{t('crm_customer_actions')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">

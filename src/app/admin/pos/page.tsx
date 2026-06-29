@@ -33,8 +33,10 @@ export default function AdminPOS() {
   const [discountType, setDiscountType] = useState<'amount' | 'percent'>('amount');
   const [paid, setPaid] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'transfer' | ''>('cash');
+  const [splitPayments, setSplitPayments] = useState<Array<{ method: 'cash' | 'card' | 'transfer'; amount: string }>>([]);
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
+  const [taxRate, setTaxRate] = useState(14);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [showCustomerModal, setShowCustomerModal] = useState(false);
@@ -81,9 +83,10 @@ export default function AdminPOS() {
   useEffect(() => {
     if (loading) return;
     Promise.all([
-      fetch('/api/v1/products/', { credentials: 'include' }).then((r) => r.json()),
+      fetch('/api/v1/products/?limit=500', { credentials: 'include' }).then((r) => r.json()),
       fetch('/api/v1/customers/', { credentials: 'include' }).then((r) => r.json()),
-    ]).then(([pRes, cRes]) => {
+      fetch('/api/v1/settings/', { credentials: 'include' }).then((r) => r.json()),
+    ]).then(([pRes, cRes, sRes]) => {
       if (pRes.success) {
         setProducts(pRes.data.products);
         const params = new URLSearchParams(window.location.search);
@@ -111,6 +114,12 @@ export default function AdminPOS() {
         }
       }
       if (cRes.success) setCustomers(cRes.data.customers || []);
+      if (sRes.success && sRes.data?.settings?.tax_rate != null) {
+        const rate = parseFloat(sRes.data.settings.tax_rate);
+        if (!isNaN(rate) && rate >= 0 && rate <= 100) {
+          setTaxRate(rate);
+        }
+      }
     });
   }, [loading]);
 
@@ -182,9 +191,12 @@ export default function AdminPOS() {
     ? Math.min(subtotal * (discount || 0) / 100, subtotal)
     : Math.min(discount, subtotal);
   const afterDiscount = subtotal - discountNum;
-  const taxTotal = afterDiscount * 0.14;
+  const taxTotal = afterDiscount * (taxRate / 100);
   const total = afterDiscount + taxTotal;
-  const paidNum = parseFloat(paid) || 0;
+
+  const splitTotal = splitPayments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
+  const paidNum = splitPayments.length > 0 ? splitTotal : (parseFloat(paid) || 0);
+  const remaining = Math.max(0, total - paidNum);
   const change = paidNum >= total ? paidNum - total : 0;
 
   const handleCompleteSale = async () => {
@@ -201,6 +213,11 @@ export default function AdminPOS() {
           discount: discountNum,
           paid: paidNum || total,
           paymentMethod: paymentMethod || undefined,
+          payments: splitPayments.length > 0
+            ? splitPayments
+                .filter((p) => parseFloat(p.amount) > 0)
+                .map((p) => ({ method: p.method, amount: parseFloat(p.amount) }))
+            : undefined,
           notes: notes || null,
           customerId: selectedCustomer?.id || null,
           customerName: selectedCustomer?.name || null,
@@ -238,6 +255,7 @@ export default function AdminPOS() {
         setCart([]);
         setDiscount(0);
         setPaid('');
+        setSplitPayments([]);
         setNotes('');
         setSelectedCustomer(null);
         addToast('success', t('pos_sale_completed'));
@@ -252,40 +270,108 @@ export default function AdminPOS() {
     }
   };
 
-  const handleBarcodeSearch = (e: React.KeyboardEvent) => {
+  const handleBarcodeSearch = async (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && search) {
       const match = filtered[0];
       if (match) {
         handleSelectProduct(match);
-      } else if (/^[A-Za-z0-9-]+$/.test(search)) {
-        setQuickCreateBarcode(search);
+        setSearch('');
+        return;
+      }
+      if (/^[A-Za-z0-9-]+$/.test(search)) {
+        try {
+          const res = await fetch('/api/v1/barcode/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ barcode: search.trim(), source: 'HH400' }),
+          });
+          const d = await res.json();
+          if (d.success && d.data.found && d.data.product) {
+            const scannedProduct: Product = d.data.product;
+            if (!scannedProduct.available) {
+              addToast('error', t('pos_product_unavailable'));
+            } else {
+              handleSelectProduct(scannedProduct);
+            }
+          } else {
+            setQuickCreateBarcode(search.trim());
+          }
+        } catch {
+          setQuickCreateBarcode(search.trim());
+        }
         setSearch('');
       }
     }
   };
 
-  const handleBarcodeEnter = (barcode: string) => {
+  const handleBarcodeEnter = async (barcode: string) => {
     const trimmed = barcode.trim();
     if (!trimmed) return;
     const product = products.find((p) => p.barcode === trimmed && p.available);
     if (product) {
       handleSelectProduct(product);
-    } else {
+      setManualBarcode('');
+      barcodeInputRef.current?.focus();
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/v1/barcode/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ barcode: trimmed, source: 'HH400' }),
+      });
+      const d = await res.json();
+      if (d.success && d.data.found && d.data.product) {
+        const scannedProduct: Product = d.data.product;
+        if (!scannedProduct.available) {
+          addToast('error', t('pos_product_unavailable'));
+        } else {
+          handleSelectProduct(scannedProduct);
+        }
+      } else {
+        setQuickCreateBarcode(trimmed);
+      }
+    } catch {
       setQuickCreateBarcode(trimmed);
     }
     setManualBarcode('');
     barcodeInputRef.current?.focus();
   };
 
-  const handleBarcodeFromScan = (barcode: string) => {
-    const product = products.find((p) => p.barcode === barcode && p.available);
+  const handleBarcodeFromScan = async (barcode: string) => {
+    const trimmed = barcode.trim();
+    const product = products.find((p) => p.barcode === trimmed && p.available);
     if (product) {
       handleSelectProduct(product);
       setShowWebcamScanner(false);
-    } else {
-      setShowWebcamScanner(false);
-      setQuickCreateBarcode(barcode);
+      return;
     }
+
+    try {
+      const res = await fetch('/api/v1/barcode/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ barcode: trimmed, source: 'Webcam' }),
+      });
+      const d = await res.json();
+      if (d.success && d.data.found && d.data.product) {
+        const scannedProduct: Product = d.data.product;
+        if (!scannedProduct.available) {
+          addToast('error', t('pos_product_unavailable'));
+        } else {
+          handleSelectProduct(scannedProduct);
+        }
+      } else {
+        setQuickCreateBarcode(trimmed);
+      }
+    } catch {
+      setQuickCreateBarcode(trimmed);
+    }
+    setShowWebcamScanner(false);
   };
 
   const loadInvoices = useCallback(async () => {
@@ -430,10 +516,14 @@ export default function AdminPOS() {
                 setPaid={setPaid}
                 paymentMethod={paymentMethod}
                 setPaymentMethod={setPaymentMethod}
+                splitPayments={splitPayments}
+                setSplitPayments={setSplitPayments}
+                remaining={remaining}
                 discount={discount}
                 setDiscount={setDiscount}
                 discountType={discountType}
                 setDiscountType={setDiscountType}
+                taxRate={taxRate}
                 selectedCustomer={selectedCustomer}
                 setShowCustomerModal={setShowCustomerModal}
                 setConfirmSale={setConfirmSale}
@@ -447,13 +537,15 @@ export default function AdminPOS() {
             <AnimatePresence>
               {confirmSale && (
                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-40 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-            <motion.div key="quick-create-inner" initial={{ scale: 0.95 }} animate={{ scale: 1, transition: { duration: 0.15 } }} exit={{ scale: 0.95, transition: { duration: 0.15 } }} onClick={(e) => e.stopPropagation()} className="glass rounded-2xl p-6 w-full max-w-md">
+            <motion.div key="quick-create-inner" initial={{ scale: 0.95 }} animate={{ scale: 1, transition: { duration: 0.15 } }} exit={{ scale: 0.95, transition: { duration: 0.15 } }} onClick={(e) => e.stopPropagation()}
+              role="dialog"
+              aria-modal="true" className="glass rounded-2xl p-6 w-full max-w-md">
                     <h3 className="text-lg font-bold mb-4">{t('pos_confirm_sale')}</h3>
                     <div className="space-y-2 text-sm mb-4">
                       <div className="flex justify-between"><span>{t('pos_cart')}</span><span>{cart.length} items</span></div>
                       <div className="flex justify-between"><span>{t('pos_subtotal')}</span><span>{subtotal.toFixed(2)} EGP</span></div>
                       <div className="flex justify-between"><span>{t('pos_discount')}</span><span>{discountNum.toFixed(2)} EGP</span></div>
-                      <div className="flex justify-between"><span>{t('pos_tax')}</span><span>{taxTotal.toFixed(2)} EGP</span></div>
+                      <div className="flex justify-between"><span>{t('pos_tax')} ({taxRate}%)</span><span>{taxTotal.toFixed(2)} EGP</span></div>
                       <div className="flex justify-between font-bold text-lg pt-1 border-t border-border"><span>{t('pos_total')}</span><span>{total.toFixed(2)} EGP</span></div>
                     </div>
                     <div className="flex gap-3">
@@ -471,7 +563,9 @@ export default function AdminPOS() {
             <AnimatePresence>
               {showCustomerModal && (
                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-40 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-                  <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} exit={{ scale: 0.95 }} onClick={(e) => e.stopPropagation()} className="glass rounded-2xl p-6 w-full max-w-sm">
+                  <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} exit={{ scale: 0.95 }} onClick={(e) => e.stopPropagation()}
+              role="dialog"
+              aria-modal="true" className="glass rounded-2xl p-6 w-full max-w-sm">
                     <div className="flex items-center justify-between mb-4">
                       <h3 className="font-bold">{t('pos_select_customer')}</h3>
                       <button onClick={() => setShowCustomerModal(false)} className="text-muted-foreground hover:text-foreground"><X className="w-5 h-5" /></button>
@@ -547,6 +641,8 @@ export default function AdminPOS() {
             initial={{ scale: 0.95 }}
             animate={{ scale: 1 }}
             onClick={(e) => e.stopPropagation()}
+              role="dialog"
+              aria-modal="true"
             className="glass rounded-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-auto"
           >
             <div className="text-center mb-4">
@@ -580,10 +676,10 @@ export default function AdminPOS() {
               <table className="w-full text-xs mb-3">
                 <thead>
                   <tr className="border-b border-white/10">
-                    <th className="text-left py-1 font-medium text-muted-foreground">{t('admin_market_name')}</th>
-                    <th className="text-center py-1 font-medium text-muted-foreground">{t('pos_quantity')}</th>
-                    <th className="text-right py-1 font-medium text-muted-foreground">{t('admin_market_price')}</th>
-                    <th className="text-right py-1 font-medium text-muted-foreground">{t('pos_total')}</th>
+                    <th scope="col" className="text-left py-1 font-medium text-muted-foreground">{t('admin_market_name')}</th>
+                    <th scope="col" className="text-center py-1 font-medium text-muted-foreground">{t('pos_quantity')}</th>
+                    <th scope="col" className="text-right py-1 font-medium text-muted-foreground">{t('admin_market_price')}</th>
+                    <th scope="col" className="text-right py-1 font-medium text-muted-foreground">{t('pos_total')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -600,7 +696,7 @@ export default function AdminPOS() {
               <div className="space-y-0.5 text-xs border-t border-dashed border-white/10 pt-2">
                 <div className="flex justify-between"><span className="text-muted-foreground">{t('pos_subtotal')}</span><span>{Number(completedInvoiceData.subtotal).toFixed(2)} EGP</span></div>
                 {Number(completedInvoiceData.discount) > 0 && <div className="flex justify-between"><span className="text-muted-foreground">{t('pos_discount')}</span><span>-{Number(completedInvoiceData.discount).toFixed(2)} EGP</span></div>}
-                <div className="flex justify-between"><span className="text-muted-foreground">{t('pos_tax')} (14%)</span><span>{Number(completedInvoiceData.taxTotal).toFixed(2)} EGP</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">{t('pos_tax')} ({taxRate}%)</span><span>{Number(completedInvoiceData.taxTotal).toFixed(2)} EGP</span></div>
                 <div className="flex justify-between font-bold text-sm pt-1"><span>{t('pos_total')}</span><span>{Number(completedInvoiceData.total).toFixed(2)} EGP</span></div>
                 <div className="flex justify-between"><span className="text-muted-foreground">{t('pos_paid')}</span><span>{Number(completedInvoiceData.paid).toFixed(2)} EGP</span></div>
                 {Number(completedInvoiceData.change) > 0 && <div className="flex justify-between text-green-400"><span>{t('pos_change')}</span><span>{Number(completedInvoiceData.change).toFixed(2)} EGP</span></div>}
@@ -608,7 +704,7 @@ export default function AdminPOS() {
             </div>
 
             <div className="flex gap-3">
-              <button onClick={() => printReceipt(completedInvoiceData, setReceiptHTML, t, language)} className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-bold hover:opacity-90 transition-opacity">
+              <button onClick={() => printReceipt(completedInvoiceData, setReceiptHTML, t, language, taxRate)} className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-bold hover:opacity-90 transition-opacity">
                 <Printer className="w-4 h-4" />
                 {t('pos_print')}
               </button>
@@ -623,7 +719,9 @@ export default function AdminPOS() {
       <AnimatePresence>
         {detailInvoice && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-40 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setDetailInvoice(null)}>
-            <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} exit={{ scale: 0.95 }} onClick={(e) => e.stopPropagation()} className="glass rounded-2xl p-6 w-full max-w-lg max-h-[80vh] overflow-auto">
+            <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} exit={{ scale: 0.95 }} onClick={(e) => e.stopPropagation()}
+              role="dialog"
+              aria-modal="true" className="glass rounded-2xl p-6 w-full max-w-lg max-h-[80vh] overflow-auto">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="font-bold">{detailInvoice.number}</h3>
                 <button onClick={() => setDetailInvoice(null)} className="text-muted-foreground hover:text-foreground"><X className="w-5 h-5" /></button>
@@ -640,10 +738,10 @@ export default function AdminPOS() {
               <table className="w-full text-sm mb-4">
                 <thead>
                   <tr className="border-b border-border">
-                    <th className="text-left pb-2 font-medium">{t('admin_market_name')}</th>
-                    <th className="text-center pb-2 font-medium">{t('pos_quantity')}</th>
-                    <th className="text-right pb-2 font-medium">{t('admin_market_price')}</th>
-                    <th className="text-right pb-2 font-medium">{t('pos_total')}</th>
+                    <th scope="col" className="text-left pb-2 font-medium">{t('admin_market_name')}</th>
+                    <th scope="col" className="text-center pb-2 font-medium">{t('pos_quantity')}</th>
+                    <th scope="col" className="text-right pb-2 font-medium">{t('admin_market_price')}</th>
+                    <th scope="col" className="text-right pb-2 font-medium">{t('pos_total')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -659,7 +757,7 @@ export default function AdminPOS() {
               </table>
               <div className="space-y-1 text-sm border-t border-border pt-3">
                 <div className="flex justify-between"><span>{t('pos_subtotal')}</span><span>{Number(detailInvoice.subtotal).toFixed(2)} EGP</span></div>
-                <div className="flex justify-between"><span>{t('pos_tax')}</span><span>{Number(detailInvoice.taxTotal).toFixed(2)} EGP</span></div>
+                <div className="flex justify-between"><span>{t('pos_tax')} ({taxRate}%)</span><span>{Number(detailInvoice.taxTotal).toFixed(2)} EGP</span></div>
                 <div className="flex justify-between"><span>{t('pos_discount')}</span><span>{Number(detailInvoice.discount).toFixed(2)} EGP</span></div>
                 <div className="flex justify-between font-bold text-lg"><span>{t('pos_total')}</span><span>{Number(detailInvoice.total).toFixed(2)} EGP</span></div>
                 <div className="flex justify-between"><span>{t('pos_paid')}</span><span>{Number(detailInvoice.paid).toFixed(2)} EGP</span></div>
@@ -673,7 +771,9 @@ export default function AdminPOS() {
       <AnimatePresence>
         {quickCreateBarcode && (
           <motion.div key="quick-create" initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { duration: 0.15 } }} exit={{ opacity: 0, transition: { duration: 0.15 } }} className="fixed inset-0 z-40 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setQuickCreateBarcode(null)}>
-            <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} exit={{ scale: 0.95 }} onClick={(e) => e.stopPropagation()} className="glass rounded-2xl p-6 w-full max-w-md">
+            <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} exit={{ scale: 0.95 }} onClick={(e) => e.stopPropagation()}
+              role="dialog"
+              aria-modal="true" className="glass rounded-2xl p-6 w-full max-w-md">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="font-bold">{t('pos_quick_create_title')}</h3>
                 <button onClick={() => setQuickCreateBarcode(null)} className="text-muted-foreground hover:text-foreground"><X className="w-5 h-5" /></button>

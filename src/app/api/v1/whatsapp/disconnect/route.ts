@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireRole } from '@/lib/auth';
+import { withRole } from '@/lib/auth';
 import { checkRateLimit } from '@/lib/rate-limit';
 import { withSecurityHeaders } from '@/lib/security';
 import { disconnectWhatsAppViaService } from '@/lib/whatsapp-client';
@@ -9,9 +9,10 @@ export async function POST(req: NextRequest) {
   if (!limit.allowed) return withSecurityHeaders(limit.response!);
 
   try {
-    await requireRole(req, ['admin']);
-    await disconnectWhatsAppViaService();
-    return withSecurityHeaders(NextResponse.json({ success: true }));
+    return await withRole(req, ['admin'], async () => {
+      await disconnectWhatsAppViaService();
+      return withSecurityHeaders(NextResponse.json({ success: true }));
+    });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unauthorized';
     const status = message === 'Forbidden' ? 403 : 401;

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { requireRole } from '@/lib/auth';
+import { withRole } from '@/lib/auth';
 import { checkRateLimit } from '@/lib/rate-limit';
 import { withSecurityHeaders } from '@/lib/security';
 import { z } from 'zod';
@@ -27,9 +27,10 @@ export async function GET(req: NextRequest) {
   if (!limit.allowed) return withSecurityHeaders(limit.response!);
 
   try {
-    await requireRole(req, ['admin', 'staff']);
-    const settings = await ensureDefaultSettings();
-    return withSecurityHeaders(NextResponse.json({ success: true, data: settings }));
+    return await withRole(req, ['admin', 'staff'], async () => {
+      const settings = await ensureDefaultSettings();
+      return withSecurityHeaders(NextResponse.json({ success: true, data: settings }));
+    });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unauthorized';
     const status = message === 'Forbidden' ? 403 : 401;
@@ -42,18 +43,19 @@ export async function PATCH(req: NextRequest) {
   if (!limit.allowed) return withSecurityHeaders(limit.response!);
 
   try {
-    await requireRole(req, ['admin']);
-    const body = await req.json();
-    const data = settingsUpdateSchema.parse(body);
+    return await withRole(req, ['admin'], async () => {
+      const body = await req.json();
+      const data = settingsUpdateSchema.parse(body);
 
-    await ensureDefaultSettings();
+      await ensureDefaultSettings();
 
-    const updated = await prisma.whatsAppSettings.update({
-      where: { id: 'default' },
-      data,
+      const updated = await prisma.whatsAppSettings.update({
+        where: { id: 'default' },
+        data,
+      });
+
+      return withSecurityHeaders(NextResponse.json({ success: true, data: updated }));
     });
-
-    return withSecurityHeaders(NextResponse.json({ success: true, data: updated }));
   } catch (error) {
     if (error instanceof z.ZodError) {
       return withSecurityHeaders(NextResponse.json({ success: false, errors: error.issues }, { status: 400 }));

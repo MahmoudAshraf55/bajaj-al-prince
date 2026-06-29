@@ -1,11 +1,11 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('API Health', () => {
-  test('GET /api/health returns ok', async ({ request }) => {
+  test('GET /api/health returns UP', async ({ request }) => {
     const res = await request.get('/api/health/');
     expect(res.ok()).toBeTruthy();
     const body = await res.json();
-    expect(body.status).toBe('ok');
+    expect(body.status).toBe('UP');
   });
 });
 
@@ -64,9 +64,12 @@ test.describe('Booking API (public)', () => {
 });
 
 test.describe('Protected API routes', () => {
-  test('GET /api/products/ returns list', async ({ request }) => {
+  test('GET /api/products/ returns public list', async ({ request }) => {
     const res = await request.get('/api/products/');
     expect(res.ok()).toBeTruthy();
+    const body = await res.json();
+    expect(body.success).toBe(true);
+    expect(Array.isArray(body.data?.products)).toBe(true);
   });
 
   test('GET /api/bookings without auth returns 401', async ({ request }) => {

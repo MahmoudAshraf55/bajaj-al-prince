@@ -2,15 +2,10 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import Image from 'next/image';
-import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import Logo from '@/components/ui/Logo';
 import { useTranslation } from '@/components/useTranslation';
 import {
-  Package, Plus, Pencil, Trash2, X, Search, Upload, Sparkles,
-  LogOut, LayoutDashboard, Mail, Calendar, Loader2, DollarSign,
-  MessageCircle, Wrench, Users, Car, List,
-  ShoppingCart, TrendingUp, Camera,
+  Package, Plus, Pencil, Trash2, X, Search, Upload, Sparkles, Loader2,
 } from 'lucide-react';
 
 interface Product {
@@ -29,7 +24,6 @@ const CATEGORIES = ['Motorcycles', 'Spare Parts', 'Accessories'];
 
 export default function AdminMarket() {
   const { t, language } = useTranslation();
-  const router = useRouter();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -52,15 +46,15 @@ export default function AdminMarket() {
     fetch('/api/auth/me/', { credentials: 'include' })
       .then((r) => r.json())
       .then((d) => {
-        if (!d.success) router.push('/admin/');
+        if (!d.success) window.location.href = '/admin/';
         else setLoading(false);
       })
-      .catch(() => router.push('/admin/'));
-  }, [router]);
+      .catch(() => { window.location.href = '/admin/'; });
+  }, []);
 
   const load = useCallback(async () => {
     try {
-      const res = await fetch('/api/v1/products/?limit=1000', { credentials: 'include' });
+      const res = await fetch('/api/v1/products/?limit=1000&admin=true', { credentials: 'include' });
       const d = await res.json();
       if (d.success) setProducts(d.data.products);
     } catch {} finally { setLoading(false); }
@@ -216,11 +210,6 @@ export default function AdminMarket() {
     p.name.toLowerCase().includes(search.toLowerCase())
   );
 
-  const logout = async () => {
-    await fetch('/api/auth/logout/', { method: 'POST', credentials: 'include' });
-    router.push('/admin/');
-  };
-
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -231,147 +220,68 @@ export default function AdminMarket() {
 
   return (
     <div className="min-h-screen bg-background" dir={language === 'ar' ? 'rtl' : 'ltr'}>
-      <aside className="fixed top-0 ltr:left-0 rtl:right-0 h-full w-64 glass ltr:border-r rtl:border-l border-border hidden md:flex flex-col z-30">
-        <div className="p-6 border-b border-border">
-          <Logo size="sm" />
-        </div>
-        <nav className="flex-1 p-4 flex flex-col gap-1">
-          <button onClick={() => router.push('/admin/dashboard/')} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-white/5 transition-all">
-            <LayoutDashboard className="w-4 h-4" />
-            {t('admin_overview')}
-          </button>
-          <button onClick={() => router.push('/admin/dashboard/?tab=messages')} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-white/5 transition-all">
-            <Mail className="w-4 h-4" />
-            {t('admin_messages')}
-          </button>
-          <button onClick={() => router.push('/admin/dashboard/?tab=bookings')} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-white/5 transition-all">
-            <Calendar className="w-4 h-4" />
-            {t('admin_bookings')}
-          </button>
-          <div className="mt-4 mb-1 px-4 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60">
-            POS & Warehouse
+      <div className="p-6 sm:p-8">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+          <div>
+            <h1 className="text-2xl font-bold">{t('admin_market_title')}</h1>
+            <p className="text-muted-foreground text-sm">{products.length} {t('admin_products')}</p>
           </div>
-          <button onClick={() => router.push('/admin/pos/')} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-white/5 transition-all">
-            <ShoppingCart className="w-4 h-4" />
-            {t('pos_title')}
+          <button onClick={openAdd} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity">
+            <Plus className="w-4 h-4" />
+            {t('admin_market_add')}
           </button>
-          <button onClick={() => router.push('/admin/warehouse/')} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-white/5 transition-all">
-            <TrendingUp className="w-4 h-4" />
-            {t('wh_title')}
-          </button>
-          <button onClick={() => router.push('/admin/accounting/')} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-white/5 transition-all">
-            <DollarSign className="w-4 h-4" />
-            {t('admin_accounting')}
-          </button>
-          <div className="mt-4 mb-1 px-4 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60">
-            CRM
-          </div>
-          <button onClick={() => router.push('/admin/market/')} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium bg-primary text-primary-foreground transition-all">
-            <Package className="w-4 h-4" />
-            {t('admin_market')}
-          </button>
-          <button onClick={() => router.push('/admin/customers/')} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-white/5 transition-all">
-            <Users className="w-4 h-4" />
-            {t('admin_customers')}
-          </button>
-          <button onClick={() => router.push('/admin/vehicles/')} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-white/5 transition-all">
-            <Car className="w-4 h-4" />
-            {t('admin_vehicles')}
-          </button>
-          <button onClick={() => router.push('/admin/vehicle-models/')} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-white/5 transition-all">
-            <List className="w-4 h-4" />
-            {t('admin_vehicle_models')}
-          </button>
-          <button onClick={() => router.push('/admin/work-orders/')} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-white/5 transition-all">
-            <Wrench className="w-4 h-4" />
-            {t('wo_title')}
-          </button>
-          <button onClick={() => router.push('/admin/whatsapp/')} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-white/5 transition-all">
-            <MessageCircle className="w-4 h-4" />
-            {t('admin_whatsapp')}
-          </button>
-          <button onClick={() => router.push('/admin/devices/')} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-white/5 transition-all">
-            <Camera className="w-4 h-4" />
-            {t('admin_devices')}
-          </button>
-        </nav>
-        <div className="p-4 border-t border-border">
-          <button onClick={logout} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-white/5 transition-all w-full">
-            <LogOut className="w-4 h-4" />
-            {t('admin_sign_out')}
-          </button>
-        </div>
-      </aside>
-
-      <main className="ltr:md:ml-64 rtl:md:mr-64 min-h-screen">
-        <div className="md:hidden glass border-b border-border p-4 flex items-center justify-between">
-          <span className="font-bold">{t('admin_market_title')}</span>
-          <button onClick={logout} className="text-muted-foreground"><LogOut className="w-5 h-5" /></button>
         </div>
 
-        <div className="p-6 sm:p-8">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
-            <div>
-              <h1 className="text-2xl font-bold">{t('admin_market_title')}</h1>
-              <p className="text-muted-foreground text-sm">{products.length} {t('admin_products')}</p>
+        <div className="relative mb-6 max-w-sm">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <input
+            type="text"
+            placeholder={t('admin_search')}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-input border border-border text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+          />
+        </div>
+
+        <div className="space-y-3">
+          {filtered.map((p) => (
+            <div key={p.id} className="glass rounded-2xl p-4 flex items-center gap-4 group">
+              <div className="w-16 h-16 rounded-xl bg-secondary flex-shrink-0 overflow-hidden">
+                {p.image ? (
+                  <Image src={p.image} alt={p.name} fill className="object-cover" sizes="64px" unoptimized />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <Package className="w-6 h-6 text-muted-foreground/30" />
+                  </div>
+                )}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold truncate">{p.name}</p>
+                <p className="text-xs text-muted-foreground">
+                  {p.category} &bull; {p.price.toLocaleString()} EGP &bull; {p.stock} {t('market_in_stock')}
+                </p>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <span className={`text-xs px-2 py-1 rounded-full ${p.available ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}`}>
+                  {p.available ? t('admin_available') : t('admin_out_of_stock')}
+                </span>
+                <button onClick={() => openEdit(p)} className="p-2 rounded-lg hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors">
+                  <Pencil className="w-4 h-4" />
+                </button>
+                <button onClick={() => handleDelete(p.id)} className="p-2 rounded-lg hover:bg-red-500/10 text-muted-foreground hover:text-red-400 transition-colors">
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
             </div>
-            <button onClick={openAdd} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity">
-              <Plus className="w-4 h-4" />
-              {t('admin_market_add')}
-            </button>
-          </div>
-
-          <div className="relative mb-6 max-w-sm">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <input
-              type="text"
-              placeholder={t('admin_search')}
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-input border border-border text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-            />
-          </div>
-
-          <div className="space-y-3">
-            {filtered.map((p) => (
-              <div key={p.id} className="glass rounded-2xl p-4 flex items-center gap-4 group">
-                <div className="w-16 h-16 rounded-xl bg-secondary flex-shrink-0 overflow-hidden">
-                  {p.image ? (
-                    <Image src={p.image} alt={p.name} fill className="object-cover" sizes="64px" unoptimized />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <Package className="w-6 h-6 text-muted-foreground/30" />
-                    </div>
-                  )}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold truncate">{p.name}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {p.category} &bull; {p.price.toLocaleString()} EGP &bull; {p.stock} {t('market_in_stock')}
-                  </p>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <span className={`text-xs px-2 py-1 rounded-full ${p.available ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}`}>
-                    {p.available ? t('admin_available') : t('admin_out_of_stock')}
-                  </span>
-                  <button onClick={() => openEdit(p)} className="p-2 rounded-lg hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors">
-                    <Pencil className="w-4 h-4" />
-                  </button>
-                  <button onClick={() => handleDelete(p.id)} className="p-2 rounded-lg hover:bg-red-500/10 text-muted-foreground hover:text-red-400 transition-colors">
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            ))}
-            {filtered.length === 0 && (
-              <div className="text-center py-16">
-                <Package className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
-                <p className="text-muted-foreground">{t('admin_market_no_products')}</p>
-              </div>
-            )}
-          </div>
+          ))}
+          {filtered.length === 0 && (
+            <div className="text-center py-16">
+              <Package className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
+              <p className="text-muted-foreground">{t('admin_market_no_products')}</p>
+            </div>
+          )}
         </div>
-      </main>
+      </div>
 
       <AnimatePresence>
         {showModal && (
@@ -387,6 +297,8 @@ export default function AdminMarket() {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 10 }}
               onClick={(e) => e.stopPropagation()}
+              role="dialog"
+              aria-modal="true"
               className="w-full max-w-xl glass rounded-2xl border border-white/10 shadow-2xl max-h-[90vh] overflow-y-auto"
             >
               <div className="flex items-center justify-between p-5 border-b border-white/10">

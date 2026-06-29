@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { requireRole } from '@/lib/auth';
+import { withRole } from '@/lib/auth';
 import { checkRateLimit } from '@/lib/rate-limit';
 import { sanitizedString } from '@/lib/sanitize';
 import { logAudit, getClientInfo } from '@/lib/audit';
@@ -16,29 +16,31 @@ const customerSchema = z.object({
 
 export async function GET(req: NextRequest) {
   try {
-    await requireRole(req, ['admin', 'staff']);
-    const { searchParams } = new URL(req.url);
-    const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10));
-    const limit = Math.max(1, Math.min(100, parseInt(searchParams.get('limit') || '10', 10)));
-    const skip = (page - 1) * limit;
+    return await withRole(req, ['admin', 'staff'], async () => {
 
-    const [customers, total] = await Promise.all([
-      prisma.customer.findMany({
-        skip,
-        take: limit,
-        orderBy: { createdAt: 'desc' },
-        include: { _count: { select: { vehicles: true } } },
-      }),
-      prisma.customer.count(),
-    ]);
+      const { searchParams } = new URL(req.url);
+      const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10));
+      const limit = Math.max(1, Math.min(100, parseInt(searchParams.get('limit') || '10', 10)));
+      const skip = (page - 1) * limit;
 
-    return withSecurityHeaders(NextResponse.json({
-      success: true,
-      data: {
-        customers,
-        meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
-      },
-    }));
+      const [customers, total] = await Promise.all([
+        prisma.customer.findMany({
+          skip,
+          take: limit,
+          orderBy: { createdAt: 'desc' },
+          include: { _count: { select: { vehicles: true } } },
+        }),
+        prisma.customer.count(),
+      ]);
+
+      return withSecurityHeaders(NextResponse.json({
+        success: true,
+        data: {
+          customers,
+          meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
+        },
+      }));
+    });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unauthorized';
     const status = message === 'Forbidden' ? 403 : 401;
@@ -51,28 +53,29 @@ export async function POST(req: NextRequest) {
   if (!limit.allowed) return withSecurityHeaders(limit.response!);
 
   try {
-    const payload = await requireRole(req, ['admin', 'staff']);
-    const body = await req.json();
-    const data = customerSchema.parse(body);
-    const customer = await prisma.customer.create({
-      data: {
-        name: data.name,
-        phone: data.phone,
-        email: data.email ?? '',
-        address: data.address ?? null,
-      },
+    return await withRole(req, ['admin', 'staff'], async (payload) => {
+      const body = await req.json();
+      const data = customerSchema.parse(body);
+      const customer = await prisma.customer.create({
+        data: {
+          name: data.name,
+          phone: data.phone,
+          email: data.email ?? '',
+          address: data.address ?? null,
+        },
+      });
+      const { ipAddress, userAgent } = getClientInfo(req);
+      await logAudit({
+        userId: payload.userId,
+        action: 'create',
+        entity: 'Customer',
+        entityId: customer.id,
+        newValue: data as Record<string, unknown>,
+        ipAddress,
+        userAgent,
+      });
+      return withSecurityHeaders(NextResponse.json({ success: true, data: { customer } }, { status: 201 }));
     });
-    const { ipAddress, userAgent } = getClientInfo(req);
-    await logAudit({
-      userId: payload.userId,
-      action: 'create',
-      entity: 'Customer',
-      entityId: customer.id,
-      newValue: data as Record<string, unknown>,
-      ipAddress,
-      userAgent,
-    });
-    return withSecurityHeaders(NextResponse.json({ success: true, data: { customer } }, { status: 201 }));
   } catch (error) {
     if (error instanceof z.ZodError) {
       return withSecurityHeaders(NextResponse.json({ success: false, errors: error.issues }, { status: 400 }));

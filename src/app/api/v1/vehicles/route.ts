@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { requireRole } from '@/lib/auth';
+import { withRole } from '@/lib/auth';
 import { checkRateLimit } from '@/lib/rate-limit';
 import { sanitizedString } from '@/lib/sanitize';
 import { logAudit, getClientInfo } from '@/lib/audit';
@@ -21,24 +21,25 @@ const vehicleSchema = z.object({
 
 export async function GET(req: NextRequest) {
   try {
-    await requireRole(req, ['admin', 'staff']);
-    const { searchParams } = new URL(req.url);
-    const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10));
-    const limit = Math.max(1, Math.min(100, parseInt(searchParams.get('limit') || '10', 10)));
-    const skip = (page - 1) * limit;
+    return await withRole(req, ['admin', 'staff'], async () => {
+      const { searchParams } = new URL(req.url);
+      const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10));
+      const limit = Math.max(1, Math.min(100, parseInt(searchParams.get('limit') || '10', 10)));
+      const skip = (page - 1) * limit;
 
-    const [vehicles, total] = await Promise.all([
-      prisma.vehicle.findMany({ skip, take: limit, orderBy: { createdAt: 'desc' }, include: { customer: true } }),
-      prisma.vehicle.count(),
-    ]);
+      const [vehicles, total] = await Promise.all([
+        prisma.vehicle.findMany({ skip, take: limit, orderBy: { createdAt: 'desc' }, include: { customer: true } }),
+        prisma.vehicle.count(),
+      ]);
 
-    return withSecurityHeaders(NextResponse.json({
-      success: true,
-      data: {
-        vehicles,
-        meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
-      },
-    }));
+      return withSecurityHeaders(NextResponse.json({
+        success: true,
+        data: {
+          vehicles,
+          meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
+        },
+      }));
+    });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unauthorized';
     const status = message === 'Forbidden' ? 403 : 401;
@@ -51,35 +52,36 @@ export async function POST(req: NextRequest) {
   if (!limit.allowed) return withSecurityHeaders(limit.response!);
 
   try {
-    const payload = await requireRole(req, ['admin', 'staff']);
-    const body = await req.json();
-    const data = vehicleSchema.parse(body);
-    const vehicle = await prisma.vehicle.create({ data, include: { customer: true } });
-    const { ipAddress, userAgent } = getClientInfo(req);
-    await logAudit({
-      userId: payload.userId,
-      action: 'create',
-      entity: 'Vehicle',
-      entityId: vehicle.id,
-      newValue: data as Record<string, unknown>,
-      ipAddress,
-      userAgent,
-    });
-
-    // Fire-and-forget WhatsApp vehicle added notification
-    if (vehicle.customer?.phone) {
-      buildMessage('vehicle_added', {
-        name: vehicle.customer.name,
-        make: vehicle.make,
-        model: vehicle.model,
-      }).then((message) => {
-        if (message) {
-          sendWhatsAppMessageViaService(vehicle.customer!.phone!, message).catch(() => {});
-        }
+    return await withRole(req, ['admin', 'staff'], async (payload) => {
+      const body = await req.json();
+      const data = vehicleSchema.parse(body);
+      const vehicle = await prisma.vehicle.create({ data, include: { customer: true } });
+      const { ipAddress, userAgent } = getClientInfo(req);
+      await logAudit({
+        userId: payload.userId,
+        action: 'create',
+        entity: 'Vehicle',
+        entityId: vehicle.id,
+        newValue: data as Record<string, unknown>,
+        ipAddress,
+        userAgent,
       });
-    }
 
-    return withSecurityHeaders(NextResponse.json({ success: true, data: { vehicle } }, { status: 201 }));
+      // Fire-and-forget WhatsApp vehicle added notification
+      if (vehicle.customer?.phone) {
+        buildMessage('vehicle_added', {
+          name: vehicle.customer.name,
+          make: vehicle.make,
+          model: vehicle.model,
+        }).then((message) => {
+          if (message) {
+            sendWhatsAppMessageViaService(vehicle.customer!.phone!, message).catch(() => {});
+          }
+        });
+      }
+
+      return withSecurityHeaders(NextResponse.json({ success: true, data: { vehicle } }, { status: 201 }));
+    });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return withSecurityHeaders(NextResponse.json({ success: false, errors: error.issues }, { status: 400 }));

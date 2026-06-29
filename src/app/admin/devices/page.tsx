@@ -157,12 +157,12 @@ export default function AdminDevices() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="bg-white/5">
-                      <th className="text-left p-3 font-medium">{t('dev_barcode')}</th>
-                      <th className="text-left p-3 font-medium">{t('dev_product')}</th>
-                      <th className="text-left p-3 font-medium">{t('dev_source')}</th>
-                      <th className="text-left p-3 font-medium">{t('dev_status')}</th>
-                      <th className="text-left p-3 font-medium">{t('dev_user')}</th>
-                      <th className="text-left p-3 font-medium">{t('dev_date')}</th>
+                      <th scope="col" className="text-left p-3 font-medium">{t('dev_barcode')}</th>
+                      <th scope="col" className="text-left p-3 font-medium">{t('dev_product')}</th>
+                      <th scope="col" className="text-left p-3 font-medium">{t('dev_source')}</th>
+                      <th scope="col" className="text-left p-3 font-medium">{t('dev_status')}</th>
+                      <th scope="col" className="text-left p-3 font-medium">{t('dev_user')}</th>
+                      <th scope="col" className="text-left p-3 font-medium">{t('dev_date')}</th>
                     </tr>
                   </thead>
                   <tbody>

@@ -5,6 +5,7 @@ import { checkRateLimit } from '@/lib/rate-limit';
 import { logAudit, getClientInfo } from '@/lib/audit';
 import { z } from 'zod';
 import { withSecurityHeaders } from '@/lib/security';
+import { DEFAULT_TENANT_ID } from '@/lib/tenant-context';
 
 const loginSchema = z.object({
   username: z.string().min(1).max(100),
@@ -77,6 +78,7 @@ export async function POST(req: NextRequest) {
       userId: user.id,
       username: user.username,
       role: user.role,
+      tenantId: user.tenantId ?? DEFAULT_TENANT_ID,
     });
     const refreshToken = await createRefreshToken(user.id, user.tokenVersion);
 

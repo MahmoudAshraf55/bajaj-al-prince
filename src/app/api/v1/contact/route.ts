@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { requireAuth } from '@/lib/auth';
+import { withAuth } from '@/lib/auth';
 import { checkRateLimit } from '@/lib/rate-limit';
 import { validateOrigin, withSecurityHeaders } from '@/lib/security';
 import { sanitizedString } from '@/lib/sanitize';
@@ -35,24 +35,25 @@ export async function POST(req: NextRequest) {
 
 export async function GET(req: NextRequest) {
   try {
-    await requireAuth(req);
-    const { searchParams } = new URL(req.url);
-    const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10));
-    const limit = Math.max(1, Math.min(100, parseInt(searchParams.get('limit') || '10', 10)));
-    const skip = (page - 1) * limit;
+    return await withAuth(req, async () => {
+      const { searchParams } = new URL(req.url);
+      const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10));
+      const limit = Math.max(1, Math.min(100, parseInt(searchParams.get('limit') || '10', 10)));
+      const skip = (page - 1) * limit;
 
-    const [messages, total] = await Promise.all([
-      prisma.contactMessage.findMany({ skip, take: limit, orderBy: { createdAt: 'desc' } }),
-      prisma.contactMessage.count(),
-    ]);
+      const [messages, total] = await Promise.all([
+        prisma.contactMessage.findMany({ skip, take: limit, orderBy: { createdAt: 'desc' } }),
+        prisma.contactMessage.count(),
+      ]);
 
-    return withSecurityHeaders(NextResponse.json({
-      success: true,
-      data: {
-        messages,
-        meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
-      },
-    }));
+      return withSecurityHeaders(NextResponse.json({
+        success: true,
+        data: {
+          messages,
+          meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
+        },
+      }));
+    });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unauthorized';
     const status = message === 'Forbidden' ? 403 : 401;

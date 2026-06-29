@@ -1,4 +1,5 @@
 import { prisma } from './prisma';
+import { getTenantId, DEFAULT_TENANT_ID } from './tenant-context';
 
 export type EventKey =
   | 'booking_created'
@@ -24,9 +25,10 @@ interface Variables {
   work?: string;
 }
 
-export async function getTemplate(event: EventKey): Promise<string | null> {
+export async function getTemplate(event: EventKey, tenantId?: string): Promise<string | null> {
+  const resolvedTenantId = tenantId ?? getTenantId() ?? DEFAULT_TENANT_ID;
   const template = await prisma.whatsAppMessageTemplate.findUnique({
-    where: { event },
+    where: { tenantId_event: { tenantId: resolvedTenantId, event } },
   });
   if (!template || !template.isActive) return null;
   return template.message;

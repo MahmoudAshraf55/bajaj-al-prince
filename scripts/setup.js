@@ -36,10 +36,16 @@ if (existsSync(ENV_FILE)) {
   // Generate secure JWT_SECRET
   const jwtSecret = crypto.randomBytes(64).toString('hex');
   env = env.replace(/JWT_SECRET=".*?"/, `JWT_SECRET="${jwtSecret}"`);
-  env = env.replace(/ADMIN_INITIAL_PASSWORD=".*?"/, `ADMIN_INITIAL_PASSWORD="admin"`);
+
+  // Generate a strong initial admin password (16 chars, mixed case + digits + symbols)
+  const adminPassword = crypto.randomBytes(12).toString('base64url').slice(0, 16) + 'A1!';
+  env = env.replace(/ADMIN_INITIAL_PASSWORD=".*?"/, `ADMIN_INITIAL_PASSWORD="${adminPassword}"`);
 
   writeFileSync(ENV_FILE, env);
   console.log('.env created from .env.example with generated secrets.');
+  console.log('\n⚠️  IMPORTANT: The initial admin password has been generated randomly.');
+  console.log(`   ADMIN_INITIAL_PASSWORD="${adminPassword}"`);
+  console.log('   Save this password in a password manager. It will not be shown again.\n');
 }
 
 // 3. Push database schema

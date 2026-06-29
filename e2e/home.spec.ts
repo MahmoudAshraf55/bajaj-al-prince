@@ -10,11 +10,11 @@ test.describe('Home Page', () => {
     await page.screenshot({ path: 'e2e/screenshots/home-hero.png', fullPage: false });
   });
 
-  test('displays About section', async ({ page }) => {
-    const about = page.locator('#about, section').filter({ hasText: /About/i });
-    await about.scrollIntoViewIfNeeded();
-    await expect(about).toBeVisible();
-    await page.screenshot({ path: 'e2e/screenshots/home-about.png', fullPage: false });
+  test('displays Story section', async ({ page }) => {
+    const story = page.locator('#story');
+    await story.scrollIntoViewIfNeeded();
+    await expect(story).toBeVisible();
+    await page.screenshot({ path: 'e2e/screenshots/home-story.png', fullPage: false });
   });
 
   test('displays Services section', async ({ page }) => {
@@ -24,18 +24,18 @@ test.describe('Home Page', () => {
     await page.screenshot({ path: 'e2e/screenshots/home-services.png', fullPage: false });
   });
 
-  test('displays Contact section with form', async ({ page }) => {
+  test('displays Contact section', async ({ page }) => {
     const contact = page.locator('#contact');
     await contact.scrollIntoViewIfNeeded();
     await expect(contact.getByRole('heading', { name: /Contact/i })).toBeVisible();
-    await expect(contact.getByPlaceholder(/John Doe/i)).toBeVisible();
     await page.screenshot({ path: 'e2e/screenshots/home-contact.png', fullPage: false });
   });
 
   test('navigation links work', async ({ page }) => {
-    await expect(page.getByRole('link', { name: /Market/i })).toBeVisible();
-    await expect(page.getByRole('link', { name: /Book Maintenance/i })).toBeVisible();
-    await expect(page.getByRole('link', { name: /Admin Portal/i })).toBeVisible();
+    const header = page.locator('header');
+    await expect(header.getByRole('link', { name: /Market/i })).toBeVisible();
+    await expect(header.getByRole('link', { name: /Book Now/i })).toBeVisible();
+    await expect(header.getByRole('link', { name: /Our Story/i })).toBeVisible();
   });
 
   test('page is responsive at mobile viewport', async ({ page }) => {

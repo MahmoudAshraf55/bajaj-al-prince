@@ -82,7 +82,7 @@ export default function TikTokPlayer() {
                 allow="autoplay; encrypted-media; picture-in-picture"
                 allowFullScreen
                 title="TikTok Video"
-                loading="eager"
+                loading="lazy"
               />
             </div>
           </div>

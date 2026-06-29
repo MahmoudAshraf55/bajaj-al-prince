@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from '@/components/useTranslation';
 import { useToast } from '@/components/ToastContext';
 import BackButton from '@/components/BackButton';
+import { fetchWithRetry } from '@/lib/fetchWithRetry';
 import type { VehicleModel } from '@/types';
 import {
   Plus, X, AlertCircle, List, Trash2, Pencil,
@@ -24,10 +25,10 @@ export default function VehicleModelsPage() {
   const [form, setForm] = useState({ name: '', make: 'Bajaj' });
   const [formError, setFormError] = useState('');
 
-  const fetchModels = useCallback(async () => {
+  const fetchModels = useCallback(async (signal?: AbortSignal) => {
     setError('');
     try {
-      const res = await fetch('/api/vehicle-models/?all=true', { credentials: 'include' });
+      const res = await fetchWithRetry('/api/vehicle-models/?all=true', { credentials: 'include', signal });
       const data = await res.json();
       if (data?.success && Array.isArray(data?.data?.models)) {
         setModels(data.data.models);
@@ -35,6 +36,7 @@ export default function VehicleModelsPage() {
         setError(data?.error || t('vmodels_failed_load'));
       }
     } catch (err) {
+      if (err instanceof Error && err.name === 'AbortError') return;
       const msg = err instanceof Error ? err.message : t('vmodels_failed_load');
       setError(msg);
     }
@@ -45,7 +47,12 @@ export default function VehicleModelsPage() {
       .then((r) => r.json().catch(() => ({ success: false, error: 'Invalid auth response' })))
       .then((d) => {
         if (!d?.success) router.push('/admin/');
-        else { setLoading(false); fetchModels(); }
+        else {
+          setLoading(false);
+          const controller = new AbortController();
+          fetchModels(controller.signal);
+          return () => controller.abort();
+        }
       })
       .catch(() => router.push('/admin/'));
   }, [router, fetchModels]);
@@ -169,10 +176,10 @@ export default function VehicleModelsPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border text-muted-foreground">
-                  <th className="text-left px-5 py-3 font-medium">{t('vmodels_name')}</th>
-                  <th className="text-left px-5 py-3 font-medium">{t('vmodels_make')}</th>
-                  <th className="text-left px-5 py-3 font-medium">{t('vmodels_active')}</th>
-                  <th className="text-right px-5 py-3 font-medium">{t('vmodels_actions')}</th>
+                  <th scope="col" className="text-left px-5 py-3 font-medium">{t('vmodels_name')}</th>
+                  <th scope="col" className="text-left px-5 py-3 font-medium">{t('vmodels_make')}</th>
+                  <th scope="col" className="text-left px-5 py-3 font-medium">{t('vmodels_active')}</th>
+                  <th scope="col" className="text-right px-5 py-3 font-medium">{t('vmodels_actions')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -233,6 +240,8 @@ export default function VehicleModelsPage() {
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
               onClick={(e) => e.stopPropagation()}
+              role="dialog"
+              aria-modal="true"
               className="glass rounded-2xl p-6 w-full max-w-md border border-border"
             >
               <div className="flex items-center justify-between mb-5">

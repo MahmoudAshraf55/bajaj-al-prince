@@ -51,6 +51,9 @@ async function translateText(text: string, targetLang: string): Promise<string> 
 }
 
 export async function GET(request: NextRequest) {
+  const limit = await checkRateLimit(request, 'public');
+  if (!limit.allowed) return withSecurityHeaders(limit.response!);
+
   const { searchParams } = new URL(request.url);
   const lang = searchParams.get('lang') === 'ar' ? 'ar' : 'en';
 

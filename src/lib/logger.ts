@@ -1,98 +1,92 @@
-import { captureException } from './sentry';
+type LogLevel = 'debug' | 'info' | 'warn' | 'error' | 'fatal';
 
-type LogLevel = 'info' | 'warn' | 'error' | 'debug';
-
-interface LogPayload {
-  message: string;
-  level: LogLevel;
+interface LogEntry {
   timestamp: string;
-  context?: string;
+  level: LogLevel;
+  message: string;
+  correlationId?: string;
   userId?: string;
   tenantId?: string;
-  error?: {
-    message: string;
-    stack?: string;
-    [key: string]: unknown;
-  };
+  method?: string;
+  path?: string;
+  statusCode?: number;
+  durationMs?: number;
+  error?: string;
+  stack?: string;
   [key: string]: unknown;
 }
 
-class StructuredLogger {
-  private formatLog(level: LogLevel, message: string, meta: Record<string, unknown> = {}, error?: Error | unknown): LogPayload {
-    const payload: LogPayload = {
-      message,
-      level,
-      timestamp: new Date().toISOString(),
-      ...meta,
-    };
+const LOG_LEVELS: Record<LogLevel, number> = {
+  debug: 10,
+  info: 20,
+  warn: 30,
+  error: 40,
+  fatal: 50,
+};
 
-    if (error) {
-      if (error instanceof Error) {
-        payload.error = {
-          message: error.message,
-          stack: process.env.NODE_ENV === 'production' ? undefined : error.stack,
-        };
-      } else {
-        payload.error = {
-          message: String(error),
-        };
-      }
-    }
+const minLevel: LogLevel = (process.env.LOG_LEVEL as LogLevel) || 'info';
 
-    return payload;
-  }
+let correlationId: string | undefined;
 
-  private writeLog(level: LogLevel, payload: LogPayload) {
-    if (process.env.NODE_ENV === 'production') {
-      // In production, log JSON for cloud parser agents (Datadog, GCP, Axiom, CloudWatch, etc.)
-      const logString = JSON.stringify(payload);
-      if (level === 'error') {
-        console.error(logString);
-      } else if (level === 'warn') {
-        console.warn(logString);
-      } else {
-        console.log(logString);
-      }
-    } else {
-      // In development, pretty-print for better DX
-      const color = {
-        info: '\x1b[32m',  // green
-        warn: '\x1b[33m',  // yellow
-        error: '\x1b[31m', // red
-        debug: '\x1b[34m', // blue
-      }[level];
-      const reset = '\x1b[0m';
-      console.log(
-        `[${payload.timestamp}] ${color}${level.toUpperCase()}${reset}: ${payload.message}`,
-        payload.error ? payload.error : '',
-        Object.keys(payload).length > 4 ? `\nMeta: ${JSON.stringify(payload, null, 2)}` : ''
-      );
-    }
-  }
+export function setCorrelationId(id: string): void {
+  correlationId = id;
+}
 
-  info(message: string, meta?: Record<string, unknown>) {
-    this.writeLog('info', this.formatLog('info', message, meta));
-  }
+export function getCorrelationId(): string | undefined {
+  return correlationId;
+}
 
-  warn(message: string, meta?: Record<string, unknown>, error?: Error | unknown) {
-    this.writeLog('warn', this.formatLog('warn', message, meta, error));
-  }
+export function generateCorrelationId(): string {
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+}
 
-  error(message: string, error?: Error | unknown, meta?: Record<string, unknown>) {
-    const payload = this.formatLog('error', message, meta, error);
-    this.writeLog('error', payload);
+function log(level: LogLevel, message: string, meta?: Record<string, unknown>): void {
+  if (LOG_LEVELS[level] < LOG_LEVELS[minLevel]) return;
 
-    // Automatically send to Sentry for cloud tracking
-    const sentryErr = error instanceof Error ? error : new Error(message);
-    captureException(sentryErr, { message, ...meta });
-  }
+  const entry: LogEntry = {
+    timestamp: new Date().toISOString(),
+    level,
+    message,
+    correlationId,
+    ...meta,
+  };
 
-  debug(message: string, meta?: Record<string, unknown>) {
-    if (process.env.NODE_ENV !== 'production') {
-      this.writeLog('debug', this.formatLog('debug', message, meta));
-    }
+  const output = JSON.stringify(entry);
+
+  if (level === 'error' || level === 'fatal') {
+    console.error(output);
+  } else if (level === 'warn') {
+    console.warn(output);
+  } else {
+    console.log(output);
   }
 }
 
-export const logger = new StructuredLogger();
-export default logger;
+export const logger = {
+  debug: (msg: string, meta?: unknown) => log('debug', msg, normalizeMeta(meta)),
+  info: (msg: string, meta?: unknown) => log('info', msg, normalizeMeta(meta)),
+  warn: (msg: string, meta?: unknown) => log('warn', msg, normalizeMeta(meta)),
+  error: (msg: string, meta?: unknown, extraMeta?: Record<string, unknown>) => log('error', msg, { ...normalizeMeta(meta), ...extraMeta }),
+  fatal: (msg: string, meta?: unknown) => log('fatal', msg, normalizeMeta(meta)),
+
+  request: (method: string, path: string, statusCode: number, durationMs: number, meta?: Record<string, unknown>) => {
+    log('info', `${method} ${path} ${statusCode}`, {
+      method,
+      path,
+      statusCode,
+      durationMs,
+      ...meta,
+    });
+  },
+};
+
+function normalizeMeta(meta?: unknown): Record<string, unknown> | undefined {
+  if (!meta) return undefined;
+  if (meta instanceof Error) {
+    return { error: meta.message, stack: meta.stack };
+  }
+  if (typeof meta === 'object' && meta !== null) {
+    return meta as Record<string, unknown>;
+  }
+  return { error: String(meta) };
+}

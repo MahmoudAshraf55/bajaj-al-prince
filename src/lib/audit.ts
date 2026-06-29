@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
+import { getTenantId, DEFAULT_TENANT_ID } from '@/lib/tenant-context';
 import type { NextRequest } from 'next/server';
 
 export type AuditAction =
@@ -11,6 +12,9 @@ export type AuditAction =
   | 'logout'
   | 'approve'
   | 'reject'
+  | 'close'
+  | 'reopen'
+  | 'lock'
   | 'complete'
   | 'payment'
   | 'import'
@@ -29,34 +33,34 @@ export interface AuditLogInput {
   tenantId?: string;
 }
 
-const SENSITIVE_KEYS = new Set([
+const SENSITIVE_WORDS = [
   'password',
   'token',
-  'refreshToken',
   'secret',
   'hash',
   'salt',
-  'apiKey',
+  'apikey',
   'api_key',
-  'privateKey',
+  'privatekey',
   'private_key',
-  'creditCard',
+  'creditcard',
   'credit_card',
   'cvv',
   'pin',
-]);
+];
 
-/**
- * Strips sensitive fields from an object before audit logging.
- * Prevents accidental leakage of passwords, tokens, secrets, etc.
- */
+function isSensitiveKey(key: string): boolean {
+  const lower = key.toLowerCase().replace(/[^a-z0-9]/g, '');
+  return SENSITIVE_WORDS.some((word) => lower.includes(word));
+}
+
 function sanitizeValue(value: unknown): unknown {
   if (typeof value !== 'object' || value === null) {
     return value;
   }
   const sanitized: Record<string, unknown> = {};
   for (const [key, val] of Object.entries(value)) {
-    if (SENSITIVE_KEYS.has(key.toLowerCase())) {
+    if (isSensitiveKey(key)) {
       sanitized[key] = '[REDACTED]';
     } else if (typeof val === 'object' && val !== null) {
       sanitized[key] = sanitizeValue(val);
@@ -69,6 +73,7 @@ function sanitizeValue(value: unknown): unknown {
 
 export async function logAudit(input: AuditLogInput): Promise<void> {
   try {
+    const tenantId = input.tenantId ?? getTenantId() ?? DEFAULT_TENANT_ID;
     await prisma.auditLog.create({
       data: {
         userId: input.userId ?? null,
@@ -79,7 +84,7 @@ export async function logAudit(input: AuditLogInput): Promise<void> {
         newValue: input.newValue ? JSON.stringify(sanitizeValue(input.newValue)) : null,
         ipAddress: input.ipAddress ?? null,
         userAgent: input.userAgent ?? null,
-        tenantId: input.tenantId ?? null,
+        tenantId,
       },
     });
   } catch (error) {

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { verifyToken } from '@/lib/auth';
+import { DEFAULT_TENANT_ID } from '@/lib/tenant-context';
 
 /**
  * Attempts to silently refresh the access token using the refresh token.
@@ -72,6 +73,7 @@ export async function middleware(request: NextRequest) {
     requestHeaders.set('x-user-id', payload.userId);
     requestHeaders.set('x-user-role', payload.role);
     requestHeaders.set('x-user-name', payload.username);
+    requestHeaders.set('x-tenant-id', payload.tenantId || DEFAULT_TENANT_ID);
 
     return NextResponse.next({
       request: { headers: requestHeaders },

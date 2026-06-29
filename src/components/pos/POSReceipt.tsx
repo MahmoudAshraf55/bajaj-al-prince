@@ -5,7 +5,7 @@ import { Invoice } from '@/types/pos';
 export const escapeHtml = (s: string) =>
   s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 
-export const generateReceiptHtml = (inv: Invoice, language: string, t: (key: string) => string) => {
+export const generateReceiptHtml = (inv: Invoice, language: string, t: (key: string) => string, taxRate = 14) => {
   const customerInfo = inv.customerName
     ? `<p style="margin:0;font-size:12px"><strong>${language === 'ar' ? 'العميل' : 'Customer'}:</strong> ${escapeHtml(inv.customerName)}${inv.customerPhone ? ` | ${escapeHtml(inv.customerPhone)}` : ''}</p>`
     : '';
@@ -53,7 +53,7 @@ export const generateReceiptHtml = (inv: Invoice, language: string, t: (key: str
         <div class="totals">
           <div class="row"><span>${t('pos_subtotal')}</span><span>${Number(inv.subtotal).toFixed(2)} EGP</span></div>
           ${Number(inv.discount) > 0 ? `<div class="row"><span>${t('pos_discount')}</span><span>-${Number(inv.discount).toFixed(2)} EGP</span></div>` : ''}
-          <div class="row"><span>${t('pos_tax')} (14%)</span><span>${Number(inv.taxTotal).toFixed(2)} EGP</span></div>
+          <div class="row"><span>${t('pos_tax')} (${taxRate}%)</span><span>${Number(inv.taxTotal).toFixed(2)} EGP</span></div>
           <div class="row total"><span>${t('pos_total')}</span><span>${Number(inv.total).toFixed(2)} EGP</span></div>
           <div class="row"><span>${t('pos_paid')}</span><span>${Number(inv.paid).toFixed(2)} EGP</span></div>
           ${Number(inv.change) > 0 ? `<div class="row" style="color:#16a34a"><span>${t('pos_change')}</span><span>${Number(inv.change).toFixed(2)} EGP</span></div>` : ''}
@@ -71,10 +71,11 @@ export const printReceipt = (
   completedInvoiceData: Invoice | null,
   setReceiptHTML: (html: string) => void,
   t: (key: string) => string,
-  language: string
+  language: string,
+  taxRate = 14
 ) => {
   if (!completedInvoiceData) return;
-  setReceiptHTML(generateReceiptHtml(completedInvoiceData, language, t));
+  setReceiptHTML(generateReceiptHtml(completedInvoiceData, language, t, taxRate));
   setTimeout(() => {
     window.print();
     window.onafterprint = () => {

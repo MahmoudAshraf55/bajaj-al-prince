@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireRole } from '@/lib/auth';
+import { withRole } from '@/lib/auth';
 import { checkRateLimit } from '@/lib/rate-limit';
 import { lookupProduct, logScan } from '@/lib/barcode-engine';
 import { withSecurityHeaders } from '@/lib/security';
@@ -16,41 +16,42 @@ export async function POST(req: NextRequest) {
   if (!limit.allowed) return withSecurityHeaders(limit.response!);
 
   try {
-    const payload = await requireRole(req, ['admin', 'staff']);
-    const body = await req.json();
-    const data = scanSchema.parse(body);
+    return await withRole(req, ['admin', 'staff'], async (payload) => {
+      const body = await req.json();
+      const data = scanSchema.parse(body);
 
-    const result = await lookupProduct(data.barcode);
+      const result = await lookupProduct(data.barcode);
 
-    if (result.found && result.product) {
-      await logScan({
-        barcode: data.barcode,
-        productId: result.product.id,
-        source: data.source as 'HH400' | 'MobileCamera' | 'Webcam',
-        status: 'success',
-        userId: payload.userId,
-        deviceName: data.deviceName,
-        ipAddress: req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown',
-      });
-    } else {
-      await logScan({
-        barcode: data.barcode,
-        source: data.source as 'HH400' | 'MobileCamera' | 'Webcam',
-        status: 'not_found',
-        userId: payload.userId,
-        deviceName: data.deviceName,
-        ipAddress: req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown',
-      });
-    }
+      if (result.found && result.product) {
+        await logScan({
+          barcode: data.barcode,
+          productId: result.product.id,
+          source: data.source as 'HH400' | 'MobileCamera' | 'Webcam',
+          status: 'success',
+          userId: payload.userId,
+          deviceName: data.deviceName,
+          ipAddress: req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown',
+        });
+      } else {
+        await logScan({
+          barcode: data.barcode,
+          source: data.source as 'HH400' | 'MobileCamera' | 'Webcam',
+          status: 'not_found',
+          userId: payload.userId,
+          deviceName: data.deviceName,
+          ipAddress: req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown',
+        });
+      }
 
-    return withSecurityHeaders(NextResponse.json({
-      success: true,
-      data: {
-        found: result.found,
-        product: result.product ?? null,
-        message: result.message ?? null,
-      },
-    }));
+      return withSecurityHeaders(NextResponse.json({
+        success: true,
+        data: {
+          found: result.found,
+          product: result.product ?? null,
+          message: result.message ?? null,
+        },
+      }));
+    });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return withSecurityHeaders(NextResponse.json({ success: false, errors: error.issues }, { status: 400 }));

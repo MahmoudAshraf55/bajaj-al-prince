@@ -3,7 +3,11 @@ const isDev = process.env.NODE_ENV !== 'production';
 
 const nextConfig = {
   images: {
-    unoptimized: true,
+    remotePatterns: [
+      { protocol: 'https', hostname: 'raw.githubusercontent.com' },
+      { protocol: 'https', hostname: 'images.unsplash.com' },
+      { protocol: 'https', hostname: 'pollinations.ai' },
+    ],
   },
   trailingSlash: true,
   webpack: (config, { isServer }) => {

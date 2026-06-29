@@ -11,8 +11,10 @@ export interface BarcodeResult {
     barcode: string | null;
     price: number;
     stock: number;
+    category: string;
     image: string | null;
     unit: string;
+    available: boolean;
   };
   message?: string;
 }
@@ -36,8 +38,10 @@ export async function lookupProduct(barcode: string): Promise<BarcodeResult> {
         barcode: true,
         price: true,
         stock: true,
+        category: true,
         image: true,
         unit: true,
+        available: true,
       },
     });
 
@@ -54,8 +58,10 @@ export async function lookupProduct(barcode: string): Promise<BarcodeResult> {
         barcode: product.barcode,
         price: Number(product.price),
         stock: product.stock,
+        category: product.category,
         image: product.image,
         unit: product.unit,
+        available: product.available,
       },
     };
   } catch (error) {

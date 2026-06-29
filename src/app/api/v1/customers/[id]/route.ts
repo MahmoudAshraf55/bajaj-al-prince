@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { requireRole } from '@/lib/auth';
+import { withRole } from '@/lib/auth';
 import { checkRateLimit } from '@/lib/rate-limit';
 import { sanitizedString } from '@/lib/sanitize';
 import { logAudit, getClientInfo } from '@/lib/audit';
@@ -17,23 +17,24 @@ const customerUpdateSchema = z.object({
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    await requireRole(req, ['admin', 'staff']);
-    const { id } = await params;
-    const customer = await prisma.customer.findFirst({
-      where: { id },
-      include: {
-        vehicles: { where: { isDeleted: false } },
-        bookings: {
-          where: { isDeleted: false },
-          orderBy: { date: 'desc' },
-          include: { vehicle: { where: { isDeleted: false } } },
+    return await withRole(req, ['admin', 'staff'], async () => {
+      const { id } = await params;
+      const customer = await prisma.customer.findFirst({
+        where: { id },
+        include: {
+          vehicles: { where: { isDeleted: false } },
+          bookings: {
+            where: { isDeleted: false },
+            orderBy: { date: 'desc' },
+            include: { vehicle: { where: { isDeleted: false } } },
+          },
         },
-      },
+      });
+      if (!customer) {
+        return withSecurityHeaders(NextResponse.json({ success: false, error: 'Customer not found' }, { status: 404 }));
+      }
+      return withSecurityHeaders(NextResponse.json({ success: true, data: { customer } }));
     });
-    if (!customer) {
-      return withSecurityHeaders(NextResponse.json({ success: false, error: 'Customer not found' }, { status: 404 }));
-    }
-    return withSecurityHeaders(NextResponse.json({ success: true, data: { customer } }));
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unauthorized';
     const status = message === 'Forbidden' ? 403 : 401;
@@ -46,32 +47,33 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (!limit.allowed) return withSecurityHeaders(limit.response!);
 
   try {
-    const payload = await requireRole(req, ['admin', 'staff']);
-    const { id } = await params;
-    const body = await req.json();
-    const data = customerUpdateSchema.parse(body);
-    const oldCustomer = await prisma.customer.findUnique({ where: { id } });
-    const customer = await prisma.customer.update({
-      where: { id },
-      data: {
-        ...(data.name !== undefined && { name: data.name }),
-        ...(data.phone !== undefined && { phone: data.phone }),
-        ...(data.email !== undefined && { email: data.email ?? '' }),
-        ...(data.address !== undefined && { address: data.address }),
-      },
+    return await withRole(req, ['admin', 'staff'], async (payload) => {
+      const { id } = await params;
+      const body = await req.json();
+      const data = customerUpdateSchema.parse(body);
+      const oldCustomer = await prisma.customer.findUnique({ where: { id } });
+      const customer = await prisma.customer.update({
+        where: { id },
+        data: {
+          ...(data.name !== undefined && { name: data.name }),
+          ...(data.phone !== undefined && { phone: data.phone }),
+          ...(data.email !== undefined && { email: data.email ?? '' }),
+          ...(data.address !== undefined && { address: data.address }),
+        },
+      });
+      const { ipAddress, userAgent } = getClientInfo(req);
+      await logAudit({
+        userId: payload.userId,
+        action: 'update',
+        entity: 'Customer',
+        entityId: id,
+        oldValue: oldCustomer ? { name: oldCustomer.name, phone: oldCustomer.phone, email: oldCustomer.email, address: oldCustomer.address } as Record<string, unknown> : undefined,
+        newValue: data as Record<string, unknown>,
+        ipAddress,
+        userAgent,
+      });
+      return withSecurityHeaders(NextResponse.json({ success: true, data: { customer } }));
     });
-    const { ipAddress, userAgent } = getClientInfo(req);
-    await logAudit({
-      userId: payload.userId,
-      action: 'update',
-      entity: 'Customer',
-      entityId: id,
-      oldValue: oldCustomer ? { name: oldCustomer.name, phone: oldCustomer.phone, email: oldCustomer.email, address: oldCustomer.address } as Record<string, unknown> : undefined,
-      newValue: data as Record<string, unknown>,
-      ipAddress,
-      userAgent,
-    });
-    return withSecurityHeaders(NextResponse.json({ success: true, data: { customer } }));
   } catch (error) {
     if (error instanceof z.ZodError) {
       return withSecurityHeaders(NextResponse.json({ success: false, errors: error.issues }, { status: 400 }));
@@ -87,24 +89,25 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   if (!limit.allowed) return withSecurityHeaders(limit.response!);
 
   try {
-    const payload = await requireRole(req, ['admin', 'staff']);
-    const { id } = await params;
-    const oldCustomer = await prisma.customer.findUnique({ where: { id } });
-    await prisma.customer.update({
-      where: { id },
-      data: { isDeleted: true, deletedAt: new Date() },
+    return await withRole(req, ['admin', 'staff'], async (payload) => {
+      const { id } = await params;
+      const oldCustomer = await prisma.customer.findUnique({ where: { id } });
+      await prisma.customer.update({
+        where: { id },
+        data: { isDeleted: true, deletedAt: new Date() },
+      });
+      const { ipAddress, userAgent } = getClientInfo(req);
+      await logAudit({
+        userId: payload.userId,
+        action: 'softDelete',
+        entity: 'Customer',
+        entityId: id,
+        oldValue: oldCustomer ? { name: oldCustomer.name, phone: oldCustomer.phone, email: oldCustomer.email, address: oldCustomer.address } as Record<string, unknown> : undefined,
+        ipAddress,
+        userAgent,
+      });
+      return withSecurityHeaders(NextResponse.json({ success: true }));
     });
-    const { ipAddress, userAgent } = getClientInfo(req);
-    await logAudit({
-      userId: payload.userId,
-      action: 'softDelete',
-      entity: 'Customer',
-      entityId: id,
-      oldValue: oldCustomer ? { name: oldCustomer.name, phone: oldCustomer.phone, email: oldCustomer.email, address: oldCustomer.address } as Record<string, unknown> : undefined,
-      ipAddress,
-      userAgent,
-    });
-    return withSecurityHeaders(NextResponse.json({ success: true }));
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
       return withSecurityHeaders(NextResponse.json({ success: false, error: 'Customer not found' }, { status: 404 }));

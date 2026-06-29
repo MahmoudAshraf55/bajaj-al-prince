@@ -37,6 +37,7 @@ yarn-error.log*
 .env.development
 .env.test
 .env.production
+.env.*
 # ALLOW .env.example to be committed as a template
 !.env.example
 
@@ -81,6 +82,7 @@ logs/
 
 # local AI/tooling state
 .blackboxcli/
+.playwright-mcp/
 
 # git worktree directories created inside this checkout
 worktree-*/
@@ -88,4 +90,9 @@ worktree-*/
 # runtime session credentials
 .baileys_auth/
 services/whatsapp/.baileys_auth/
-.env*
+
+# user uploads (ephemeral / local only; use S3/R2 in production)
+public/uploads/
+
+# Playwright local screenshots at repo root
+admin-*.png

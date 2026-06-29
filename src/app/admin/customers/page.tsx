@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from '@/components/useTranslation';
 import { useToast } from '@/components/ToastContext';
 import BackButton from '@/components/BackButton';
+import { fetchWithRetry } from '@/lib/fetchWithRetry';
 import type { Customer } from '@/types';
 import {
   Search, Plus, ChevronLeft, ChevronRight, User,
@@ -29,14 +30,14 @@ export default function CustomersPage() {
   const [form, setForm] = useState({ name: '', phone: '', email: '', address: '' });
   const [formError, setFormError] = useState('');
 
-  const fetchCustomers = useCallback(async (p: number, q?: string) => {
+  const fetchCustomers = useCallback(async (p: number, q?: string, signal?: AbortSignal) => {
     setError('');
     try {
       const url = new URL('/api/customers/', window.location.origin);
       url.searchParams.set('page', String(p));
       url.searchParams.set('limit', '10');
       if (q) url.searchParams.set('search', q);
-      const res = await fetch(url.toString(), { credentials: 'include' });
+      const res = await fetchWithRetry(url.toString(), { credentials: 'include', signal });
       const data = await res.json();
       if (data?.success && Array.isArray(data?.data?.customers)) {
         setCustomers(data.data.customers);
@@ -46,6 +47,7 @@ export default function CustomersPage() {
         addToast('error', data?.error || t('crm_failed_load_customers'));
       }
     } catch (err) {
+      if (err instanceof Error && err.name === 'AbortError') return;
       const msg = err instanceof Error ? err.message : t('crm_failed_load_customers');
       setError(msg);
       addToast('error', msg);
@@ -62,10 +64,13 @@ export default function CustomersPage() {
       .catch(() => {
         router.push('/admin/');
       });
-  }, [router, fetchCustomers]);
+  }, [router]);
 
   useEffect(() => {
-    if (!loading) fetchCustomers(page, search);
+    if (loading) return;
+    const controller = new AbortController();
+    fetchCustomers(page, search, controller.signal);
+    return () => controller.abort();
   }, [page, loading, search, fetchCustomers]);
 
   const handleSearch = (val: string) => {
@@ -171,11 +176,11 @@ export default function CustomersPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border text-muted-foreground">
-                  <th className="text-left px-5 py-3 font-medium">{t('crm_customer_name')}</th>
-                  <th className="text-left px-5 py-3 font-medium">{t('crm_customer_phone')}</th>
-                  <th className="text-left px-5 py-3 font-medium">{t('crm_customer_email')}</th>
-                  <th className="text-left px-5 py-3 font-medium">{t('crm_customer_vehicles')}</th>
-                  <th className="text-right px-5 py-3 font-medium">{t('crm_customer_actions')}</th>
+                  <th scope="col" className="text-left px-5 py-3 font-medium">{t('crm_customer_name')}</th>
+                  <th scope="col" className="text-left px-5 py-3 font-medium">{t('crm_customer_phone')}</th>
+                  <th scope="col" className="text-left px-5 py-3 font-medium">{t('crm_customer_email')}</th>
+                  <th scope="col" className="text-left px-5 py-3 font-medium">{t('crm_customer_vehicles')}</th>
+                  <th scope="col" className="text-right px-5 py-3 font-medium">{t('crm_customer_actions')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -263,6 +268,8 @@ export default function CustomersPage() {
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
               onClick={(e) => e.stopPropagation()}
+              role="dialog"
+              aria-modal="true"
               className="glass rounded-2xl p-6 w-full max-w-md border border-border"
             >
               <div className="flex items-center justify-between mb-5">

@@ -1,11 +1,16 @@
-import { NextResponse } from 'next/server';
+import { NextResponse, NextRequest } from 'next/server';
+import { checkRateLimit } from '@/lib/rate-limit';
+import { withSecurityHeaders } from '@/lib/security';
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
+  const limit = await checkRateLimit(request, 'public');
+  if (!limit.allowed) return withSecurityHeaders(limit.response!);
+
   const { searchParams } = new URL(request.url);
   const videoUrl = searchParams.get('url');
 
   if (!videoUrl) {
-    return NextResponse.json({ error: 'Missing video URL' }, { status: 400 });
+    return withSecurityHeaders(NextResponse.json({ error: 'Missing video URL' }, { status: 400 }));
   }
 
   try {
@@ -23,12 +28,12 @@ export async function GET(request: Request) {
     }
 
     const data = await response.json();
-    return NextResponse.json(data);
+    return withSecurityHeaders(NextResponse.json(data));
   } catch (error) {
     console.error('TikTok oEmbed error:', error);
-    return NextResponse.json(
+    return withSecurityHeaders(NextResponse.json(
       { error: 'Failed to fetch TikTok oEmbed' },
       { status: 500 }
-    );
+    ));
   }
 }

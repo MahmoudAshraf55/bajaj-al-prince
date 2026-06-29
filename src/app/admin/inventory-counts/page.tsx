@@ -210,6 +210,8 @@ export default function InventoryCountsPage() {
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
               onClick={(e) => e.stopPropagation()}
+              role="dialog"
+              aria-modal="true"
               className="glass rounded-2xl p-6 w-full max-w-md border border-border"
             >
               <div className="flex items-center justify-between mb-5">

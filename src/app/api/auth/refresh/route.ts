@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { createToken, createRefreshToken, verifyRefreshToken, getRefreshTokenFromCookie } from '@/lib/auth';
 import { logAudit, getClientInfo } from '@/lib/audit';
 import { withSecurityHeaders } from '@/lib/security';
+import { DEFAULT_TENANT_ID } from '@/lib/tenant-context';
 
 export async function POST(req: NextRequest) {
   try {
@@ -38,6 +39,7 @@ export async function POST(req: NextRequest) {
       userId: updatedUser.id,
       username: updatedUser.username,
       role: updatedUser.role,
+      tenantId: updatedUser.tenantId ?? DEFAULT_TENANT_ID,
     });
 
     const newRefreshToken = await createRefreshToken(updatedUser.id, updatedUser.tokenVersion);

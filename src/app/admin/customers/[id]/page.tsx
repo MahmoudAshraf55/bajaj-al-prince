@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from '@/components/useTranslation';
 import { useToast } from '@/components/ToastContext';
+import { fetchWithRetry } from '@/lib/fetchWithRetry';
 import type { Customer, Vehicle, VehicleModel, Booking } from '@/types';
 import {
   ArrowLeft, User, Phone, Mail, MapPin, Car, Plus, Calendar,
@@ -39,10 +40,10 @@ export default function CustomerDetailPage() {
   const [editingBooking, setEditingBooking] = useState<Booking | null>(null);
   const [bookingForm, setBookingForm] = useState({ issue: '' });
 
-  const fetchCustomer = useCallback(async () => {
+  const fetchCustomer = useCallback(async (signal?: AbortSignal) => {
     setError('');
     try {
-      const res = await fetch(`/api/customers/${customerId}/`, { credentials: 'include' });
+      const res = await fetchWithRetry(`/api/customers/${customerId}/`, { credentials: 'include', signal });
       const data = await res.json();
       if (data?.success && data?.data?.customer) {
         setCustomer(data.data.customer);
@@ -52,6 +53,7 @@ export default function CustomerDetailPage() {
         addToast('error', msg);
       }
     } catch (err) {
+      if (err instanceof Error && err.name === 'AbortError') return;
       const msg = err instanceof Error ? err.message : t('crm_failed_load_customer');
       setError(msg);
       addToast('error', msg);
@@ -59,7 +61,7 @@ export default function CustomerDetailPage() {
   }, [customerId, t, addToast]);
 
   useEffect(() => {
-    fetch('/api/vehicle-models/')
+    fetchWithRetry('/api/vehicle-models/', { credentials: 'include' })
       .then((r) => r.json().catch(() => ({ success: false, data: { models: [] } })))
       .then((d) => {
         if (d?.success && Array.isArray(d?.data?.models)) {
@@ -72,7 +74,12 @@ export default function CustomerDetailPage() {
       .then((r) => r.json().catch(() => ({ success: false, error: 'Invalid auth response' })))
       .then((d) => {
         if (!d?.success) router.push('/admin/');
-        else { setLoading(false); fetchCustomer(); }
+        else {
+          setLoading(false);
+          const controller = new AbortController();
+          fetchCustomer(controller.signal);
+          return () => controller.abort();
+        }
       })
       .catch(() => {
         router.push('/admin/');
@@ -563,6 +570,8 @@ export default function CustomerDetailPage() {
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
               onClick={(e) => e.stopPropagation()}
+              role="dialog"
+              aria-modal="true"
               className="glass rounded-2xl p-6 w-full max-w-md border border-border"
             >
               <div className="flex items-center justify-between mb-5">
@@ -696,6 +705,8 @@ export default function CustomerDetailPage() {
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
               onClick={(e) => e.stopPropagation()}
+              role="dialog"
+              aria-modal="true"
               className="glass rounded-2xl p-6 w-full max-w-md border border-border"
             >
               <div className="flex items-center justify-between mb-5">

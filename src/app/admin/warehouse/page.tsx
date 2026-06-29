@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { AnimatePresence } from 'framer-motion';
 import { useTranslation } from '@/components/useTranslation';
 import { useToast } from '@/components/ToastContext';
-import { Package, History, Upload, AlertTriangle } from 'lucide-react';
+import { Package, History, Upload, AlertTriangle, Download } from 'lucide-react';
 import type { WarehouseProduct, StockMovement, ImportPreview, ImportResult } from '@/types/warehouse';
 import WHProductList from '@/components/warehouse/WHProductList';
 import WHMovementsList from '@/components/warehouse/WHMovementsList';
@@ -62,7 +62,7 @@ export default function AdminWarehouse() {
   }, [router]);
 
   const loadProducts = useCallback(async () => {
-    const res = await fetch('/api/v1/products/?limit=10000', { credentials: 'include' });
+    const res = await fetch('/api/v1/products/?limit=10000&admin=true', { credentials: 'include' });
     const d = await res.json();
     if (d.success) setProducts(d.data.products);
   }, []);
@@ -223,11 +223,18 @@ export default function AdminWarehouse() {
     if (!editProduct) return;
     setEditSaving(true);
     try {
+      const nullableFields = ['nameAr', 'description', 'barcode', 'sku', 'costPrice', 'vehicleModel'];
       const body: Record<string, unknown> = {};
       for (const [key, val] of Object.entries(editForm)) {
         if (key === 'taxExempt') { body[key] = val; continue; }
-        if (val === '' || val === null || val === undefined) continue;
-        body[key] = val;
+        if (val === undefined) continue;
+        if (val === '' && nullableFields.includes(key)) {
+          body[key] = null;
+        } else if (key === 'unit' && val === '') {
+          body[key] = 'piece';
+        } else {
+          body[key] = val;
+        }
       }
       const res = await fetch(`/api/v1/products/${editProduct.id}`, {
         method: 'PATCH',
@@ -286,6 +293,13 @@ export default function AdminWarehouse() {
               <span>{lowStockProducts.length} {t('wh_low_stock')}</span>
             </div>
           )}
+          <button
+            onClick={() => window.open('/api/v1/products/export/', '_blank')}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
+          >
+            <Download className="w-4 h-4" />
+            {t('export_excel') || 'Export Excel'}
+          </button>
         </div>
 
         <div className="flex gap-2 mb-6">

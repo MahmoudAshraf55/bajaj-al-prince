@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { requireRole } from '@/lib/auth';
+import { withRole } from '@/lib/auth';
 import { checkRateLimit } from '@/lib/rate-limit';
 import { sanitizedString } from '@/lib/sanitize';
 import { logAudit, getClientInfo } from '@/lib/audit';
@@ -33,30 +33,36 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (!limit.allowed) return withSecurityHeaders(limit.response!);
 
   try {
-    const payload = await requireRole(req, ['admin', 'staff']);
-    const { id } = await params;
-    const body = await req.json();
-    const data = productUpdateSchema.parse(body);
-    const oldProduct = await prisma.product.findUnique({ where: { id } });
-    const product = await prisma.$transaction(async (tx) => {
-      if (data.stock !== undefined) {
-        const current = await tx.product.findUnique({ where: { id }, select: { stock: true } });
-        if (!current) throw new Error('Product not found');
+    return await withRole(req, ['admin', 'staff'], async (payload) => {
+      const { id } = await params;
+      const body = await req.json();
+      const data = productUpdateSchema.parse(body);
+
+      const oldProduct = await prisma.product.findUnique({ where: { id } });
+      if (!oldProduct) {
+        return withSecurityHeaders(NextResponse.json({ success: false, error: 'Product not found' }, { status: 404 }));
       }
-      return tx.product.update({ where: { id }, data });
+
+      const product = await prisma.$transaction(async (tx) => {
+        if (data.stock !== undefined) {
+          const current = await tx.product.findUnique({ where: { id }, select: { stock: true } });
+          if (!current) throw new Error('Product not found');
+        }
+        return tx.product.update({ where: { id }, data });
+      });
+      const { ipAddress, userAgent } = getClientInfo(req);
+      await logAudit({
+        userId: payload.userId,
+        action: 'update',
+        entity: 'Product',
+        entityId: id,
+        oldValue: oldProduct ? { name: oldProduct.name, price: Number(oldProduct.price), stock: oldProduct.stock, category: oldProduct.category } as Record<string, unknown> : undefined,
+        newValue: data as Record<string, unknown>,
+        ipAddress,
+        userAgent,
+      });
+      return withSecurityHeaders(NextResponse.json({ success: true, data: { product: { ...product, price: Number(product.price) } } }));
     });
-    const { ipAddress, userAgent } = getClientInfo(req);
-    await logAudit({
-      userId: payload.userId,
-      action: 'update',
-      entity: 'Product',
-      entityId: id,
-      oldValue: oldProduct ? { name: oldProduct.name, price: Number(oldProduct.price), stock: oldProduct.stock, category: oldProduct.category } as Record<string, unknown> : undefined,
-      newValue: data as Record<string, unknown>,
-      ipAddress,
-      userAgent,
-    });
-    return withSecurityHeaders(NextResponse.json({ success: true, data: { product: { ...product, price: Number(product.price) } } }));
   } catch (error) {
     if (error instanceof z.ZodError) {
       return withSecurityHeaders(NextResponse.json({ success: false, errors: error.issues }, { status: 400 }));
@@ -64,7 +70,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     if (error instanceof Error && error.message === 'Product not found') {
       return withSecurityHeaders(NextResponse.json({ success: false, error: 'Product not found' }, { status: 404 }));
     }
-    const message = error instanceof Error ? error.message : 'Unauthorized';
+    const message = error instanceof Error ? error.message || 'Unauthorized' : 'Unauthorized';
     const status = message === 'Forbidden' ? 403 : 401;
     return withSecurityHeaders(NextResponse.json({ success: false, error: message }, { status }));
   }
@@ -75,33 +81,34 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   if (!limit.allowed) return withSecurityHeaders(limit.response!);
 
   try {
-    const payload = await requireRole(req, ['admin']);
-    const { id } = await params;
+    return await withRole(req, ['admin'], async (payload) => {
+      const { id } = await params;
 
-    const existing = await prisma.product.findUnique({ where: { id } });
-    if (!existing) {
-      return withSecurityHeaders(NextResponse.json({ success: false, error: 'Product not found' }, { status: 404 }));
-    }
+      const existing = await prisma.product.findUnique({ where: { id } });
+      if (!existing) {
+        return withSecurityHeaders(NextResponse.json({ success: false, error: 'Product not found' }, { status: 404 }));
+      }
 
-    await prisma.product.update({
-      where: { id },
-      data: { isDeleted: true, deletedAt: new Date() },
+      await prisma.product.update({
+        where: { id },
+        data: { isDeleted: true, deletedAt: new Date() },
+      });
+
+      const { ipAddress, userAgent } = getClientInfo(req);
+      await logAudit({
+        userId: payload.userId,
+        action: 'delete',
+        entity: 'Product',
+        entityId: id,
+        oldValue: { name: existing.name } as Record<string, unknown>,
+        ipAddress,
+        userAgent,
+      });
+
+      return withSecurityHeaders(NextResponse.json({ success: true }));
     });
-
-    const { ipAddress, userAgent } = getClientInfo(req);
-    await logAudit({
-      userId: payload.userId,
-      action: 'delete',
-      entity: 'Product',
-      entityId: id,
-      oldValue: { name: existing.name } as Record<string, unknown>,
-      ipAddress,
-      userAgent,
-    });
-
-    return withSecurityHeaders(NextResponse.json({ success: true }));
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unauthorized';
+    const message = error instanceof Error ? (error.message || 'Unauthorized') : 'Unauthorized';
     const status = message === 'Forbidden' ? 403 : message === 'Unauthorized' ? 401 : 500;
     return withSecurityHeaders(NextResponse.json({ success: false, error: message }, { status }));
   }

@@ -40,13 +40,15 @@ const redisLimits: Record<string, Ratelimit> = useRedis ? {
   booking: new Ratelimit({ redis: redis!, limiter: Ratelimit.slidingWindow(10, '15 m') }),
   login: new Ratelimit({ redis: redis!, limiter: Ratelimit.slidingWindow(5, '15 m') }),
   admin: new Ratelimit({ redis: redis!, limiter: Ratelimit.slidingWindow(100, '15 m') }),
+  public: new Ratelimit({ redis: redis!, limiter: Ratelimit.slidingWindow(100, '15 m') }),
 } : {};
 
 const windowMap: Record<string, { max: number; ms: number }> = {
   contact: { max: 20, ms: 15 * 60 * 1000 },
   booking: { max: 10, ms: 15 * 60 * 1000 },
-  login:   { max: 20, ms: 15 * 60 * 1000 },
+  login:   { max: 5, ms: 15 * 60 * 1000 },
   admin:   { max: 100, ms: 15 * 60 * 1000 },
+  public:  { max: 100, ms: 15 * 60 * 1000 },
 };
 
 function getClientIp(req: NextRequest): string {
@@ -57,7 +59,7 @@ function getClientIp(req: NextRequest): string {
 
 export async function checkRateLimit(
   req: NextRequest,
-  prefix: 'contact' | 'booking' | 'login' | 'admin'
+  prefix: 'contact' | 'booking' | 'login' | 'admin' | 'public'
 ): Promise<{ allowed: boolean; response?: NextResponse }> {
   const ip = getClientIp(req);
   const key = `${prefix}:${ip}`;
