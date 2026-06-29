@@ -1,5 +1,5 @@
 {
-  "framework": null,
+  "framework": "nextjs",
   "crons": [
     {
       "path": "/api/v1/cron/reminders/",
