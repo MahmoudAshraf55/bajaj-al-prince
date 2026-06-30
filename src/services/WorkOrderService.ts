@@ -9,11 +9,11 @@ export interface UpdatedWorkOrder {
   parts: Array<{
     productId: string;
     quantity: number;
-    unitPrice: string | number;
-    total: string | number;
-    product?: { name: string; costPrice: string | number } | null;
+    unitPrice: any;
+    total: any;
+    product?: { name: string; costPrice: any } | null;
   }>;
-  labourLines: Array<{ description: string; total: string | number }>;
+  labourLines: Array<{ description: string; total: any }>;
   vehicle?: { customer?: { id: string; name: string } | null } | null;
 }
 

@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { getDebitAccountCode, getCreditAccountCode, ACCOUNT_CODES } from '@/lib/journal';
+import { getDebitAccountCode, getCreditAccountCode } from '@/lib/journal';
+import { ACCOUNT_CODES } from '@/constants/accounting';
 
 describe('journal - getDebitAccountCode', () => {
   it('returns CASH for SALE with cash payment', () => {

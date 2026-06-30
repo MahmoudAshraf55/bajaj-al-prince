@@ -10,20 +10,19 @@ test.describe('End-to-End System Integration Flow', () => {
   let vehicleId: string;
   let workOrderId: string;
   let testAdminId: string;
+  let testAdminUsername: string;
   const testPhone = '01099998888';
   const testPassword = 'testpassword123';
 
   test.beforeAll(async () => {
     // 1. Create a Test Admin
     const hashedPassword = await bcrypt.hash(testPassword, 10);
+    testAdminUsername = 'int_admin_' + Date.now();
     const admin = await prisma.user.create({
       data: {
-        name: 'Integration Admin',
-        username: 'int_admin_' + Date.now(),
-        phone: testPhone,
+        username: testAdminUsername,
         password: hashedPassword,
         role: 'admin',
-        isActive: true,
         tenantId: 'default',
       }
     });
@@ -35,8 +34,9 @@ test.describe('End-to-End System Integration Flow', () => {
         name: 'Integration Test Part',
         barcode: 'INT-TEST-' + Date.now(),
         costPrice: 50,
-        sellingPrice: 100,
+        price: 100,
         stock: 10,
+        category: 'Parts',
         tenantId: 'default',
         isDeleted: false,
       }
@@ -48,6 +48,7 @@ test.describe('End-to-End System Integration Flow', () => {
       data: {
         name: 'Int Customer',
         phone: '+201112223334',
+        email: 'int@test.com',
         tenantId: 'default',
       }
     });
@@ -82,7 +83,7 @@ test.describe('End-to-End System Integration Flow', () => {
 
     // 1. Authenticate as Test Admin
     const loginRes = await request.post('/api/auth/login/', {
-      data: { phone: testPhone, password: testPassword },
+      data: { username: testAdminUsername, password: testPassword },
     });
     expect(loginRes.ok()).toBeTruthy();
 
@@ -188,7 +189,7 @@ test.describe('End-to-End System Integration Flow', () => {
   test.afterAll(async () => {
     // Cleanup
     if (workOrderId) {
-      await prisma.journalEntryLine.deleteMany({ where: { entry: { referenceId: workOrderId } } });
+      await prisma.journalEntryLine.deleteMany({ where: { journalEntry: { referenceId: workOrderId } } });
       await prisma.journalEntry.deleteMany({ where: { referenceId: workOrderId } });
       await prisma.stockMovement.deleteMany({ where: { reference: `work-order-${workOrderId}` } });
       await prisma.workOrderPart.deleteMany({ where: { workOrderId } });

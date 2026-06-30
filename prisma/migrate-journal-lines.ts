@@ -1,6 +1,7 @@
 import { prisma } from '../src/lib/prisma';
 import { DEFAULT_TENANT_ID } from '../src/lib/tenant-context';
-import { ACCOUNT_CODES, getDebitAccountCode, getCreditAccountCode } from '../src/lib/journal';
+import { getDebitAccountCode, getCreditAccountCode } from '../src/lib/journal';
+import { ACCOUNT_CODES } from '../src/constants/accounting';
 
 async function migrateJournalEntryLines() {
   console.log('Migrating existing JournalEntries to double-entry lines...');
