@@ -4,6 +4,7 @@ import { withSecurityHeaders } from '@/lib/security';
 import { checkRateLimit } from '@/lib/rate-limit';
 import { z } from 'zod';
 import { logger } from '@/lib/logger';
+import { getTenantId, DEFAULT_TENANT_ID } from '@/lib/tenant-context';
 import crypto from 'crypto';
 
 export const dynamic = 'force-dynamic';
@@ -72,6 +73,7 @@ export async function GET(request: NextRequest) {
         data: {
           ipHash,
           userAgent,
+          tenantId: getTenantId() ?? DEFAULT_TENANT_ID,
         },
       });
       logger.info('New unique visitor logged', { ipHash: ipHash.slice(0, 10) });
@@ -133,7 +135,7 @@ export async function GET(request: NextRequest) {
 
       // Insert seeded reviews in a Prisma transaction
       await prisma.$transaction(
-        seedReviews.map((r) => prisma.review.create({ data: r }))
+        seedReviews.map((r) => prisma.review.create({ data: { ...r, tenantId: getTenantId() ?? DEFAULT_TENANT_ID } }))
       );
 
       // Re-fetch to get them with IDs (limited to last 140)
@@ -267,6 +269,7 @@ export async function POST(request: NextRequest) {
         date: todayStr,
         avatar,
         verified: true, // Auto-verify on-site reviews for instant display
+        tenantId: getTenantId() ?? DEFAULT_TENANT_ID,
       },
     });
 

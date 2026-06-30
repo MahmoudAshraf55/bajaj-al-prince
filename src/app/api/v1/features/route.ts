@@ -58,6 +58,7 @@ export async function POST(req: NextRequest) {
           description: data.description,
           category: data.category,
           defaultEnabled: data.defaultEnabled,
+          tenantId,
         },
       });
 

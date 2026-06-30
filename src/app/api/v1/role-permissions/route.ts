@@ -83,7 +83,7 @@ export async function POST(req: NextRequest) {
           }
         } else {
           await prisma.rolePermission.create({
-            data: { role, permissionId: permission.id },
+            data: { role, permissionId: permission.id, tenantId },
           });
         }
       } else if (existing && !existing.isDeleted) {

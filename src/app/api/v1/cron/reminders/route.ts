@@ -6,12 +6,13 @@ import { withSecurityHeaders } from '@/lib/security';
 import { sendWhatsAppMessageViaService, getWhatsAppStateFromService } from '@/lib/whatsapp-client';
 import { logAudit, getClientInfo } from '@/lib/audit';
 import { logger } from '@/lib/logger';
+import { getTenantId, DEFAULT_TENANT_ID } from '@/lib/tenant-context';
 
 async function getWhatsAppSettings() {
   let settings = await prisma.whatsAppSettings.findUnique({ where: { id: 'default' } });
   if (!settings) {
     settings = await prisma.whatsAppSettings.create({
-      data: { id: 'default', delayMin: 60, delayMax: 120, dailyCap: 50, batchSize: 5 },
+      data: { id: 'default', delayMin: 60, delayMax: 120, dailyCap: 50, batchSize: 5, tenantId: getTenantId() ?? DEFAULT_TENANT_ID },
     });
   }
   return settings;
@@ -148,6 +149,7 @@ export async function GET(req: NextRequest) {
               phone,
               message,
               status: sendResult.success ? 'sent' : 'failed',
+              tenantId: getTenantId() ?? DEFAULT_TENANT_ID,
             },
           });
 

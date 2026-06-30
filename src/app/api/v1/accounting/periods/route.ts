@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { withRole } from '@/lib/auth';
 import { logAudit, getClientInfo } from '@/lib/audit';
+import { getTenantId, DEFAULT_TENANT_ID } from '@/lib/tenant-context';
 import { z } from 'zod';
 
 const createSchema = z.object({
@@ -37,7 +38,7 @@ export async function POST(req: NextRequest) {
       if (existing) return NextResponse.json({ success: false, error: 'Period already exists' }, { status: 409 });
 
       const period = await prisma.accountingPeriod.create({
-        data: { name, startDate: new Date(startDate), endDate: new Date(endDate), closedById: payload.userId },
+        data: { name, startDate: new Date(startDate), endDate: new Date(endDate), closedById: payload.userId, tenantId: getTenantId() ?? DEFAULT_TENANT_ID },
       });
       const { ipAddress, userAgent } = getClientInfo(req);
       await logAudit({

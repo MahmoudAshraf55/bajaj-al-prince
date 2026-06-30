@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
+import { getTenantId, DEFAULT_TENANT_ID } from './tenant-context';
 import type { ScanSource, ScanStatus } from '@prisma/client';
 
 export interface BarcodeResult {
@@ -90,6 +91,7 @@ export async function logScan(input: ScanLogInput): Promise<void> {
         userId: input.userId ?? null,
         deviceName: input.deviceName ?? null,
         ipAddress: input.ipAddress ?? null,
+        tenantId: getTenantId() ?? DEFAULT_TENANT_ID,
       },
     });
   } catch (error) {

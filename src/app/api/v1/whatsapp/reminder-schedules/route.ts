@@ -4,6 +4,7 @@ import { withRole } from '@/lib/auth';
 import { checkRateLimit } from '@/lib/rate-limit';
 import { withSecurityHeaders } from '@/lib/security';
 import { logAudit, getClientInfo } from '@/lib/audit';
+import { getTenantId, DEFAULT_TENANT_ID } from '@/lib/tenant-context';
 import { z } from 'zod';
 
 const scheduleSchema = z.object({
@@ -32,7 +33,7 @@ export async function GET(req: NextRequest) {
 
       if (schedules.length === 0) {
         for (const s of DEFAULT_SCHEDULES) {
-          await prisma.reminderSchedule.create({ data: s });
+          await prisma.reminderSchedule.create({ data: { ...s, tenantId: getTenantId() ?? DEFAULT_TENANT_ID } });
         }
         schedules = await prisma.reminderSchedule.findMany({
           where: { isDeleted: false },
@@ -59,7 +60,7 @@ export async function POST(req: NextRequest) {
       const data = scheduleSchema.parse(body);
 
       const schedule = await prisma.reminderSchedule.create({
-        data: { name: data.name, intervalDays: data.intervalDays, message: data.message, isActive: data.isActive ?? true },
+        data: { name: data.name, intervalDays: data.intervalDays, message: data.message, isActive: data.isActive ?? true, tenantId: getTenantId() ?? DEFAULT_TENANT_ID },
       });
 
       const { ipAddress, userAgent } = getClientInfo(req);

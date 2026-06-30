@@ -5,6 +5,7 @@ import { checkRateLimit } from '@/lib/rate-limit';
 import { sanitizedString } from '@/lib/sanitize';
 import { logAudit, getClientInfo } from '@/lib/audit';
 import { withSecurityHeaders } from '@/lib/security';
+import { getTenantId, DEFAULT_TENANT_ID } from '@/lib/tenant-context';
 import { z } from 'zod';
 
 const createSchema = z.object({
@@ -38,7 +39,7 @@ export async function POST(req: NextRequest) {
       const body = await req.json();
       const data = createSchema.parse(body);
       const manufacturer = await prisma.manufacturer.create({
-        data: { name: data.name, nameAr: data.nameAr ?? null },
+        data: { name: data.name, nameAr: data.nameAr ?? null, tenantId: getTenantId() ?? DEFAULT_TENANT_ID },
       });
       const { ipAddress, userAgent } = getClientInfo(req);
       await logAudit({

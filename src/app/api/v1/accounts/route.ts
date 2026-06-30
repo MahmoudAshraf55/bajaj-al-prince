@@ -4,6 +4,7 @@ import { withRole } from '@/lib/auth';
 import { checkRateLimit } from '@/lib/rate-limit';
 import { logAudit, getClientInfo } from '@/lib/audit';
 import { withSecurityHeaders } from '@/lib/security';
+import { getTenantId, DEFAULT_TENANT_ID } from '@/lib/tenant-context';
 import { z } from 'zod';
 import { Prisma } from '@prisma/client';
 
@@ -64,6 +65,7 @@ export async function POST(req: NextRequest) {
           type: data.type,
           parentId: data.parentId,
           description: data.description,
+          tenantId: getTenantId() ?? DEFAULT_TENANT_ID,
         },
         include: { parent: { select: { id: true, name: true, nameAr: true, code: true } } },
       });

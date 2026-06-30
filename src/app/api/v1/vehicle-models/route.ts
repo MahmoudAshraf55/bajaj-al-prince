@@ -4,6 +4,7 @@ import { withRole } from '@/lib/auth';
 import { checkRateLimit } from '@/lib/rate-limit';
 import { sanitizedString } from '@/lib/sanitize';
 import { logAudit, getClientInfo } from '@/lib/audit';
+import { getTenantId, DEFAULT_TENANT_ID } from '@/lib/tenant-context';
 import { z } from 'zod';
 import { withSecurityHeaders } from '@/lib/security';
 
@@ -40,7 +41,7 @@ export async function POST(req: NextRequest) {
       const body = await req.json();
       const data = modelSchema.parse(body);
       const model = await prisma.vehicleModel.create({
-        data: { ...data, manufacturerId: data.manufacturerId ?? null },
+        data: { ...data, manufacturerId: data.manufacturerId ?? null, tenantId: getTenantId() ?? DEFAULT_TENANT_ID },
       });
       const { ipAddress, userAgent } = getClientInfo(req);
       await logAudit({

@@ -4,6 +4,7 @@ import { withRole } from '@/lib/auth';
 import { checkRateLimit } from '@/lib/rate-limit';
 import { sanitizedString } from '@/lib/sanitize';
 import { logAudit, getClientInfo } from '@/lib/audit';
+import { getTenantId, DEFAULT_TENANT_ID } from '@/lib/tenant-context';
 import { z } from 'zod';
 import { withSecurityHeaders } from '@/lib/security';
 import { createDoubleEntry } from '@/lib/journal';
@@ -59,7 +60,7 @@ export async function POST(req: NextRequest) {
       const body = await req.json();
       const data = transactionSchema.parse(body);
       const transaction = await prisma.transaction.create({
-        data: { ...data, createdById: payload.userId },
+        data: { ...data, createdById: payload.userId, tenantId: getTenantId() ?? DEFAULT_TENANT_ID },
       });
       const jeType = data.type === 'income' ? 'INCOME' as const : 'EXPENSE' as const;
       await createDoubleEntry(prisma, {
