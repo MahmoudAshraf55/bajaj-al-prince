@@ -28,6 +28,7 @@ async function seed() {
         username: 'admin',
         password: await hashPassword(adminPassword),
         role: 'admin',
+        tenantId: DEFAULT_TENANT_ID,
       },
     });
     console.log('Admin user created');
