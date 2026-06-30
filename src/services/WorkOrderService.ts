@@ -2,6 +2,8 @@ import { prisma } from '@/lib/prisma';
 import { ACCOUNT_CODES } from '@/constants/accounting';
 import { AccountingService } from './AccountingService';
 
+import { Prisma } from '@prisma/client';
+
 type Tx = typeof prisma | Parameters<Parameters<typeof prisma.$transaction>[0]>[0];
 
 export interface UpdatedWorkOrder {
@@ -9,11 +11,11 @@ export interface UpdatedWorkOrder {
   parts: Array<{
     productId: string;
     quantity: number;
-    unitPrice: any;
-    total: any;
-    product?: { name: string; costPrice: any } | null;
+    unitPrice: string | number | Prisma.Decimal;
+    total: string | number | Prisma.Decimal;
+    product?: { name: string; costPrice: string | number | Prisma.Decimal | null } | null;
   }>;
-  labourLines: Array<{ description: string; total: any }>;
+  labourLines: Array<{ description: string; total: string | number | Prisma.Decimal }>;
   vehicle?: { customer?: { id: string; name: string } | null } | null;
 }
 
