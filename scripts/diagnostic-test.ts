@@ -5,6 +5,7 @@
  */
 
 import { prisma } from '../src/lib/prisma';
+import { DEFAULT_TENANT_ID } from '../src/lib/tenant-context';
 
 const TEST_PHONE = '+201234567890';
 const TEST_NAME = 'Diagnostic Test User';
@@ -375,6 +376,7 @@ async function scenario5() {
         date: dateStr,
         time: '15:00',
         status: 'pending',
+        tenantId: DEFAULT_TENANT_ID,
       },
     });
 
