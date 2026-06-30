@@ -10,7 +10,7 @@ import BackButton from '@/components/BackButton';
 import { fetchWithRetry } from '@/lib/fetchWithRetry';
 import {
   Search, Plus, ChevronLeft, ChevronRight, Package,
-  AlertCircle, X, Trash2, PlusCircle,
+  AlertCircle, X, Trash2, PlusCircle, Upload,
 } from 'lucide-react';
 
 interface PurchaseOrder {
@@ -294,6 +294,13 @@ export default function PurchaseOrdersPage() {
                 className="pl-10 pr-4 py-2 rounded-xl bg-input border border-border text-sm focus:outline-none focus:ring-2 focus:ring-ring w-64"
               />
             </div>
+            <Link
+              href="/admin/purchase-orders/import/"
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 text-muted-foreground text-sm font-medium hover:bg-white/10 hover:text-foreground transition-colors"
+            >
+              <Upload className="w-4 h-4" />
+              {t('po_import')}
+            </Link>
             <button
               onClick={openModal}
               className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"

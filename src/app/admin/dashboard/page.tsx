@@ -189,15 +189,15 @@ export default function AdminDashboard() {
                 <div className="grid grid-cols-3 gap-4">
                   <div className="text-center p-3 rounded-xl bg-white/5">
                     <p className="text-xs text-muted-foreground mb-1">Cash</p>
-                    <p className="font-bold text-green-400">{stats.today.cashSales.toFixed(2)}</p>
+                    <p className="font-bold text-green-400">{(stats.today.cashSales ?? 0).toFixed(2)}</p>
                   </div>
                   <div className="text-center p-3 rounded-xl bg-white/5">
                     <p className="text-xs text-muted-foreground mb-1">Card</p>
-                    <p className="font-bold text-blue-400">{stats.today.cardSales.toFixed(2)}</p>
+                    <p className="font-bold text-blue-400">{(stats.today.cardSales ?? 0).toFixed(2)}</p>
                   </div>
                   <div className="text-center p-3 rounded-xl bg-white/5">
                     <p className="text-xs text-muted-foreground mb-1">Transfer</p>
-                    <p className="font-bold text-purple-400">{stats.today.transferSales.toFixed(2)}</p>
+                    <p className="font-bold text-purple-400">{(stats.today.transferSales ?? 0).toFixed(2)}</p>
                   </div>
                 </div>
               </div>

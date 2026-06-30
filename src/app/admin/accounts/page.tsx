@@ -200,7 +200,7 @@ export default function AccountsPage() {
             ) : null}
           </div>
           <span className="font-mono text-xs text-muted-foreground w-16 shrink-0">{acc.code}</span>
-          <span className="flex-1 font-medium text-sm truncate">{acc.name}</span>
+          <span className="flex-1 font-medium text-sm truncate">{acc.nameAr || acc.name}</span>
           <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${typeColors[acc.type] || 'text-gray-400 bg-gray-500/10'}`}>
             {t(`acct_type_${acc.type}`)}
           </span>
@@ -350,7 +350,7 @@ export default function AccountsPage() {
                   >
                     <option value="">—</option>
                     {accounts.filter((a) => !a.parentId || a.id === form.parentId).map((acc) => (
-                      <option key={acc.id} value={acc.id}>{acc.code} - {acc.name}</option>
+                      <option key={acc.id} value={acc.id}>{acc.code} - {acc.nameAr || acc.name}</option>
                     ))}
                   </select>
                 </div>

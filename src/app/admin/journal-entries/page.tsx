@@ -16,7 +16,7 @@ interface JournalEntryLine {
   debit: string;
   credit: string;
   description?: string | null;
-  account: { id: string; code: string; name: string; type: string };
+  account: { id: string; code: string; name: string; nameAr?: string | null; type: string };
 }
 
 interface JournalEntry {
@@ -249,7 +249,7 @@ export default function JournalEntriesPage() {
                       <tr key={line.id} className="border-b border-border/50">
                         <td className="py-1.5">
                           <span className="font-mono text-muted-foreground mr-2">{line.account.code}</span>
-                          {line.account.name}
+                           {line.account.nameAr || line.account.name}
                         </td>
                         <td className="py-1.5 text-right font-mono text-green-400">
                           {Number(line.debit) > 0 ? Number(line.debit).toFixed(2) : '—'}

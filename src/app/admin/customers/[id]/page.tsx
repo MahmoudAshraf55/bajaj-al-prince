@@ -8,10 +8,11 @@ import { useTranslation } from '@/components/useTranslation';
 import { useToast } from '@/components/ToastContext';
 import { fetchWithRetry } from '@/lib/fetchWithRetry';
 import type { Customer, Vehicle, VehicleModel, Booking } from '@/types';
+import CustomerTimeline from '@/components/CustomerTimeline';
 import {
   ArrowLeft, User, Phone, Mail, MapPin, Car, Plus, Calendar,
   AlertCircle, CheckCircle2, X, Hash, Gauge, Pencil, ChevronDown,
-  Wrench, ClipboardList, Clock, Bell,
+  Wrench, ClipboardList, Clock, Bell, History,
 } from 'lucide-react';
 
 export default function CustomerDetailPage() {
@@ -27,6 +28,7 @@ export default function CustomerDetailPage() {
   const [showVehicleModal, setShowVehicleModal] = useState(false);
   const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [timelineView, setTimelineView] = useState(false);
 
   const [form, setForm] = useState({
     make: 'Bajaj', model: '', year: '', chassisNumber: '', plateNumber: '',
@@ -414,145 +416,168 @@ export default function CustomerDetailPage() {
           )}
         </div>
 
-        {/* Service History */}
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-lg font-bold flex items-center gap-2">
-              <ClipboardList className="w-5 h-5 text-primary" />
-              {t('crm_service_history')} ({customer?.bookings?.length ?? 0})
-            </h3>
+        {/* History Tabs */}
+        <div className="flex gap-1 bg-white/5 rounded-xl p-1">
+          <button
+            onClick={() => setTimelineView(false)}
+            className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+              !timelineView
+                ? 'bg-primary text-primary-foreground shadow-lg'
+                : 'text-muted-foreground hover:text-foreground hover:bg-white/5'
+            }`}
+          >
+            <ClipboardList className="w-4 h-4" />
+            {t('crm_service_history')} ({customer?.bookings?.length ?? 0})
+          </button>
+          <button
+            onClick={() => setTimelineView(true)}
+            className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+              timelineView
+                ? 'bg-primary text-primary-foreground shadow-lg'
+                : 'text-muted-foreground hover:text-foreground hover:bg-white/5'
+            }`}
+          >
+            <History className="w-4 h-4" />
+            {t('crm_timeline')}
+          </button>
+        </div>
+
+        {timelineView ? (
+          <CustomerTimeline customerId={customerId} />
+        ) : (
+          <>
             {customer?.bookings && customer.bookings.length > 0 && (
-              <div className="flex items-center gap-2">
-                <Bell className="w-4 h-4 text-primary" />
-                <span className="text-xs text-muted-foreground">
-                  {t('crm_next_visit')}: <span className="text-primary font-medium">{getNextVisitDate(customer.bookings)}</span>
-                </span>
+              <div className="flex items-center justify-end">
+                <div className="flex items-center gap-2">
+                  <Bell className="w-4 h-4 text-primary" />
+                  <span className="text-xs text-muted-foreground">
+                    {t('crm_next_visit')}: <span className="text-primary font-medium">{getNextVisitDate(customer.bookings)}</span>
+                  </span>
+                </div>
               </div>
             )}
-          </div>
 
-          {/* Next Visit Alert Card */}
-          {customer?.bookings && customer.bookings.length > 0 && (() => {
-            const nextDate = getNextVisitDate(customer.bookings);
-            if (!nextDate) return null;
-            const overdue = isOverdue(nextDate);
-            return (
-              <div className={`rounded-2xl p-4 border flex items-center gap-3 ${
-                overdue
-                  ? 'bg-red-500/5 border-red-500/20'
-                  : 'bg-primary/5 border-primary/20'
-              }`}>
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
-                  overdue ? 'bg-red-500/10' : 'bg-primary/10'
+            {/* Next Visit Alert Card */}
+            {customer?.bookings && customer.bookings.length > 0 && (() => {
+              const nextDate = getNextVisitDate(customer.bookings);
+              if (!nextDate) return null;
+              const overdue = isOverdue(nextDate);
+              return (
+                <div className={`rounded-2xl p-4 border flex items-center gap-3 ${
+                  overdue
+                    ? 'bg-red-500/5 border-red-500/20'
+                    : 'bg-primary/5 border-primary/20'
                 }`}>
-                  <Calendar className={`w-5 h-5 ${overdue ? 'text-red-400' : 'text-primary'}`} />
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                    overdue ? 'bg-red-500/10' : 'bg-primary/10'
+                  }`}>
+                    <Calendar className={`w-5 h-5 ${overdue ? 'text-red-400' : 'text-primary'}`} />
+                  </div>
+                  <div>
+                    <p className={`text-sm font-medium ${overdue ? 'text-red-400' : 'text-primary'}`}>
+                      {overdue ? t('crm_overdue_visit') : t('crm_upcoming_visit')}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {overdue
+                        ? t('crm_overdue_visit_desc').replace('{date}', nextDate)
+                        : t('crm_upcoming_visit_desc').replace('{date}', nextDate)
+                      }
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p className={`text-sm font-medium ${overdue ? 'text-red-400' : 'text-primary'}`}>
-                    {overdue ? t('crm_overdue_visit') : t('crm_upcoming_visit')}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {overdue
-                      ? t('crm_overdue_visit_desc').replace('{date}', nextDate)
-                      : t('crm_upcoming_visit_desc').replace('{date}', nextDate)
-                    }
-                  </p>
-                </div>
-              </div>
-            );
-          })()}
+              );
+            })()}
 
-          {customer?.bookings && customer.bookings.length > 0 ? (
-            <div className="space-y-3">
-              {customer.bookings.map((b: Booking, idx: number) => (
-                <motion.div
-                  key={b.id}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: idx * 0.05 }}
-                  className="glass rounded-2xl p-5"
-                >
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                        <Wrench className="w-5 h-5 text-primary" />
-                      </div>
-                      <div>
-                        <p className="font-semibold text-sm">{b.model}</p>
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                          <Calendar className="w-3 h-3" />
-                          <span>{b.date}</span>
-                          <Clock className="w-3 h-3 ml-1" />
-                          <span>{b.time}</span>
+            {customer?.bookings && customer.bookings.length > 0 ? (
+              <div className="space-y-3">
+                {customer.bookings.map((b: Booking, idx: number) => (
+                  <motion.div
+                    key={b.id}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: idx * 0.05 }}
+                    className="glass rounded-2xl p-5"
+                  >
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                          <Wrench className="w-5 h-5 text-primary" />
+                        </div>
+                        <div>
+                          <p className="font-semibold text-sm">{b.model}</p>
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <Calendar className="w-3 h-3" />
+                            <span>{b.date}</span>
+                            <Clock className="w-3 h-3 ml-1" />
+                            <span>{b.time}</span>
+                          </div>
                         </div>
                       </div>
+                      <span className={`px-2.5 py-1 rounded-lg text-xs font-medium border ${getStatusColor(b.status)}`}>
+                        {b.status === 'pending' && t('crm_status_pending')}
+                        {b.status === 'accepted' && t('crm_status_accepted')}
+                        {b.status === 'completed' && t('crm_status_completed')}
+                        {b.status === 'rejected' && t('crm_status_rejected')}
+                      </span>
                     </div>
-                    <span className={`px-2.5 py-1 rounded-lg text-xs font-medium border ${getStatusColor(b.status)}`}>
-                      {b.status === 'pending' && t('crm_status_pending')}
-                      {b.status === 'accepted' && t('crm_status_accepted')}
-                      {b.status === 'completed' && t('crm_status_completed')}
-                      {b.status === 'rejected' && t('crm_status_rejected')}
-                    </span>
-                  </div>
 
-                  {/* Issue Description with status-based coloring */}
-                  <div className={`rounded-xl p-3 ${
-                    b.status === 'completed'
-                      ? 'bg-green-500/10 border border-green-500/20'
-                      : 'bg-secondary/30'
-                  }`}>
-                    <p className={`text-xs mb-1 flex items-center gap-1 ${
-                      b.status === 'completed' ? 'text-green-400' : 'text-muted-foreground'
+                    <div className={`rounded-xl p-3 ${
+                      b.status === 'completed'
+                        ? 'bg-green-500/10 border border-green-500/20'
+                        : 'bg-secondary/30'
                     }`}>
-                      <AlertCircle className="w-3 h-3" /> {t('crm_issue_description')}
-                    </p>
-                    <p className={`text-sm ${b.status === 'completed' ? 'text-green-300' : 'text-foreground'}`}>
-                      {b.issue}
-                    </p>
-                  </div>
-
-                  {/* Action Buttons */}
-                  {b.status !== 'completed' && b.status !== 'rejected' && (
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      <button
-                        onClick={() => handleMarkCompleted(b.id)}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-green-500/10 text-green-400 border border-green-500/20 text-xs font-medium hover:bg-green-500/20 transition-colors"
-                      >
-                        <CheckCircle2 className="w-3 h-3" />
-                        {t('crm_maintenance_done')}
-                      </button>
-                      <button
-                        onClick={() => handleOpenIssueEdit(b)}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs font-medium hover:bg-emerald-500/20 transition-colors"
-                      >
-                        <Pencil className="w-3 h-3" />
-                        {t('crm_issue_changed')}
-                      </button>
+                      <p className={`text-xs mb-1 flex items-center gap-1 ${
+                        b.status === 'completed' ? 'text-green-400' : 'text-muted-foreground'
+                      }`}>
+                        <AlertCircle className="w-3 h-3" /> {t('crm_issue_description')}
+                      </p>
+                      <p className={`text-sm ${b.status === 'completed' ? 'text-green-300' : 'text-foreground'}`}>
+                        {b.issue}
+                      </p>
                     </div>
-                  )}
 
-                  {b.vehicle && (
-                    <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
-                      <Car className="w-3 h-3" />
-                      <span>{b.vehicle.make} {b.vehicle.model}</span>
-                      {b.vehicle.plateNumber && (
-                        <span className="font-mono">· {b.vehicle.plateNumber}</span>
-                      )}
-                    </div>
-                  )}
-                </motion.div>
-              ))}
-            </div>
-          ) : (
-            <div className="glass rounded-2xl p-8 text-center">
-              <ClipboardList className="w-10 h-10 text-muted-foreground/30 mx-auto mb-3" />
-              <p className="text-muted-foreground text-sm">{t('crm_no_service_history')}</p>
-              <p className="text-muted-foreground/60 text-xs mt-1">
-                {t('crm_no_service_history_desc')}
-              </p>
-            </div>
-          )}
-        </div>
+                    {b.status !== 'completed' && b.status !== 'rejected' && (
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        <button
+                          onClick={() => handleMarkCompleted(b.id)}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-green-500/10 text-green-400 border border-green-500/20 text-xs font-medium hover:bg-green-500/20 transition-colors"
+                        >
+                          <CheckCircle2 className="w-3 h-3" />
+                          {t('crm_maintenance_done')}
+                        </button>
+                        <button
+                          onClick={() => handleOpenIssueEdit(b)}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs font-medium hover:bg-emerald-500/20 transition-colors"
+                        >
+                          <Pencil className="w-3 h-3" />
+                          {t('crm_issue_changed')}
+                        </button>
+                      </div>
+                    )}
+
+                    {b.vehicle && (
+                      <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
+                        <Car className="w-3 h-3" />
+                        <span>{b.vehicle.make} {b.vehicle.model}</span>
+                        {b.vehicle.plateNumber && (
+                          <span className="font-mono">· {b.vehicle.plateNumber}</span>
+                        )}
+                      </div>
+                    )}
+                  </motion.div>
+                ))}
+              </div>
+            ) : (
+              <div className="glass rounded-2xl p-8 text-center">
+                <ClipboardList className="w-10 h-10 text-muted-foreground/30 mx-auto mb-3" />
+                <p className="text-muted-foreground text-sm">{t('crm_no_service_history')}</p>
+                <p className="text-muted-foreground/60 text-xs mt-1">
+                  {t('crm_no_service_history_desc')}
+                </p>
+              </div>
+            )}
+          </>
+        )}
       </motion.div>
 
       {/* Add Vehicle Modal */}

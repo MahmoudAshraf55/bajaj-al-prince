@@ -10,6 +10,7 @@ import CustomerReviews from "@/components/sections/CustomerReviews";
 import ContactInfo from "@/components/sections/ContactInfo";
 import PaymentMethods from "@/components/sections/PaymentMethods";
 import FinalCTA from "@/components/sections/FinalCTA";
+import SectionNav from "@/components/SectionNav";
 
 export default function Home() {
   useEffect(() => {
@@ -27,6 +28,7 @@ export default function Home() {
 
   return (
     <div className="flex flex-col">
+      <SectionNav />
       <Hero />
       {/* TikTok integration – free & stable */}
       <section id="tiktok" className="scroll-mt-24">

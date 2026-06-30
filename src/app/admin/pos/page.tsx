@@ -10,12 +10,15 @@ import {
   Search, X, ShoppingCart, Loader2,
   Check, Printer, FileText, TrendingUp,
 } from 'lucide-react';
-import { Product, CartItem, Customer, Invoice } from '@/types/pos';
+import { Product, Customer, Invoice } from '@/types/pos';
 import POSProductGrid from '@/components/pos/POSProductGrid';
 import POSCart from '@/components/pos/POSCart';
 import POSInvoiceList from '@/components/pos/POSInvoiceList';
 import POSTreasury from '@/components/pos/POSTreasury';
 import { printReceipt, POSReceiptStyles, POSReceipt } from '@/components/pos/POSReceipt';
+import { parseBarcodeFormat } from '@/lib/barcode-utils';
+import { playScanSound } from '@/lib/scan-sound';
+import { usePOSStore } from '@/store/posStore';
 
 export default function AdminPOS() {
   const { t, language, isRTL } = useTranslation();
@@ -28,16 +31,21 @@ export default function AdminPOS() {
   const [loading, setLoading] = useState(true);
   const [products, setProducts] = useState<Product[]>([]);
   const [search, setSearch] = useState('');
-  const [cart, setCart] = useState<CartItem[]>([]);
-  const [discount, setDiscount] = useState(0);
-  const [discountType, setDiscountType] = useState<'amount' | 'percent'>('amount');
-  const [paid, setPaid] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'transfer' | ''>('cash');
-  const [splitPayments, setSplitPayments] = useState<Array<{ method: 'cash' | 'card' | 'transfer'; amount: string }>>([]);
-  const [notes, setNotes] = useState('');
+
+  const {
+    cart, setCart,
+    discount, setDiscount,
+    discountType, setDiscountType,
+    paid, setPaid,
+    paymentMethod, setPaymentMethod,
+    splitPayments, setSplitPayments,
+    notes, setNotes,
+    taxRate, setTaxRate,
+    selectedCustomer, setSelectedCustomer,
+    isReturn, setIsReturn,
+  } = usePOSStore();
+
   const [saving, setSaving] = useState(false);
-  const [taxRate, setTaxRate] = useState(14);
-  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [showCustomerModal, setShowCustomerModal] = useState(false);
   const [customerSearch, setCustomerSearch] = useState('');
@@ -49,6 +57,7 @@ export default function AdminPOS() {
   const [quickCreateSaving, setQuickCreateSaving] = useState(false);
   const [manualBarcode, setManualBarcode] = useState('');
   const barcodeInputRef = useRef<HTMLInputElement>(null);
+  const barcodeDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [invSearch, setInvSearch] = useState('');
@@ -121,7 +130,7 @@ export default function AdminPOS() {
         }
       }
     });
-  }, [loading]);
+  }, [loading, setCart, setTaxRate]);
 
   useEffect(() => {
     if (searchRef.current) searchRef.current.focus();
@@ -132,6 +141,20 @@ export default function AdminPOS() {
       window.history.replaceState({}, '', '/admin/pos');
     }
   }, []);
+
+  useEffect(() => {
+    if (barcodeDebounceRef.current) clearTimeout(barcodeDebounceRef.current);
+    if (!manualBarcode) return;
+    const { isValid } = parseBarcodeFormat(manualBarcode);
+    if (!isValid) return;
+    barcodeDebounceRef.current = setTimeout(() => {
+      handleBarcodeEnter(manualBarcode);
+    }, 150);
+    return () => {
+      if (barcodeDebounceRef.current) clearTimeout(barcodeDebounceRef.current);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [manualBarcode]);
 
   const filtered = products.filter((p) => {
     if (!p.available) return false;
@@ -208,7 +231,7 @@ export default function AdminPOS() {
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({
-          type: 'sale',
+          type: isReturn ? 'return' : 'sale',
           items: cart.map((item) => ({ productId: item.productId, quantity: item.quantity })),
           discount: discountNum,
           paid: paidNum || total,
@@ -308,9 +331,16 @@ export default function AdminPOS() {
   const handleBarcodeEnter = async (barcode: string) => {
     const trimmed = barcode.trim();
     if (!trimmed) return;
+    const { isValid } = parseBarcodeFormat(trimmed);
+    if (!isValid) {
+      addToast('error', t('pos_invalid_barcode'));
+      playScanSound(false);
+      return;
+    }
     const product = products.find((p) => p.barcode === trimmed && p.available);
     if (product) {
       handleSelectProduct(product);
+      playScanSound(true);
       setManualBarcode('');
       barcodeInputRef.current?.focus();
       return;
@@ -328,13 +358,17 @@ export default function AdminPOS() {
         const scannedProduct: Product = d.data.product;
         if (!scannedProduct.available) {
           addToast('error', t('pos_product_unavailable'));
+          playScanSound(false);
         } else {
           handleSelectProduct(scannedProduct);
+          playScanSound(true);
         }
       } else {
+        playScanSound(false);
         setQuickCreateBarcode(trimmed);
       }
     } catch {
+      playScanSound(false);
       setQuickCreateBarcode(trimmed);
     }
     setManualBarcode('');
@@ -343,9 +377,17 @@ export default function AdminPOS() {
 
   const handleBarcodeFromScan = async (barcode: string) => {
     const trimmed = barcode.trim();
+    const { isValid } = parseBarcodeFormat(trimmed);
+    if (!isValid) {
+      addToast('error', t('pos_invalid_barcode'));
+      playScanSound(false);
+      setShowWebcamScanner(false);
+      return;
+    }
     const product = products.find((p) => p.barcode === trimmed && p.available);
     if (product) {
       handleSelectProduct(product);
+      playScanSound(true);
       setShowWebcamScanner(false);
       return;
     }
@@ -362,13 +404,17 @@ export default function AdminPOS() {
         const scannedProduct: Product = d.data.product;
         if (!scannedProduct.available) {
           addToast('error', t('pos_product_unavailable'));
+          playScanSound(false);
         } else {
           handleSelectProduct(scannedProduct);
+          playScanSound(true);
         }
       } else {
+        playScanSound(false);
         setQuickCreateBarcode(trimmed);
       }
     } catch {
+      playScanSound(false);
       setQuickCreateBarcode(trimmed);
     }
     setShowWebcamScanner(false);
@@ -408,6 +454,38 @@ export default function AdminPOS() {
       await loadInvoices();
     } else {
       addToast('error', d.error || 'Failed');
+    }
+  };
+
+  const handleReturnInvoice = async (orig: Invoice) => {
+    if (!confirm(`Create return for ${orig.number}? Refund total: ${Number(orig.total).toFixed(2)} EGP`)) return;
+    setSaving(true);
+    try {
+      const res = await fetch('/api/v1/invoices/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          type: 'return',
+          items: orig.items.map((item) => ({ productId: item.productId || '', quantity: item.quantity })),
+          paid: Number(orig.total),
+          paymentMethod: orig.paymentMethod || 'cash',
+          notes: `Return for ${orig.number}`,
+          customerName: orig.customerName,
+        }),
+      });
+      const d = await res.json();
+      if (d.success) {
+        addToast('success', `Return ${d.data.invoice.number} created`);
+        setDetailInvoice(null);
+        await loadInvoices();
+      } else {
+        addToast('error', d.error || 'Return failed');
+      }
+    } catch {
+      addToast('error', 'Network error');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -507,6 +585,8 @@ export default function AdminPOS() {
               />
 
               <POSCart
+                isReturn={isReturn}
+                setIsReturn={setIsReturn}
                 cart={cart}
                 t={t}
                 subtotal={subtotal}
@@ -763,6 +843,18 @@ export default function AdminPOS() {
                 <div className="flex justify-between"><span>{t('pos_paid')}</span><span>{Number(detailInvoice.paid).toFixed(2)} EGP</span></div>
                 {Number(detailInvoice.change) > 0 && <div className="flex justify-between text-green-400"><span>{t('pos_change')}</span><span>{Number(detailInvoice.change).toFixed(2)} EGP</span></div>}
               </div>
+              {detailInvoice.type === 'sale' && detailInvoice.status === 'confirmed' && (
+                <div className="flex gap-2 mt-4">
+                  <button onClick={() => { handleReturnInvoice(detailInvoice); }}
+                    className="flex-1 py-2 rounded-xl bg-orange-500/80 text-white text-sm font-medium hover:bg-orange-500 transition-colors">
+                    Return Items
+                  </button>
+                  <button onClick={() => { setDetailInvoice(null); handleCancelInvoice(detailInvoice); }}
+                    className="flex-1 py-2 rounded-xl bg-red-500/80 text-white text-sm font-medium hover:bg-red-500 transition-colors">
+                    {t('pos_cancel_invoice')}
+                  </button>
+                </div>
+              )}
             </motion.div>
           </motion.div>
         )}
@@ -774,10 +866,13 @@ export default function AdminPOS() {
             <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} exit={{ scale: 0.95 }} onClick={(e) => e.stopPropagation()}
               role="dialog"
               aria-modal="true" className="glass rounded-2xl p-6 w-full max-w-md">
-              <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center justify-between mb-2">
                 <h3 className="font-bold">{t('pos_quick_create_title')}</h3>
                 <button onClick={() => setQuickCreateBarcode(null)} className="text-muted-foreground hover:text-foreground"><X className="w-5 h-5" /></button>
               </div>
+              <p className="text-sm text-muted-foreground mb-4">
+                {t('pos_barcode_not_found')} <span className="font-mono text-foreground">{quickCreateBarcode}</span>
+              </p>
               <form onSubmit={async (e) => {
                 e.preventDefault();
                 const fd = new FormData(e.currentTarget);
@@ -793,7 +888,7 @@ export default function AdminPOS() {
                     body: JSON.stringify({
                       name,
                       nameAr: (fd.get('nameAr') as string) || null,
-                      barcode: quickCreateBarcode,
+                      barcode: (fd.get('barcode') as string) || quickCreateBarcode,
                       category: (fd.get('category') as string) || 'Spare Parts',
                       price,
                       stock: parseInt(fd.get('stock') as string) || 1,
@@ -825,6 +920,10 @@ export default function AdminPOS() {
                   <div>
                     <label className="text-xs text-muted-foreground mb-1 block">{t('pos_quick_create_name_ar')}</label>
                     <input name="nameAr" className="w-full px-3 py-2.5 rounded-xl bg-input border border-border text-sm focus:outline-none focus:ring-2 focus:ring-ring" placeholder={t('pos_quick_create_name_ar')} />
+                  </div>
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1 block">{t('pos_quick_create_barcode')}</label>
+                    <input name="barcode" defaultValue={quickCreateBarcode} className="w-full px-3 py-2.5 rounded-xl bg-input border border-border text-sm font-mono focus:outline-none focus:ring-2 focus:ring-ring" placeholder={t('pos_quick_create_barcode')} dir="ltr" />
                   </div>
                   <div>
                     <label className="text-xs text-muted-foreground mb-1 block">{t('pos_quick_create_price')} *</label>

@@ -6,11 +6,12 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
   LayoutDashboard, Mail, Calendar, ShoppingCart, DollarSign, Package,
   Users, Car, List, Wrench, MessageCircle, ScanLine, Settings,
-  LogOut, Menu, X, ClipboardList, PanelLeft, PanelRight, Truck,
+  LogOut, Menu, X, ClipboardList, PanelLeft, PanelRight, Truck, Building2,
 } from 'lucide-react';
 import Logo from '@/components/ui/Logo';
 import { useTranslation } from '@/components/useTranslation';
 import { cn } from '@/lib/utils';
+import LanguageSwitcher from '@/components/LanguageSwitcher';
 
 interface SidebarLink {
   href: string;
@@ -72,6 +73,7 @@ const sections: SidebarSection[] = [
       { href: '/admin/customers', icon: Users, labelKey: 'admin_customers' },
       { href: '/admin/vehicles', icon: Car, labelKey: 'admin_vehicles' },
       { href: '/admin/vehicle-models', icon: List, labelKey: 'admin_vehicle_models' },
+      { href: '/admin/manufacturers', icon: Building2, labelKey: 'admin_manufacturers' },
       { href: '/admin/work-orders', icon: Wrench, labelKey: 'wo_title' },
       { href: '/admin/suppliers', icon: Truck, labelKey: 'admin_suppliers' },
       { href: '/admin/whatsapp', icon: MessageCircle, labelKey: 'admin_whatsapp' },
@@ -173,8 +175,11 @@ export default function AdminSidebar() {
               {section.links.map((link) => {
                 const active = isLinkActive(link);
                 const Icon = link.icon;
+                const isExternal = link.href.startsWith('http');
+                const Comp = isExternal ? 'a' : Link;
+                const extraProps = isExternal ? { target: '_blank', rel: 'noopener noreferrer' } : {};
                 return (
-                  <Link
+                  <Comp
                     key={link.href}
                     href={link.href}
                     onClick={() => setOpen(false)}
@@ -187,10 +192,11 @@ export default function AdminSidebar() {
                     )}
                     aria-current={active ? 'page' : undefined}
                     title={collapsed ? t(link.labelKey) : undefined}
+                    {...extraProps}
                   >
                     <Icon className="w-4 h-4 shrink-0" />
                     {!collapsed && <span className="truncate">{t(link.labelKey)}</span>}
-                  </Link>
+                  </Comp>
                 );
               })}
             </div>
@@ -211,6 +217,9 @@ export default function AdminSidebar() {
           <ToggleIcon className="w-4 h-4 shrink-0" />
           {!collapsed && <span className="truncate">{t('admin_collapse_sidebar')}</span>}
         </button>
+        <div className={cn('flex', collapsed ? 'justify-center px-2 py-2' : 'px-3 py-2')}>
+          <LanguageSwitcher className="w-full justify-center text-xs" />
+        </div>
         <button
           onClick={handleLogout}
           className={cn(

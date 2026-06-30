@@ -86,7 +86,7 @@ export default function Hero() {
       </div>
 
       {/* Hero Content Section */}
-      <section className="relative min-h-screen flex flex-col items-center justify-center px-6 sm:px-12 pt-32 pb-16 snap-start snap-always overflow-hidden">
+      <section id="hero" className="relative min-h-screen flex flex-col items-center justify-center px-6 sm:px-12 pt-32 pb-16 snap-start snap-always overflow-hidden">
         {/* Cinematic Backdrop Ambient Smoke & Glimmers */}
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_rgba(230,177,92,0.12),_transparent_65%)] pointer-events-none" />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_40%,_rgba(249,115,22,0.06),_transparent_40%)] pointer-events-none" />

@@ -9,7 +9,7 @@ import BackButton from '@/components/BackButton';
 import { fetchWithRetry } from '@/lib/fetchWithRetry';
 import {
   Package, Truck, FileText, AlertCircle, Clock,
-  CheckCircle2, XCircle, Send, Ban, Plus, X,
+  CheckCircle2, XCircle, Send, Ban, Plus, X, Download,
 } from 'lucide-react';
 
 
@@ -235,6 +235,15 @@ export default function PurchaseOrderDetailPage() {
 
             {/* Actions */}
             <div className="flex gap-2 flex-wrap">
+              <a
+                href={`/api/v1/purchase-orders/${order.id}/pdf/`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+              >
+                <Download className="w-4 h-4" />
+                PDF
+              </a>
               {['ordered', 'partially_received'].includes(order.status) && (
                 <button
                   onClick={openReceiveModal}

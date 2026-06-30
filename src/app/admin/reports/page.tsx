@@ -66,7 +66,7 @@ export default function ReportsPage() {
     } finally {
       setLoadingReport(false);
     }
-  }, [tab, finReport, invReport, custReport, fromDate, toDate, t, addToast, router]);
+  }, [tab, finReport, invReport, custReport, fromDate, toDate, t, addToast]);
 
   const exportExcel = () => {
     let url = '';
@@ -245,17 +245,17 @@ function BalanceReport({ data, t }: { data: Record<string, unknown>; t: (k: stri
       <div>
         <h4 className="font-bold text-sm mb-2 text-blue-400">Assets</h4>
         <div className="space-y-1 text-sm">
-          <Row label="Cash" value={d.assets.cash} />
-          <Row label="Accounts Receivable" value={d.assets.accountsReceivable} />
-          <Row label="Inventory" value={d.assets.inventory} />
-          <Row label="Total Assets" value={d.assets.total} bold />
+          <Row label="Cash" value={d.assets?.cash || 0} />
+          <Row label="Accounts Receivable" value={d.assets?.accountsReceivable || 0} />
+          <Row label="Inventory" value={d.assets?.inventory || 0} />
+          <Row label="Total Assets" value={d.assets?.total || 0} bold />
         </div>
       </div>
       <div>
         <h4 className="font-bold text-sm mb-2 text-orange-400">Liabilities</h4>
         <div className="space-y-1 text-sm">
-          <Row label="Accounts Payable" value={d.liabilities.accountsPayable} />
-          <Row label="Total Liabilities" value={d.liabilities.total} bold />
+          <Row label="Accounts Payable" value={d.liabilities?.accountsPayable || 0} />
+          <Row label="Total Liabilities" value={d.liabilities?.total || 0} bold />
         </div>
       </div>
       <div>
@@ -271,12 +271,12 @@ function CashFlowReport({ data, t }: { data: Record<string, unknown>; t: (k: str
     <div className="space-y-3">
       <h3 className="text-lg font-bold">{t('rpt_cash_flow')}</h3>
       <div className="space-y-1.5 text-sm">
-        <Row label="Cash Sales" value={d.operating.cashSales} />
-        <Row label="Card Sales" value={d.operating.cardSales} />
-        <Row label="Transfer Sales" value={d.operating.transferSales} />
-        <Row label="Other Income" value={d.operating.otherIncome} />
-        <Row label="Expenses" value={-d.operating.expenses} negative />
-        <Row label="Purchase Payments" value={-d.operating.purchasePayments} negative />
+        <Row label="Cash Sales" value={d.operating?.cashSales || 0} />
+        <Row label="Card Sales" value={d.operating?.cardSales || 0} />
+        <Row label="Transfer Sales" value={d.operating?.transferSales || 0} />
+        <Row label="Other Income" value={d.operating?.otherIncome || 0} />
+        <Row label="Expenses" value={-(d.operating?.expenses || 0)} negative />
+        <Row label="Purchase Payments" value={-(d.operating?.purchasePayments || 0)} negative />
         <hr className="border-border my-2" />
         <Row label="Net Cash Flow" value={d.netCashFlow} bold highlight />
       </div>
@@ -401,12 +401,13 @@ function CustomerReportView({ data, t, type }: { data: Record<string, unknown>; 
   );
 }
 
-function Row({ label, value, bold, highlight, negative, suffix }: { label: string; value: number; bold?: boolean; highlight?: boolean; negative?: boolean; suffix?: string }) {
+function Row({ label, value, bold, highlight, negative, suffix }: { label: string; value?: number | null; bold?: boolean; highlight?: boolean; negative?: boolean; suffix?: string }) {
+  const safeValue = value ?? 0;
   return (
     <div className={`flex justify-between ${bold ? 'font-bold pt-1' : ''}`}>
       <span className={bold ? '' : 'text-muted-foreground'}>{label}</span>
-      <span className={`${highlight ? (value >= 0 ? 'text-green-400' : 'text-red-400') : ''} ${negative ? 'text-red-400' : ''}`}>
-        {value < 0 ? '' : ''}{Math.round(value * 100) / 100}{suffix || ''}
+      <span className={`${highlight ? (safeValue >= 0 ? 'text-green-400' : 'text-red-400') : ''} ${negative ? 'text-red-400' : ''}`}>
+        {Math.round(safeValue * 100) / 100}{suffix || ''}
       </span>
     </div>
   );

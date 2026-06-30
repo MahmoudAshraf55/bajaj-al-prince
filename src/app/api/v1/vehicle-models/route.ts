@@ -10,6 +10,7 @@ import { withSecurityHeaders } from '@/lib/security';
 const modelSchema = z.object({
   name: sanitizedString(z.string().min(1).max(100)),
   make: sanitizedString(z.string().min(1).max(100)).optional().default('Bajaj'),
+  manufacturerId: z.string().uuid().optional().nullable(),
 });
 
 export async function GET(req: NextRequest) {
@@ -20,6 +21,7 @@ export async function GET(req: NextRequest) {
     const models = await prisma.vehicleModel.findMany({
       where: includeInactive ? undefined : { isActive: true, isDeleted: false },
       orderBy: { name: 'asc' },
+      include: { manufacturer: { select: { id: true, name: true, nameAr: true } } },
     });
 
     return withSecurityHeaders(NextResponse.json({ success: true, data: { models } }));
@@ -37,7 +39,9 @@ export async function POST(req: NextRequest) {
     return await withRole(req, ['admin', 'staff'], async (payload) => {
       const body = await req.json();
       const data = modelSchema.parse(body);
-      const model = await prisma.vehicleModel.create({ data });
+      const model = await prisma.vehicleModel.create({
+        data: { ...data, manufacturerId: data.manufacturerId ?? null },
+      });
       const { ipAddress, userAgent } = getClientInfo(req);
       await logAudit({
         userId: payload.userId,

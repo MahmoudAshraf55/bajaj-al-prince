@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from '@/components/useTranslation';
@@ -47,7 +47,7 @@ export default function InventoryCountsPage() {
   const [submitting, setSubmitting] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
 
-  const fetchCounts = async () => {
+  const fetchCounts = useCallback(async () => {
     try {
       const res = await fetch('/api/v1/inventory-counts/', { credentials: 'include' });
       const json = await res.json();
@@ -57,9 +57,9 @@ export default function InventoryCountsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [addToast]);
 
-  useEffect(() => { fetchCounts(); }, []);
+  useEffect(() => { fetchCounts(); }, [fetchCounts]);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();

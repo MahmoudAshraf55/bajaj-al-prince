@@ -44,7 +44,7 @@ export async function GET(req: NextRequest) {
           where,
           include: {
             lines: {
-              include: { account: { select: { id: true, code: true, name: true, type: true } } },
+              include: { account: { select: { id: true, code: true, name: true, nameAr: true, type: true } } },
               orderBy: { debit: 'desc' },
             },
             createdBy: { select: { id: true, username: true } },

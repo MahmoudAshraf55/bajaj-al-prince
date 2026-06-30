@@ -6,7 +6,7 @@ import { sanitizedString } from '@/lib/sanitize';
 import { logAudit, getClientInfo } from '@/lib/audit';
 import { withSecurityHeaders } from '@/lib/security';
 import { z } from 'zod';
-import { getTenantId } from '@/lib/tenant-context';
+import { getTenantId, DEFAULT_TENANT_ID } from '@/lib/tenant-context';
 
 const receiveItemSchema = z.object({
   orderItemId: z.string().uuid(),
@@ -64,7 +64,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
             receiptNumber,
             notes: data.notes,
             receivedById: payload.userId,
-            tenantId: tenantId ?? undefined,
+            tenantId: tenantId ?? DEFAULT_TENANT_ID,
           },
         });
 
@@ -80,14 +80,17 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
               quantity: ri.quantity,
               unitPrice: orderItem.unitPrice,
               total: orderItem.unitPrice.mul(ri.quantity),
-              tenantId: tenantId ?? undefined,
+              tenantId: tenantId ?? DEFAULT_TENANT_ID,
             },
           });
 
-          await tx.purchaseOrderItem.update({
+          const updatedCount = await tx.purchaseOrderItem.updateMany({
             where: { id: ri.orderItemId },
             data: { receivedQty: { increment: ri.quantity } },
           });
+          if (updatedCount.count === 0) {
+            throw new Error(`Purchase order item ${ri.orderItemId} not found for update`);
+          }
 
           await tx.stockMovement.create({
             data: {
@@ -97,7 +100,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
               reference: `PO:${order.number} / ${receiptNumber}`,
               notes: data.notes || `Received from PO ${order.number}`,
               createdById: payload.userId,
-              tenantId: tenantId ?? undefined,
+            tenantId: tenantId ?? DEFAULT_TENANT_ID,
             },
           });
         }

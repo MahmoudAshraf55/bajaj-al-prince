@@ -4,6 +4,7 @@ import { withRole } from '@/lib/auth';
 import { checkRateLimit } from '@/lib/rate-limit';
 import { logAudit, getClientInfo } from '@/lib/audit';
 import { withSecurityHeaders } from '@/lib/security';
+import { getTenantId, DEFAULT_TENANT_ID } from '@/lib/tenant-context';
 import * as XLSX from 'xlsx';
 import { Prisma } from '@prisma/client';
 
@@ -132,6 +133,7 @@ function buildCreateData(row: PreviewRow): Prisma.ProductCreateManyInput {
     category: row.category || 'Spare Parts',
     price: row.price ?? 0,
     stock: row.stock ?? 1,
+    tenantId: getTenantId() ?? DEFAULT_TENANT_ID,
   };
   if (row.costPrice != null) data.costPrice = row.costPrice;
   if (row.unit) data.unit = row.unit;

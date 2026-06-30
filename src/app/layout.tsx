@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { LanguageProvider } from "@/components/LanguageContext";
+import { SettingsProvider } from "@/components/SettingsContext";
 import ChatBot from "@/components/ChatBot";
 
 const geistSans = Geist({
@@ -81,8 +82,10 @@ export default function RootLayout({
           Skip to content
         </a>
         <LanguageProvider>
-          {children}
-          <ChatBot />
+          <SettingsProvider>
+            {children}
+            <ChatBot />
+          </SettingsProvider>
         </LanguageProvider>
       </body>
     </html>

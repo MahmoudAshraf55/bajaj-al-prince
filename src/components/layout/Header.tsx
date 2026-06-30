@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils';
 import Logo from '@/components/ui/Logo';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 import { useTranslation } from '@/components/useTranslation';
+import { usePublicSettings } from '@/components/SettingsContext';
 
 const navLinks = [
   { href: '/#story', labelKey: 'nav_ourStory' as const },
@@ -20,6 +21,7 @@ const navLinks = [
 
 export default function Header() {
   const { t } = useTranslation();
+  const s = usePublicSettings();
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -61,11 +63,11 @@ export default function Header() {
         <div className="hidden md:flex items-center gap-4">
           <LanguageSwitcher />
           <a
-            href="tel:01221370120"
+            href={`tel:${s.contact_phone1.replace(/\s/g, '')}`}
             className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors"
           >
             <Phone className="w-4 h-4" />
-            <span className="font-mono">0122 137 0120</span>
+            <span className="font-mono">{s.contact_phone1}</span>
           </a>
         </div>
 

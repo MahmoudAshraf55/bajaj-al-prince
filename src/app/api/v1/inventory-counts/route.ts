@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { withRole } from '@/lib/auth';
 import { logAudit, getClientInfo } from '@/lib/audit';
+import { getTenantId, DEFAULT_TENANT_ID } from '@/lib/tenant-context';
 import { z } from 'zod';
 
 const createSchema = z.object({
@@ -39,10 +40,12 @@ export async function POST(req: NextRequest) {
       const { name } = parsed.data;
       const products = await prisma.product.findMany({ where: { isDeleted: false, available: true } });
 
+      const tenantId = getTenantId() ?? DEFAULT_TENANT_ID;
       const count = await prisma.inventoryCount.create({
         data: {
           name,
           createdById: payload.userId,
+          tenantId,
           items: {
             create: products.map((p) => ({
               productId: p.id,
@@ -50,6 +53,7 @@ export async function POST(req: NextRequest) {
               actualQty: 0,
               variance: 0,
               unit: p.unit,
+              tenantId,
             })),
           },
         },

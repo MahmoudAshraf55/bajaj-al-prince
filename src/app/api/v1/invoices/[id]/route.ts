@@ -6,6 +6,7 @@ import { getTenantId, DEFAULT_TENANT_ID } from '@/lib/tenant-context';
 import { logAudit, getClientInfo } from '@/lib/audit';
 import { z } from 'zod';
 import { withSecurityHeaders } from '@/lib/security';
+import { createDoubleEntry } from '@/lib/journal';
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -99,6 +100,20 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
                 createdById: payload.userId,
                 tenantId: getTenantId() ?? DEFAULT_TENANT_ID,
               },
+            });
+          }
+
+          if (invoice.type === 'sale' && Number(invoice.total) > 0) {
+            await createDoubleEntry(tx, {
+              type: 'RETURN',
+              amount: Number(invoice.total),
+              description: `Cancelled invoice ${invoice.number}`,
+              referenceType: 'invoice',
+              referenceId: invoice.id,
+              referenceNumber: invoice.number,
+              paymentMethod: invoice.paymentMethod ?? 'cash',
+              createdById: payload.userId,
+              tenantId: getTenantId() ?? DEFAULT_TENANT_ID,
             });
           }
         });

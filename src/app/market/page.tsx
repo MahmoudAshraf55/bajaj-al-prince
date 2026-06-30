@@ -16,7 +16,7 @@ export const dynamic = 'force-dynamic';
 
 export default async function MarketPage() {
   const products = await prisma.product.findMany({
-    where: { isDeleted: false, available: true },
+    where: { isDeleted: false },
     select: {
       id: true,
       name: true,

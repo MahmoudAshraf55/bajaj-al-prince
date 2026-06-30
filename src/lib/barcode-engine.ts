@@ -26,24 +26,23 @@ export async function lookupProduct(barcode: string): Promise<BarcodeResult> {
       return { found: false, message: 'Empty barcode' };
     }
 
-    const product = await prisma.product.findFirst({
-      where: {
-        barcode: cleaned,
-        available: true,
-      },
-      select: {
-        id: true,
-        name: true,
-        nameAr: true,
-        barcode: true,
-        price: true,
-        stock: true,
-        category: true,
-        image: true,
-        unit: true,
-        available: true,
-      },
+    const selectFields = {
+      id: true, name: true, nameAr: true, barcode: true,
+      price: true, stock: true, category: true, image: true,
+      unit: true, available: true,
+    } as const;
+
+    let product = await prisma.product.findFirst({
+      where: { barcode: cleaned, available: true },
+      select: selectFields,
     });
+
+    if (!product) {
+      product = await prisma.product.findFirst({
+        where: { barcode: { startsWith: cleaned }, available: true },
+        select: selectFields,
+      });
+    }
 
     if (!product) {
       return { found: false, message: `No product found for barcode: ${cleaned}` };
@@ -98,15 +97,4 @@ export async function logScan(input: ScanLogInput): Promise<void> {
   }
 }
 
-export function parseBarcodeFormat(barcode: string): { format: string; isValid: boolean } {
-  const cleaned = barcode.trim();
-
-  if (/^\d{12}$/.test(cleaned)) return { format: 'UPC-A', isValid: true };
-  if (/^\d{13}$/.test(cleaned)) return { format: 'EAN-13', isValid: true };
-  if (/^\d{8}$/.test(cleaned)) return { format: 'EAN-8', isValid: true };
-  if (/^\d{14}$/.test(cleaned)) return { format: 'ITF-14', isValid: true };
-  if (/^[A-Za-z0-9\-_]+$/.test(cleaned) && cleaned.length >= 3 && cleaned.length <= 50)
-    return { format: 'Code128/Code39', isValid: true };
-  if (cleaned.length > 0) return { format: 'Unknown', isValid: false };
-  return { format: 'Empty', isValid: false };
-}
+export { parseBarcodeFormat } from './barcode-utils';

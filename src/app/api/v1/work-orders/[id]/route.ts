@@ -1,13 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { withAuth } from '@/lib/auth';
+import { withRole } from '@/lib/auth';
+import { checkRateLimit } from '@/lib/rate-limit';
 import { withSecurityHeaders } from '@/lib/security';
+import { getTenantId, DEFAULT_TENANT_ID } from '@/lib/tenant-context';
 import { logAudit, getClientInfo } from '@/lib/audit';
 import { sanitizedString } from '@/lib/sanitize';
+import { logger } from '@/lib/logger';
 import { sendWhatsAppMessageViaService } from '@/lib/whatsapp-client';
 import { buildMessage } from '@/lib/whatsapp-templates';
 import { z } from 'zod';
 
+import { WorkOrderService } from '@/services/WorkOrderService';
 const updateSchema = z.object({
   status: z.enum(['pending', 'in_progress', 'completed', 'cancelled']).optional(),
   description: sanitizedString(z.string().min(3).max(2000)).optional(),
@@ -15,8 +19,11 @@ const updateSchema = z.object({
 });
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const limit = await checkRateLimit(req, 'admin');
+  if (!limit.allowed) return withSecurityHeaders(limit.response!);
+
   try {
-    return await withAuth(req, async () => {
+    return await withRole(req, ['admin', 'staff'], async (payload) => {
       const { id } = await params;
       const body = await req.json();
       const data = updateSchema.parse(body);
@@ -26,14 +33,34 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         return withSecurityHeaders(NextResponse.json({ success: false, error: 'Work order not found' }, { status: 404 }));
       }
 
-      const workOrder = await prisma.workOrder.update({
-        where: { id },
-        data: {
-          ...(data.status && { status: data.status }),
-          ...(data.description && { description: data.description }),
-          ...(data.cost !== undefined && { cost: data.cost }),
-        },
-        include: { vehicle: { include: { customer: true } } },
+      const isCompleting = data.status === 'completed' && existing.status !== 'completed';
+      const tenantId = getTenantId() ?? DEFAULT_TENANT_ID;
+
+      const workOrder = await prisma.$transaction(async (tx) => {
+        const updated = await tx.workOrder.update({
+          where: { id },
+          data: {
+            ...(data.status && { status: data.status }),
+            ...(data.description && { description: data.description }),
+            ...(data.cost !== undefined && { cost: data.cost }),
+          },
+          include: {
+            vehicle: { include: { customer: true } },
+            parts: { where: { isDeleted: false }, include: { product: { select: { id: true, name: true, costPrice: true } } } },
+            labourLines: { where: { isDeleted: false } },
+          },
+        });
+
+        if (isCompleting) {
+          try {
+            await WorkOrderService.completeWorkOrder(tx, id, tenantId, payload.userId, updated);
+          } catch (err) {
+            logger.error('Work order completion side-effects failed, rolling back', err);
+            throw err;
+          }
+        }
+
+        return updated;
       });
 
       const { ipAddress, userAgent } = getClientInfo(req);
@@ -88,6 +115,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       return withSecurityHeaders(NextResponse.json({ success: true, data: { workOrder } }));
     });
   } catch (error) {
+    logger.error('Work order PATCH error', error);
     if (error instanceof z.ZodError) {
       return withSecurityHeaders(NextResponse.json({ success: false, errors: error.issues }, { status: 400 }));
     }
@@ -97,7 +125,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    return await withAuth(req, async () => {
+    return await withRole(req, ['admin', 'staff'], async () => {
       const { id } = await params;
 
       const existing = await prisma.workOrder.findFirst({ where: { id, isDeleted: false } });

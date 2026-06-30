@@ -11,6 +11,7 @@ const modelUpdateSchema = z.object({
   name: sanitizedString(z.string().min(1).max(100)).optional(),
   make: sanitizedString(z.string().min(1).max(100)).optional(),
   isActive: z.boolean().optional(),
+  manufacturerId: z.string().uuid().nullable().optional(),
 });
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {

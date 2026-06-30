@@ -34,7 +34,7 @@ export async function GET(req: NextRequest) {
 
       const accounts = await prisma.account.findMany({
         where,
-        include: { children: { select: { id: true, name: true, code: true } } },
+        include: { children: { select: { id: true, name: true, nameAr: true, code: true } } },
         orderBy: { code: 'asc' },
       });
 
@@ -65,7 +65,7 @@ export async function POST(req: NextRequest) {
           parentId: data.parentId,
           description: data.description,
         },
-        include: { parent: { select: { id: true, name: true, code: true } } },
+        include: { parent: { select: { id: true, name: true, nameAr: true, code: true } } },
       });
 
       const { ipAddress, userAgent } = getClientInfo(req);

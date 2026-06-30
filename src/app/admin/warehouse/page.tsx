@@ -5,16 +5,18 @@ import { useRouter } from 'next/navigation';
 import { AnimatePresence } from 'framer-motion';
 import { useTranslation } from '@/components/useTranslation';
 import { useToast } from '@/components/ToastContext';
-import { Package, History, Upload, AlertTriangle, Download } from 'lucide-react';
+import { Package, History, Upload, AlertTriangle, Download, FileText } from 'lucide-react';
 import type { WarehouseProduct, StockMovement, ImportPreview, ImportResult } from '@/types/warehouse';
 import WHProductList from '@/components/warehouse/WHProductList';
 import WHMovementsList from '@/components/warehouse/WHMovementsList';
 import WHImportTab from '@/components/warehouse/WHImportTab';
+import WHPdfImportTab from '@/components/warehouse/WHPdfImportTab';
 import WHEditModal from '@/components/warehouse/WHEditModal';
 import WHDetailModal from '@/components/warehouse/WHDetailModal';
 import WHAdjustModal from '@/components/warehouse/WHAdjustModal';
 
 type Tab = 'inventory' | 'movements' | 'import';
+type ImportSubTab = 'excel' | 'pdf';
 
 export default function AdminWarehouse() {
   const { t, language } = useTranslation();
@@ -23,6 +25,7 @@ export default function AdminWarehouse() {
 
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<Tab>('inventory');
+  const [importSubTab, setImportSubTab] = useState<ImportSubTab>('excel');
   const [products, setProducts] = useState<WarehouseProduct[]>([]);
   const [movements, setMovements] = useState<StockMovement[]>([]);
   const [search, setSearch] = useState('');
@@ -347,18 +350,40 @@ export default function AdminWarehouse() {
       </div>
 
       {tab === 'import' && (
-        <WHImportTab
-          t={t}
-          fileInputRef={fileInputRef}
-          handleImportFile={handleImportFile}
-          importPreview={importPreview}
-          importResult={importResult}
-          importing={importing}
-          importAborted={importAborted}
-          handleImportConfirm={handleImportConfirm}
-          handleImportCancel={handleImportCancel}
-          resetImport={resetImport}
-        />
+        <div>
+          <div className="flex gap-2 mb-4">
+            <button
+              onClick={() => setImportSubTab('excel')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${importSubTab === 'excel' ? 'bg-primary/20 text-primary' : 'bg-white/5 text-muted-foreground hover:bg-white/10'}`}
+            >
+              <Upload className="w-3.5 h-3.5" />
+              Excel
+            </button>
+            <button
+              onClick={() => setImportSubTab('pdf')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${importSubTab === 'pdf' ? 'bg-primary/20 text-primary' : 'bg-white/5 text-muted-foreground hover:bg-white/10'}`}
+            >
+              <FileText className="w-3.5 h-3.5" />
+              PDF
+            </button>
+          </div>
+          {importSubTab === 'excel' ? (
+            <WHImportTab
+              t={t}
+              fileInputRef={fileInputRef}
+              handleImportFile={handleImportFile}
+              importPreview={importPreview}
+              importResult={importResult}
+              importing={importing}
+              importAborted={importAborted}
+              handleImportConfirm={handleImportConfirm}
+              handleImportCancel={handleImportCancel}
+              resetImport={resetImport}
+            />
+          ) : (
+            <WHPdfImportTab />
+          )}
+        </div>
       )}
 
       <WHEditModal

@@ -186,8 +186,31 @@ export interface VehicleModel {
   name: string;
   make: string;
   isActive: boolean;
+  manufacturerId: string | null;
+  manufacturer?: { id: string; name: string; nameAr: string | null } | null;
   createdAt: string;
   updatedAt: string | null;
+}
+
+export interface WorkOrderPart {
+  id: string;
+  workOrderId: string;
+  productId: string;
+  product?: { id: string; name: string; barcode: string | null };
+  quantity: number;
+  unitPrice: number;
+  total: number;
+  createdAt: string;
+}
+
+export interface WorkOrderLabour {
+  id: string;
+  workOrderId: string;
+  description: string;
+  hours: number | null;
+  rate: number | null;
+  total: number;
+  createdAt: string;
 }
 
 export interface WorkOrder {
@@ -197,6 +220,8 @@ export interface WorkOrder {
   cost: number | null;
   vehicleId: string;
   vehicle?: Vehicle;
+  parts?: WorkOrderPart[];
+  labourLines?: WorkOrderLabour[];
   createdAt: string;
   updatedAt: string | null;
 }

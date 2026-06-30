@@ -73,6 +73,7 @@ export default function POSProductGrid({
               }
             }}
             className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-input border border-border text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            dir="ltr"
           />
           <Barcode className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
         </div>

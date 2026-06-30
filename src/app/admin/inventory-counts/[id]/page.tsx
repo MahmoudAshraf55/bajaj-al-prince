@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { useTranslation } from '@/components/useTranslation';
@@ -67,7 +67,7 @@ export default function InventoryCountDetailPage() {
   const [showConfirm, setShowConfirm] = useState(false);
   const [edits, setEdits] = useState<Record<string, number>>({});
 
-  const fetchCount = async () => {
+  const fetchCount = useCallback(async () => {
     setError('');
     try {
       const res = await fetch(`/api/v1/inventory-counts/${countId}/`, { credentials: 'include' });
@@ -91,9 +91,9 @@ export default function InventoryCountDetailPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [countId, addToast]);
 
-  useEffect(() => { fetchCount(); }, [countId]);
+  useEffect(() => { fetchCount(); }, [fetchCount]);
 
   const handleSave = async () => {
     const items = Object.entries(edits).map(([itemId, actualQty]) => {

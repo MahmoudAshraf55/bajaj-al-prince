@@ -219,14 +219,26 @@ export default function BookingPage() {
                         setForm({ ...form, model: '', make: 'Bajaj' });
                       } else {
                         setIsCustomModel(false);
-                        setForm({ ...form, model: val, make: 'Bajaj' });
+                        const selectedModel = models.find(m => m.name === val);
+                        setForm({ ...form, model: val, make: selectedModel?.manufacturer?.name || 'Bajaj' });
                       }
                     }}
                     className="w-full px-4 py-3 rounded-xl bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-ring appearance-none pr-10"
                   >
                     <option value="">{t('booking_select_model')}</option>
-                    {models.map((m) => (
-                      <option key={m.id} value={m.name}>{m.name}</option>
+                    {Object.entries(
+                      models.reduce((acc, m) => {
+                        const mfrName = m.manufacturer?.name || 'Other';
+                        if (!acc[mfrName]) acc[mfrName] = [];
+                        acc[mfrName].push(m);
+                        return acc;
+                      }, {} as Record<string, typeof models>)
+                    ).map(([mfr, mods]) => (
+                      <optgroup key={mfr} label={mfr}>
+                        {mods.map((m) => (
+                          <option key={m.id} value={m.name}>{m.name}</option>
+                        ))}
+                      </optgroup>
                     ))}
                     <option value="__other__">{t('booking_model_other')}</option>
                   </select>

@@ -165,7 +165,7 @@ export async function POST(req: NextRequest) {
             total,
           });
 
-          const stockChange = data.type === 'purchase' ? item.quantity : -item.quantity;
+          const stockChange = (data.type === 'purchase' || data.type === 'return') ? item.quantity : -item.quantity;
           await tx.product.update({
             where: { id: product.id },
             data: { stock: { increment: stockChange } },

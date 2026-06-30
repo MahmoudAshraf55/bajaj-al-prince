@@ -39,6 +39,10 @@ export async function GET(req: NextRequest) {
             vehicle: {
               include: { customer: true },
             },
+            parts: {
+              include: { product: { select: { id: true, name: true, barcode: true } } },
+            },
+            labourLines: true,
           },
         }),
         prisma.workOrder.count({ where }),

@@ -51,7 +51,7 @@ export default function AccountingPeriodsPage() {
     locked: t('acc_period_status_locked'),
   };
 
-  const fetchPeriods = async () => {
+  const fetchPeriods = useCallback(async () => {
     try {
       const res = await fetch('/api/v1/accounting/periods/', { credentials: 'include' });
       const json = await res.json();
@@ -61,7 +61,7 @@ export default function AccountingPeriodsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [addToast]);
 
   useEffect(() => { fetchPeriods(); }, [fetchPeriods]);
 

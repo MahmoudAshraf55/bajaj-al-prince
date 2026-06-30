@@ -4,6 +4,8 @@ import { ShoppingCart, Minus, Plus, Trash2, Check, Loader2, PlusCircle, X } from
 import { CartItem, Customer } from '@/types/pos';
 
 interface POSCartProps {
+  isReturn: boolean;
+  setIsReturn: (val: boolean) => void;
   cart: CartItem[];
   t: (key: string) => string;
   subtotal: number;
@@ -31,6 +33,8 @@ interface POSCartProps {
 }
 
 export default function POSCart({
+  isReturn,
+  setIsReturn,
   cart,
   t,
   subtotal,
@@ -72,6 +76,14 @@ export default function POSCart({
     <div className="w-full lg:w-96 xl:w-[28rem] glass ltr:lg:border-l rtl:lg:border-r border-border lg:min-h-[calc(100vh-0px)] flex flex-col">
       <div className="p-4 border-b border-border flex items-center justify-between">
         <h2 className="font-bold">{t('pos_cart')} ({cart.length})</h2>
+        <button
+          onClick={() => setIsReturn(!isReturn)}
+          className={`px-3 py-1 rounded-lg text-xs font-bold transition-colors ${
+            isReturn ? 'bg-red-500/20 text-red-400' : 'bg-primary/20 text-primary'
+          }`}
+        >
+          {isReturn ? t('pos_refund_mode') || 'Refund Mode' : t('pos_sale_mode') || 'Sale Mode'}
+        </button>
       </div>
 
       <div className="flex-1 overflow-auto p-4 space-y-2">
@@ -249,14 +261,16 @@ export default function POSCart({
         <button
           onClick={() => setConfirmSale(true)}
           disabled={cart.length === 0 || saving || remaining > 0}
-          className="w-full py-3 rounded-xl bg-primary text-primary-foreground text-sm font-bold hover:opacity-90 transition-opacity disabled:opacity-40 flex items-center justify-center gap-2"
+          className={`w-full py-3 rounded-xl text-sm font-bold transition-opacity disabled:opacity-40 flex items-center justify-center gap-2 ${
+            isReturn ? 'bg-red-500 text-white hover:bg-red-600' : 'bg-primary text-primary-foreground hover:opacity-90'
+          }`}
         >
           {saving ? (
             <Loader2 className="w-4 h-4 animate-spin" />
           ) : (
             <Check className="w-4 h-4" />
           )}
-          {saving ? t('admin_market_saving') : t('pos_complete_sale')}
+          {saving ? t('admin_market_saving') : (isReturn ? t('pos_complete_refund') || 'Complete Refund' : t('pos_complete_sale'))}
         </button>
       </div>
     </div>

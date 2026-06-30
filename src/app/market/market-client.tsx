@@ -45,6 +45,7 @@ export default function MarketClient({ products }: { products: Product[] }) {
 
   const filtered = useMemo(() => {
     return products.filter((p) => {
+      if (p.stock <= 0) return false;
       if (activeCategory !== 'All' && p.category !== activeCategory) return false;
       if (search && !p.name.toLowerCase().includes(search.toLowerCase()) && !(p.nameAr || '').includes(search)) return false;
       return true;

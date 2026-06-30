@@ -12,6 +12,12 @@ import {
   Plus, X, AlertCircle, List, Trash2, Pencil,
 } from 'lucide-react';
 
+interface Manufacturer {
+  id: string;
+  name: string;
+  nameAr: string | null;
+}
+
 export default function VehicleModelsPage() {
   const { t } = useTranslation();
   const { addToast } = useToast();
@@ -19,10 +25,11 @@ export default function VehicleModelsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [models, setModels] = useState<VehicleModel[]>([]);
+  const [manufacturers, setManufacturers] = useState<Manufacturer[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [editingModel, setEditingModel] = useState<VehicleModel | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [form, setForm] = useState({ name: '', make: 'Bajaj' });
+  const [form, setForm] = useState({ name: '', make: 'Bajaj', manufacturerId: '' });
   const [formError, setFormError] = useState('');
 
   const fetchModels = useCallback(async (signal?: AbortSignal) => {
@@ -51,6 +58,14 @@ export default function VehicleModelsPage() {
           setLoading(false);
           const controller = new AbortController();
           fetchModels(controller.signal);
+          fetch('/api/v1/manufacturers/?all=true', { credentials: 'include', signal: controller.signal })
+            .then((r) => r.json())
+            .then((data) => {
+              if (data?.success && Array.isArray(data?.data?.manufacturers)) {
+                setManufacturers(data.data.manufacturers);
+              }
+            })
+            .catch(() => {});
           return () => controller.abort();
         }
       })
@@ -59,14 +74,14 @@ export default function VehicleModelsPage() {
 
   const openAddModal = () => {
     setEditingModel(null);
-    setForm({ name: '', make: 'Bajaj' });
+    setForm({ name: '', make: 'Bajaj', manufacturerId: '' });
     setFormError('');
     setShowModal(true);
   };
 
   const openEditModal = (m: VehicleModel) => {
     setEditingModel(m);
-    setForm({ name: m.name, make: m.make });
+    setForm({ name: m.name, make: m.make, manufacturerId: m.manufacturerId || '' });
     setFormError('');
     setShowModal(true);
   };
@@ -82,16 +97,19 @@ export default function VehicleModelsPage() {
     try {
       const url = editingModel ? `/api/vehicle-models/${editingModel.id}/` : '/api/vehicle-models/';
       const method = editingModel ? 'PATCH' : 'POST';
+      const body: Record<string, unknown> = { name: form.name.trim(), make: form.make.trim() };
+      if (form.manufacturerId) body.manufacturerId = form.manufacturerId;
+      else body.manufacturerId = null;
       const res = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ name: form.name.trim(), make: form.make.trim() }),
+        body: JSON.stringify(body),
       });
       const data = await res.json();
       if (data?.success) {
         addToast('success', editingModel ? t('vmodels_model_updated') : t('vmodels_model_added'));
-        setForm({ name: '', make: 'Bajaj' });
+        setForm({ name: '', make: 'Bajaj', manufacturerId: '' });
         setShowModal(false);
         setEditingModel(null);
         fetchModels();
@@ -178,6 +196,7 @@ export default function VehicleModelsPage() {
                 <tr className="border-b border-border text-muted-foreground">
                   <th scope="col" className="text-left px-5 py-3 font-medium">{t('vmodels_name')}</th>
                   <th scope="col" className="text-left px-5 py-3 font-medium">{t('vmodels_make')}</th>
+                  <th scope="col" className="text-left px-5 py-3 font-medium">Manufacturer</th>
                   <th scope="col" className="text-left px-5 py-3 font-medium">{t('vmodels_active')}</th>
                   <th scope="col" className="text-right px-5 py-3 font-medium">{t('vmodels_actions')}</th>
                 </tr>
@@ -187,6 +206,7 @@ export default function VehicleModelsPage() {
                   <tr key={m.id} className="hover:bg-white/5 transition-colors">
                     <td className="px-5 py-4 font-medium">{m.name}</td>
                     <td className="px-5 py-4 text-muted-foreground">{m.make}</td>
+                    <td className="px-5 py-4 text-muted-foreground">{m.manufacturer?.name || '—'}</td>
                     <td className="px-5 py-4">
                       <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
                         m.isActive ? 'bg-green-500/10 text-green-400' : 'bg-yellow-500/10 text-yellow-400'
@@ -214,7 +234,7 @@ export default function VehicleModelsPage() {
                 ))}
                 {(!models || models.length === 0) && (
                   <tr>
-                    <td colSpan={4} className="px-5 py-8 text-center text-muted-foreground">
+                    <td colSpan={5} className="px-5 py-8 text-center text-muted-foreground">
                       {t('vmodels_no_models')}
                     </td>
                   </tr>
@@ -270,6 +290,19 @@ export default function VehicleModelsPage() {
                     className="w-full px-4 py-2.5 rounded-xl bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm"
                     placeholder="Bajaj"
                   />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Manufacturer</label>
+                  <select
+                    value={form.manufacturerId}
+                    onChange={(e) => setForm((f) => ({ ...f, manufacturerId: e.target.value }))}
+                    className="w-full px-4 py-2.5 rounded-xl bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm"
+                  >
+                    <option value="">— No manufacturer —</option>
+                    {manufacturers.map((man) => (
+                      <option key={man.id} value={man.id}>{man.name} {man.nameAr ? `(${man.nameAr})` : ''}</option>
+                    ))}
+                  </select>
                 </div>
                 {formError && (
                   <div className="flex items-center gap-2 text-red-400 text-xs bg-red-400/10 border border-red-400/20 rounded-xl px-3 py-2">
