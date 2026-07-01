@@ -5,7 +5,13 @@ import { FEATURE_FLAGS } from '../src/lib/features';
 import { DEFAULT_TENANT_ID, setTenantContext } from '../src/lib/tenant-context';
 
 async function seed() {
-  const adminPassword = process.env.ADMIN_INITIAL_PASSWORD || 'admin123';
+  const adminPassword = process.env.ADMIN_INITIAL_PASSWORD;
+  if (!adminPassword) {
+    throw new Error(
+      'ADMIN_INITIAL_PASSWORD environment variable is required for seeding. ' +
+      'Set it to a strong password (min 8 chars, uppercase, lowercase, digit).'
+    );
+  }
 
   // Ensure the default tenant exists
   await prisma.tenant.upsert({

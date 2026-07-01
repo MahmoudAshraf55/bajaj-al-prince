@@ -27,11 +27,17 @@ export async function POST(req: NextRequest) {
       const bytes = await file.arrayBuffer();
       const buffer = Buffer.from(bytes);
 
-      const ext = file.name.split('.').pop() || 'png';
+      const rawExt = (file.name.split('.').pop() || 'png').replace(/[^a-zA-Z0-9]/g, '').slice(0, 10);
+      const ext = ['jpg', 'jpeg', 'png', 'webp', 'gif'].includes(rawExt.toLowerCase()) ? rawExt : 'png';
       const filename = `product_${Date.now()}_${Math.random().toString(36).substring(2, 8)}.${ext}`;
       const uploadDir = path.join(process.cwd(), 'public', 'uploads');
       await mkdir(uploadDir, { recursive: true });
       const filepath = path.join(uploadDir, filename);
+
+      if (!filepath.startsWith(uploadDir)) {
+        return NextResponse.json({ success: false, error: 'Invalid file path' }, { status: 400 });
+      }
+
       await writeFile(filepath, buffer);
 
       const url = `/uploads/${filename}`;
