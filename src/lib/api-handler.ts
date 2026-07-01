@@ -44,7 +44,7 @@ export type ApiHandler<TBody = unknown> = (ctx: ApiContext<TBody>) => Promise<Ne
 /**
  * Standard error serializer mapping Error messages to HTTP status codes.
  */
-function getErrorStatus(message: string): number {
+export function getErrorStatus(message: string): number {
   if (message === 'Unauthorized' || message === 'Invalid token') return 401;
   if (message === 'Forbidden') return 403;
   if (message === 'Not found' || message.includes('not found')) return 404;

@@ -91,7 +91,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
           cost: workOrder.cost ? `${workOrder.cost}` : undefined,
         }).then((message) => {
           if (message) {
-            sendWhatsAppMessageViaService(customer.phone!, message).catch(() => {});
+            sendWhatsAppMessageViaService(customer.phone!, message).catch((err) => {
+              logger.warn('Work order WhatsApp status notification failed', { workOrderId: id, error: err instanceof Error ? err.message : String(err) });
+            });
           }
         });
       }
@@ -107,7 +109,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
           cost: data.cost !== undefined ? `${data.cost}` : (workOrder.cost ? `${workOrder.cost}` : undefined),
         }).then((message) => {
           if (message) {
-            sendWhatsAppMessageViaService(customer.phone!, message).catch(() => {});
+            sendWhatsAppMessageViaService(customer.phone!, message).catch((err) => {
+              logger.warn('Work order WhatsApp edit notification failed', { workOrderId: id, error: err instanceof Error ? err.message : String(err) });
+            });
           }
         });
       }
@@ -150,7 +154,8 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
 
       return withSecurityHeaders(NextResponse.json({ success: true }));
     });
-  } catch {
+  } catch (error) {
+    logger.error('Work order DELETE error', error);
     return withSecurityHeaders(NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 }));
   }
 }

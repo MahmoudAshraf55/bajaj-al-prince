@@ -59,8 +59,8 @@ export async function POST(req: NextRequest) {
     if (error instanceof Error && error.message.includes('Unique constraint')) {
       return withSecurityHeaders(NextResponse.json({ success: false, error: 'Manufacturer name already exists' }, { status: 409 }));
     }
-    const message = error instanceof Error ? error.message : 'Unauthorized';
-    const status = message === 'Forbidden' ? 403 : 401;
-    return withSecurityHeaders(NextResponse.json({ success: false, error: message }, { status }));
+    const message = error instanceof Error ? error.message : 'Internal server error';
+    const status = message === 'Unauthorized' || message === 'Invalid token' ? 401 : message === 'Forbidden' ? 403 : 500;
+    return withSecurityHeaders(NextResponse.json({ success: false, error: status === 500 ? 'Internal server error' : message }, { status }));
   }
 }

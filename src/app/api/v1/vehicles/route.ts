@@ -4,6 +4,7 @@ import { withRole } from '@/lib/auth';
 import { checkRateLimit } from '@/lib/rate-limit';
 import { sanitizedString } from '@/lib/sanitize';
 import { logAudit, getClientInfo } from '@/lib/audit';
+import { logger } from '@/lib/logger';
 import { sendWhatsAppMessageViaService } from '@/lib/whatsapp-client';
 import { buildMessage } from '@/lib/whatsapp-templates';
 import { Prisma } from '@prisma/client';
@@ -41,9 +42,9 @@ export async function GET(req: NextRequest) {
       }));
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unauthorized';
-    const status = message === 'Forbidden' ? 403 : 401;
-    return withSecurityHeaders(NextResponse.json({ success: false, error: message }, { status }));
+    const message = error instanceof Error ? error.message : 'Internal server error';
+    const status = message === 'Unauthorized' || message === 'Invalid token' ? 401 : message === 'Forbidden' ? 403 : 500;
+    return withSecurityHeaders(NextResponse.json({ success: false, error: status === 500 ? 'Internal server error' : message }, { status }));
   }
 }
 
@@ -75,7 +76,9 @@ export async function POST(req: NextRequest) {
           model: vehicle.model,
         }).then((message) => {
           if (message) {
-            sendWhatsAppMessageViaService(vehicle.customer!.phone!, message).catch(() => {});
+            sendWhatsAppMessageViaService(vehicle.customer!.phone!, message).catch((err) => {
+              logger.warn('Vehicle WhatsApp notification failed', { vehicleId: vehicle.id, error: err instanceof Error ? err.message : String(err) });
+            });
           }
         });
       }
@@ -89,8 +92,8 @@ export async function POST(req: NextRequest) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
       return withSecurityHeaders(NextResponse.json({ success: false, error: 'Chassis number already exists for this tenant' }, { status: 409 }));
     }
-    const message = error instanceof Error ? error.message : 'Unauthorized';
-    const status = message === 'Forbidden' ? 403 : 401;
-    return withSecurityHeaders(NextResponse.json({ success: false, error: message }, { status }));
+    const message = error instanceof Error ? error.message : 'Internal server error';
+    const status = message === 'Unauthorized' || message === 'Invalid token' ? 401 : message === 'Forbidden' ? 403 : 500;
+    return withSecurityHeaders(NextResponse.json({ success: false, error: status === 500 ? 'Internal server error' : message }, { status }));
   }
 }

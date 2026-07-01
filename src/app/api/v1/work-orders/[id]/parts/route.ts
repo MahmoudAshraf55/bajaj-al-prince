@@ -4,6 +4,7 @@ import { withRole } from '@/lib/auth';
 import { checkRateLimit } from '@/lib/rate-limit';
 import { getTenantId, DEFAULT_TENANT_ID } from '@/lib/tenant-context';
 import { logAudit, getClientInfo } from '@/lib/audit';
+import { logger } from '@/lib/logger';
 import { z } from 'zod';
 import { withSecurityHeaders } from '@/lib/security';
 import { Prisma } from '@prisma/client';
@@ -24,7 +25,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       });
       return withSecurityHeaders(NextResponse.json({ success: true, data: { parts } }));
     });
-  } catch {
+  } catch (error) {
+    logger.error('Work order parts GET error', error);
     return withSecurityHeaders(NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 }));
   }
 }
@@ -81,6 +83,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     if (error instanceof z.ZodError) {
       return withSecurityHeaders(NextResponse.json({ success: false, errors: error.issues }, { status: 400 }));
     }
+    logger.error('Work order parts POST error', error);
     return withSecurityHeaders(NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 }));
   }
 }
@@ -102,7 +105,8 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
       });
       return withSecurityHeaders(NextResponse.json({ success: true }));
     });
-  } catch {
+  } catch (error) {
+    logger.error('Work order parts DELETE error', error);
     return withSecurityHeaders(NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 }));
   }
 }
