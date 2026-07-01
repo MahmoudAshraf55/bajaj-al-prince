@@ -4,14 +4,14 @@ import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from '@/components/useTranslation';
 
 const SECTIONS = [
-  { id: 'hero', key: 'nav_ourStory' },
+  { id: 'hero', key: 'nav_home' },
   { id: 'tiktok', key: 'nav_tiktok' },
   { id: 'story', key: 'nav_ourStory' },
-  { id: 'why-us', key: 'nav_services' },
+  { id: 'why-us', key: 'nav_whyUs' },
   { id: 'services', key: 'nav_services' },
   { id: 'reviews', key: 'nav_reviews' },
   { id: 'contact-info', key: 'nav_contact' },
-  { id: 'payment', key: 'cta_book' },
+  { id: 'payment', key: 'nav_payment' },
   { id: 'cta', key: 'cta_book' },
 ] as const;
 

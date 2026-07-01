@@ -3,10 +3,13 @@ export type Language = 'en' | 'ar';
 export const translations = {
   en: {
     // Header
+    nav_home: 'Home',
     nav_ourStory: 'Our Story',
+    nav_whyUs: 'Why Us',
     nav_services: 'Services',
     nav_reviews: 'Reviews',
     nav_contact: 'Contact',
+    nav_payment: 'Payment',
     nav_market: 'Market',
     nav_tiktok: 'TikTok',
     nav_bookNow: 'Book Now',
@@ -918,10 +921,13 @@ export const translations = {
 
   ar: {
     // Header
+    nav_home: 'الرئيسية',
     nav_ourStory: 'قصتنا',
+    nav_whyUs: 'لماذا نحن',
     nav_services: 'خدماتنا',
     nav_reviews: 'الآراء',
     nav_contact: 'تواصل معنا',
+    nav_payment: 'طرق الدفع',
     nav_market: 'المتجر',
     nav_tiktok: 'تيك توك',
     nav_bookNow: 'احجز الآن',
