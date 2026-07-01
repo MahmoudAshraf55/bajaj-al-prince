@@ -4,6 +4,7 @@ import { withAuth } from '@/lib/auth';
 import { validateOrigin, withSecurityHeaders } from '@/lib/security';
 import { logAudit, getClientInfo } from '@/lib/audit';
 import { sanitizedString } from '@/lib/sanitize';
+import { logger } from '@/lib/logger';
 import { sendWhatsAppMessageViaService } from '@/lib/whatsapp-client';
 import { buildMessage } from '@/lib/whatsapp-templates';
 import { z } from 'zod';
@@ -57,8 +58,9 @@ export async function GET(req: NextRequest) {
       });
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unauthorized';
-    return NextResponse.json({ success: false, error: message }, { status: 401 });
+    const message = error instanceof Error ? error.message : 'Internal server error';
+    const status = message === 'Unauthorized' || message === 'Invalid token' ? 401 : message === 'Forbidden' ? 403 : 500;
+    return withSecurityHeaders(NextResponse.json({ success: false, error: status === 500 ? 'Internal server error' : message }, { status }));
   }
 }
 
@@ -108,7 +110,9 @@ export async function POST(req: NextRequest) {
           cost: data.cost ? `${data.cost}` : undefined,
         }).then((message) => {
           if (message) {
-            sendWhatsAppMessageViaService(customer.phone!, message).catch(() => {});
+            sendWhatsAppMessageViaService(customer.phone!, message).catch((err) => {
+              logger.warn('Work order WhatsApp notification failed', { workOrderId: workOrder.id, error: err instanceof Error ? err.message : String(err) });
+            });
           }
         });
       }
@@ -119,6 +123,7 @@ export async function POST(req: NextRequest) {
     if (error instanceof z.ZodError) {
       return withSecurityHeaders(NextResponse.json({ success: false, errors: error.issues }, { status: 400 }));
     }
+    logger.error('Work order POST error', error);
     return withSecurityHeaders(NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 }));
   }
 }

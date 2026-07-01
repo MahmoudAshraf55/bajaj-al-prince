@@ -4,6 +4,7 @@ import { withAuth } from '@/lib/auth';
 import { checkRateLimit } from '@/lib/rate-limit';
 import { validateOrigin, withSecurityHeaders } from '@/lib/security';
 import { logAudit, getClientInfo } from '@/lib/audit';
+import { logger } from '@/lib/logger';
 import { Prisma } from '@prisma/client';
 import { sanitizedString } from '@/lib/sanitize';
 import { z } from 'zod';
@@ -86,6 +87,7 @@ export async function POST(req: NextRequest) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
       return withSecurityHeaders(NextResponse.json({ success: false, error: 'This time slot is already booked' }, { status: 409 }));
     }
+    logger.error('Booking POST error', error);
     return withSecurityHeaders(NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 }));
   }
 }
@@ -120,8 +122,8 @@ export async function GET(req: NextRequest) {
       });
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unauthorized';
-    const status = message === 'Forbidden' ? 403 : 401;
-    return NextResponse.json({ success: false, error: message }, { status });
+    const message = error instanceof Error ? error.message : 'Internal server error';
+    const status = message === 'Unauthorized' || message === 'Invalid token' ? 401 : message === 'Forbidden' ? 403 : 500;
+    return NextResponse.json({ success: false, error: status === 500 ? 'Internal server error' : message }, { status });
   }
 }

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { createToken, createRefreshToken, verifyRefreshToken, getRefreshTokenFromCookie } from '@/lib/auth';
 import { logAudit, getClientInfo } from '@/lib/audit';
+import { logger } from '@/lib/logger';
 import { withSecurityHeaders } from '@/lib/security';
 import { DEFAULT_TENANT_ID } from '@/lib/tenant-context';
 
@@ -75,6 +76,7 @@ export async function POST(req: NextRequest) {
     if (error instanceof Error && error.message === 'JWT_SECRET_NOT_CONFIGURED') {
       return withSecurityHeaders(NextResponse.json({ success: false, error: 'Server authentication is not configured. Contact administrator.' }, { status: 500 }));
     }
+    logger.error('Token refresh error', error);
     return withSecurityHeaders(NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 }));
   }
 }

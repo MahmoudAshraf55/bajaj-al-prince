@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { withRole } from '@/lib/auth';
 import { checkRateLimit } from '@/lib/rate-limit';
 import { withSecurityHeaders } from '@/lib/security';
+import { logger } from '@/lib/logger';
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const limit = await checkRateLimit(req, 'admin');
@@ -70,7 +71,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         },
       }));
     });
-  } catch {
+  } catch (error) {
+    logger.error('Customer timeline GET error', error);
     return withSecurityHeaders(NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 }));
   }
 }

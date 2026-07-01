@@ -3,6 +3,7 @@ import { DEFAULT_TENANT_ID } from '@/lib/tenant-context';
 import { sendWhatsAppMessageViaService } from '@/lib/whatsapp-client';
 import { buildMessage } from '@/lib/whatsapp-templates';
 import { sendEmail } from '@/lib/email';
+import { logger } from '@/lib/logger';
 import { BOOKING_STATUS } from '@/constants/booking';
 
 function extractMakeModel(modelStr: string): { make: string; model: string } {
@@ -136,7 +137,9 @@ export class BookingService {
       time: data.time,
     }).then((message) => {
       if (message) {
-        sendWhatsAppMessageViaService(data.phone, message).catch(() => {});
+        sendWhatsAppMessageViaService(data.phone, message).catch((err) => {
+          logger.warn('Booking WhatsApp confirmation failed', { phone: data.phone, error: err instanceof Error ? err.message : String(err) });
+        });
       }
     });
 
@@ -147,7 +150,9 @@ export class BookingService {
         subject: 'Booking Confirmation - El Prince Bajaj',
         text: `Dear ${data.name},\n\nYour service booking has been received!\n\nModel: ${data.model}\nDate: ${data.date}\nTime: ${data.time}\nIssue: ${data.issue}\n\nWe will contact you shortly to confirm your appointment.\n\nBest regards,\nEl Prince Bajaj Team`,
         html: `<h2>Booking Confirmation</h2><p>Dear <strong>${data.name}</strong>,</p><p>Your service booking has been received!</p><table border="1" cellpadding="8" cellspacing="0" style="border-collapse:collapse;margin:16px 0"><tr><td><strong>Model</strong></td><td>${data.model}</td></tr><tr><td><strong>Date</strong></td><td>${data.date}</td></tr><tr><td><strong>Time</strong></td><td>${data.time}</td></tr><tr><td><strong>Issue</strong></td><td>${data.issue}</td></tr></table><p>We will contact you shortly to confirm your appointment.</p><p>Best regards,<br/>El Prince Bajaj Team</p>`,
-      }).catch(() => {});
+      }).catch((err) => {
+        logger.warn('Booking email confirmation failed', { email: data.email, error: err instanceof Error ? err.message : String(err) });
+      });
     }
 
     return booking;

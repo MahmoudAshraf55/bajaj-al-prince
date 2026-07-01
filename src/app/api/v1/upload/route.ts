@@ -40,6 +40,6 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Upload failed';
     const status = message === 'Unauthorized' ? 401 : 500;
-    return NextResponse.json({ success: false, error: message }, { status });
+    return NextResponse.json({ success: false, error: status === 500 ? 'Internal server error' : message }, { status });
   }
 }

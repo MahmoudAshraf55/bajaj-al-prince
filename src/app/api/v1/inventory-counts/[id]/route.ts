@@ -30,9 +30,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       return NextResponse.json({ success: true, data: { count } });
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unauthorized';
+    const message = error instanceof Error ? error.message : 'Internal server error';
     const status = message === 'Forbidden' ? 403 : message === 'Unauthorized' ? 401 : 500;
-    return NextResponse.json({ success: false, error: message }, { status });
+    return NextResponse.json({ success: false, error: status === 500 ? 'Internal server error' : message }, { status });
   }
 }
 
@@ -141,9 +141,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       return NextResponse.json({ success: false, error: 'Invalid action' }, { status: 400 });
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unauthorized';
+    const message = error instanceof Error ? error.message : 'Internal server error';
     const status = message === 'Forbidden' ? 403 : message === 'Unauthorized' ? 401 : 500;
-    return NextResponse.json({ success: false, error: message }, { status });
+    return NextResponse.json({ success: false, error: status === 500 ? 'Internal server error' : message }, { status });
   }
 }
 
@@ -158,8 +158,8 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
       return NextResponse.json({ success: true });
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unauthorized';
+    const message = error instanceof Error ? error.message : 'Internal server error';
     const status = message === 'Forbidden' ? 403 : message === 'Unauthorized' ? 401 : 500;
-    return NextResponse.json({ success: false, error: message }, { status });
+    return NextResponse.json({ success: false, error: status === 500 ? 'Internal server error' : message }, { status });
   }
 }
