@@ -5,6 +5,7 @@ import { LanguageProvider } from "@/components/LanguageContext";
 import { SettingsProvider } from "@/components/SettingsContext";
 import ChatBot from "@/components/ChatBot";
 import { SpeedInsights } from "@vercel/speed-insights/next";
+import { Analytics } from "@vercel/analytics/next";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -89,6 +90,7 @@ export default function RootLayout({
           </SettingsProvider>
         </LanguageProvider>
         <SpeedInsights />
+        <Analytics />
       </body>
     </html>
   );
