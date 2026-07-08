@@ -100,5 +100,5 @@ public/uploads/
 create_*.py
 
 # Playwright local screenshots at repo root
-admin-*.png
+/admin-*.png
 .env*
