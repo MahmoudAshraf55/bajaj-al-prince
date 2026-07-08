@@ -49,7 +49,9 @@ export default function CustomerTimeline({ customerId }: { customerId: string })
           setEvents(all);
         }
       })
-      .catch(() => {})
+      .catch((err) => {
+        console.error('[CustomerTimeline] Failed to load timeline', err);
+      })
       .finally(() => setLoading(false));
   }, [customerId]);
 

@@ -43,7 +43,9 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
           setSettings({ ...defaults, ...res.data.settings });
         }
       })
-      .catch(() => {});
+      .catch((err) => {
+        console.error('[SettingsContext] Failed to load public settings', err);
+      });
   }, []);
 
   return (

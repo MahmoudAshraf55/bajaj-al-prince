@@ -323,7 +323,7 @@ export async function POST(req: NextRequest) {
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Import failed';
-    const status = message === 'Forbidden' ? 403 : message === 'Unauthorized' ? 401 : 400;
+    const status = message === 'Unauthorized' || message === 'Invalid token' ? 401 : message === 'Forbidden' ? 403 : 400;
     return withSecurityHeaders(NextResponse.json({ success: false, error: message }, { status }));
   }
 }
