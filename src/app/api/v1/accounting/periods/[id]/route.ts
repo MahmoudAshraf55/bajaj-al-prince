@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { withRole } from '@/lib/auth';
 import { logAudit, getClientInfo } from '@/lib/audit';
+import { getTenantId, DEFAULT_TENANT_ID } from '@/lib/tenant-context';
+import { AccountingService } from '@/services/AccountingService';
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -14,15 +16,18 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       if (!period) return NextResponse.json({ success: false, error: 'Period not found' }, { status: 404 });
 
       const { ipAddress, userAgent } = getClientInfo(req);
+      const tenantId = getTenantId() ?? DEFAULT_TENANT_ID;
 
       if (action === 'close') {
         if (period.status !== 'open') return NextResponse.json({ success: false, error: 'Period is not open' }, { status: 400 });
-        const updated = await prisma.accountingPeriod.update({
-          where: { id },
-          data: { status: 'closed', closedById: payload.userId, closedAt: new Date() },
+
+        // Use AccountingService to close the period with proper journal entries
+        await prisma.$transaction(async (tx) => {
+          await AccountingService.closeAccountingPeriod(tx, id, tenantId, payload.userId);
         });
+
         await logAudit({ userId: payload.userId, action: 'close', entity: 'AccountingPeriod', entityId: id, oldValue: { status: period.status }, newValue: { status: 'closed' }, ipAddress, userAgent });
-        return NextResponse.json({ success: true, data: { period: updated } });
+        return NextResponse.json({ success: true, data: { message: 'Period closed successfully' } });
       }
 
       if (action === 'reopen') {

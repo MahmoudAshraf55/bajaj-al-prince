@@ -93,6 +93,10 @@ export default function WorkOrdersPage() {
   const [addLabourOpen, setAddLabourOpen] = useState(false);
   const [labourForm, setLabourForm] = useState({ description: '', hours: '', rate: '', total: '' });
   const [savePartsBusy, setSavePartsBusy] = useState(false);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'transfer'>('cash');
+  const [paymentAmount, setPaymentAmount] = useState('');
+  const [processingPayment, setProcessingPayment] = useState(false);
 
   const statusLabels: Record<string, string> = {
     pending: t('wo_status_pending'),
@@ -298,6 +302,37 @@ export default function WorkOrdersPage() {
   const labourTotal = manageLabour.reduce((sum, l) => sum + Number(l.total), 0);
   const grandTotal = partsTotal + labourTotal;
 
+  const handleCompleteAndPay = async () => {
+    if (!manageWo || !paymentAmount || parseFloat(paymentAmount) <= 0) return;
+    setProcessingPayment(true);
+    try {
+      const res = await fetch(`/api/v1/work-orders/${manageWo.id}/complete-and-pay/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          paymentMethod,
+          amountPaid: parseFloat(paymentAmount),
+          partsTotal,
+          labourTotal,
+        }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        addToast('success', 'Work order completed and invoice created');
+        setShowPaymentModal(false);
+        setManageWo(null);
+        fetchWorkOrders();
+      } else {
+        addToast('error', json.error || 'Failed to complete');
+      }
+    } catch {
+      addToast('error', 'Network error');
+    } finally {
+      setProcessingPayment(false);
+    }
+  };
+
   const filteredProducts = products.filter((p) => {
     const q = productSearch.toLowerCase();
     return !q || p.name.toLowerCase().includes(q) || (p.barcode && p.barcode.toLowerCase().includes(q));
@@ -423,10 +458,16 @@ export default function WorkOrdersPage() {
                     </>
                   )}
                   {wo.status === 'in_progress' && (
-                    <button onClick={() => updateStatus(wo.id, 'completed')} disabled={updating === wo.id}
-                      className="px-3 py-1.5 rounded-lg bg-green-500/10 text-green-400 text-xs font-medium hover:bg-green-500/20 disabled:opacity-50">
-                      {t('wo_complete')}
-                    </button>
+                    <>
+                      <button onClick={() => { setShowPaymentModal(true); setManageWo(wo); }}
+                        className="px-3 py-1.5 rounded-lg bg-green-500/10 text-green-400 text-xs font-medium hover:bg-green-500/20">
+                        Complete & Pay
+                      </button>
+                      <button onClick={() => updateStatus(wo.id, 'completed')} disabled={updating === wo.id}
+                        className="px-3 py-1.5 rounded-lg bg-blue-500/10 text-blue-400 text-xs font-medium hover:bg-blue-500/20 disabled:opacity-50">
+                        {t('wo_complete')}
+                      </button>
+                    </>
                   )}
                 </div>
               </div>
@@ -591,7 +632,7 @@ export default function WorkOrdersPage() {
 
             {showProductPicker && (
               <div className="mt-4 p-4 bg-white/5 rounded-xl">
-                <input autoFocus placeholder={t('wo_search_barcode')} value={productSearch}
+                <input autoFocus placeholder={t('wo_search_product')} value={productSearch}
                   onChange={(e) => setProductSearch(e.target.value)}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && productSearch.trim()) {
@@ -610,7 +651,7 @@ export default function WorkOrdersPage() {
                   }}
                   className="w-full px-3 py-2 rounded-lg bg-input border border-border text-sm mb-2" />
                 <div className="max-h-48 overflow-auto space-y-1">
-                  {filteredProducts.slice(0, 30).map((p) => (
+                  {filteredProducts.map((p) => (
                     <button key={p.id} onClick={() => addPart(p)} disabled={savePartsBusy || p.stock < 1}
                       className="w-full text-left px-3 py-2 rounded-lg hover:bg-white/5 text-sm disabled:opacity-40 transition-colors flex items-center justify-between">
                       <span>{p.name} {p.barcode && <span className="text-muted-foreground text-xs">({p.barcode})</span>}</span>
@@ -621,6 +662,52 @@ export default function WorkOrdersPage() {
                 </div>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {showPaymentModal && manageWo && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+          <div className="glass rounded-2xl p-6 w-full max-w-md">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold text-lg">Complete & Pay</h3>
+              <button onClick={() => setShowPaymentModal(false)} className="p-2 hover:bg-white/5 rounded-lg">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="space-y-4">
+              <div className="bg-white/5 rounded-lg p-3">
+                <p className="text-sm text-muted-foreground mb-1">Total Amount</p>
+                <p className="text-2xl font-bold">{grandTotal.toFixed(2)} EGP</p>
+              </div>
+              <div>
+                <label className="text-sm text-muted-foreground mb-1 block">Payment Method</label>
+                <select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value as 'cash' | 'card' | 'transfer')}
+                  className="w-full px-4 py-2.5 rounded-xl bg-input border border-border text-sm">
+                  <option value="cash">Cash</option>
+                  <option value="card">Card</option>
+                  <option value="transfer">Transfer</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-sm text-muted-foreground mb-1 block">Amount Paid</label>
+                <input type="number" step="0.01" min="0" value={paymentAmount}
+                  onChange={(e) => setPaymentAmount(e.target.value)}
+                  placeholder="Enter amount"
+                  className="w-full px-4 py-2.5 rounded-xl bg-input border border-border text-sm" />
+              </div>
+              <div className="flex gap-3">
+                <button onClick={() => setShowPaymentModal(false)}
+                  className="flex-1 py-2.5 rounded-xl bg-white/5 text-muted-foreground font-medium text-sm">
+                  Cancel
+                </button>
+                <button onClick={() => handleCompleteAndPay()}
+                  disabled={processingPayment || !paymentAmount || parseFloat(paymentAmount) <= 0}
+                  className="flex-1 py-2.5 rounded-xl bg-primary text-primary-foreground font-medium text-sm disabled:opacity-50">
+                  {processingPayment ? 'Processing...' : 'Complete & Pay'}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

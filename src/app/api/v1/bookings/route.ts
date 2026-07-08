@@ -106,6 +106,10 @@ export async function GET(req: NextRequest) {
           include: {
             customer: { where: { isDeleted: false } },
             vehicle: { where: { isDeleted: false } },
+            workOrders: {
+              where: { isDeleted: false },
+              select: { id: true, status: true },
+            },
           },
         } as Parameters<typeof prisma.booking.findMany>[0]),
         prisma.booking.count(),
