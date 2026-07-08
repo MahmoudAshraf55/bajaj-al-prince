@@ -1,7 +1,3 @@
-<p align="center">
-  <img src="public/screenshots/admin/admin-dashboard.png" alt="EL PRINCE BAJAJ ERP" width="800" />
-</p>
-
 <h1 align="center">🏍️ EL PRINCE BAJAJ — Enterprise Motorcycle ERP</h1>
 
 <p align="center">
