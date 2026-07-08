@@ -2,9 +2,6 @@
   "name": "windsurf-project",
   "version": "0.1.0",
   "private": true,
-  "prisma": {
-    "seed": "npx tsx prisma/seed.ts"
-  },
   "scripts": {
     "dev": "next dev",
     "dev:https": "next dev --experimental-https --key localhost-key.pem --cert localhost.pem --host 0.0.0.0",
