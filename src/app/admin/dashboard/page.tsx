@@ -1,13 +1,13 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from '@/components/useTranslation';
 import {
   Calendar, Package, Trash2, Search, Plus, Minus,
   DollarSign, ShoppingCart, TrendingUp, AlertTriangle,
-  Users, ArrowRight,
+  Users, ArrowRight, Bell, X,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -46,10 +46,13 @@ export default function AdminDashboard() {
   const [products, setProducts] = useState<Product[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [search, setSearch] = useState('');
+  const [showNotification, setShowNotification] = useState(false);
+  const [newBookingCount, setNewBookingCount] = useState(0);
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const [stats, setStats] = useState<{
     today: { sales: number; paid: number; invoiceCount: number; cashSales: number; cardSales: number; transferSales: number; income: number; expenses: number };
     inventory: { totalProducts: number; lowStockCount: number; outOfStockCount: number; inventoryValue: number };
-    bookings: { pending: number; total: number };
+    bookings: { pending: number; total: number; todayNew: number };
     customers: { total: number };
     messages: { total: number };
     recentInvoices: Array<{ id: string; number: string; total: number; paid: number; customerName: string | null; createdAt: string }>;
@@ -80,6 +83,34 @@ export default function AdminDashboard() {
     fetch('/api/cashier/?limit=1000', { credentials: 'include' }).then((r) => r.json()).then((d) => { if (d.success) setTransactions(d.data.transactions); });
     fetch('/api/v1/dashboard/stats/', { credentials: 'include' }).then((r) => r.json()).then((d) => { if (d.success) setStats(d.data); });
   }, [loading]);
+
+  // Auto-refresh stats every 30 seconds
+  useEffect(() => {
+    if (loading) return;
+    
+    intervalRef.current = setInterval(() => {
+      fetch('/api/v1/dashboard/stats/', { credentials: 'include' })
+        .then((r) => r.json())
+        .then((d) => {
+          if (d.success) {
+            const prevTodayNew = stats?.bookings.todayNew || 0;
+            setStats(d.data);
+            
+            // Show notification if new bookings arrived
+            if (d.data.bookings.todayNew > prevTodayNew) {
+              setNewBookingCount(d.data.bookings.todayNew - prevTodayNew);
+              setShowNotification(true);
+            }
+          }
+        });
+    }, 30000);
+
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, [loading, stats]);
 
   const deleteMessage = async (id: string) => {
     const res = await fetch(`/api/contact/${id}/`, { method: 'DELETE', credentials: 'include' });
@@ -139,6 +170,42 @@ export default function AdminDashboard() {
 
   return (
     <div className="p-6 sm:p-8">
+      {/* Notification Banner */}
+      <AnimatePresence>
+        {showNotification && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="mb-6 bg-gradient-to-r from-primary/10 to-primary/5 border border-primary/20 rounded-2xl p-4 flex items-center justify-between"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center">
+                <Bell className="w-5 h-5 text-primary" />
+              </div>
+              <div>
+                <p className="font-semibold text-sm">{newBookingCount} new booking{newBookingCount > 1 ? 's' : ''} today</p>
+                <p className="text-xs text-muted-foreground">Check your bookings page</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Link
+                href="/admin/bookings"
+                className="px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity"
+              >
+                View Bookings
+              </Link>
+              <button
+                onClick={() => setShowNotification(false)}
+                className="p-2 rounded-lg hover:bg-white/5 text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <nav className="flex flex-wrap gap-2 mb-6" aria-label="Dashboard tabs">
         {navItems.map((item) => (
           <button
@@ -162,7 +229,7 @@ export default function AdminDashboard() {
             <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {[
                 { label: t('admin_total_income') + ' (Today)', value: stats ? `${stats.today.sales.toLocaleString()} EGP` : '—', icon: ShoppingCart, color: 'text-green-400', bg: 'bg-green-400/10' },
-                { label: t('admin_pending_bookings'), value: stats ? stats.bookings.pending : pendingBookings, icon: Calendar, color: 'text-amber-400', bg: 'bg-amber-400/10' },
+                { label: t('admin_pending_bookings'), value: stats ? stats.bookings.pending : pendingBookings, icon: Calendar, color: 'text-amber-400', bg: 'bg-amber-400/10', badge: stats?.bookings.todayNew ? `+${stats.bookings.todayNew} today` : undefined },
                 { label: t('admin_products'), value: stats ? stats.inventory.totalProducts : products.length, icon: Package, color: 'text-emerald-400', bg: 'bg-emerald-400/10' },
                 { label: t('admin_net_balance'), value: `${balance.toLocaleString()} EGP`, icon: DollarSign, color: 'text-primary', bg: 'bg-primary/10' },
                 { label: 'Today Invoices', value: stats ? stats.today.invoiceCount : 0, icon: TrendingUp, color: 'text-blue-400', bg: 'bg-blue-400/10' },
@@ -177,7 +244,14 @@ export default function AdminDashboard() {
                       <stat.icon className={`w-4 h-4 ${stat.color}`} />
                     </div>
                   </div>
-                  <span className="text-2xl font-bold">{stat.value}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-2xl font-bold">{stat.value}</span>
+                    {stat.badge && (
+                      <span className="text-xs px-2 py-1 rounded-full bg-primary/10 text-primary font-medium">
+                        {stat.badge}
+                      </span>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>

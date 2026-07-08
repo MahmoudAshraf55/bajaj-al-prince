@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { withRole } from '@/lib/auth';
 import { checkRateLimit } from '@/lib/rate-limit';
 import { withSecurityHeaders } from '@/lib/security';
+import { getTenantId, DEFAULT_TENANT_ID } from '@/lib/tenant-context';
 import { z } from 'zod';
 
 const settingsUpdateSchema = z.object({
@@ -16,7 +17,7 @@ async function ensureDefaultSettings() {
   const existing = await prisma.whatsAppSettings.findUnique({ where: { id: 'default' } });
   if (!existing) {
     return prisma.whatsAppSettings.create({
-      data: { id: 'default', delayMin: 60, delayMax: 120, dailyCap: 50, batchSize: 20 },
+      data: { id: 'default', delayMin: 60, delayMax: 120, dailyCap: 50, batchSize: 20, tenantId: getTenantId() ?? DEFAULT_TENANT_ID },
     });
   }
   return existing;

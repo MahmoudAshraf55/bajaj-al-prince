@@ -4,6 +4,7 @@ import { withRole } from '@/lib/auth';
 import { checkRateLimit } from '@/lib/rate-limit';
 import { sanitizedString } from '@/lib/sanitize';
 import { logAudit, getClientInfo } from '@/lib/audit';
+import { getTenantId, DEFAULT_TENANT_ID } from '@/lib/tenant-context';
 import { z } from 'zod';
 import { withSecurityHeaders } from '@/lib/security';
 
@@ -62,6 +63,7 @@ export async function POST(req: NextRequest) {
           phone: data.phone,
           email: data.email ?? '',
           address: data.address ?? null,
+          tenantId: getTenantId() ?? DEFAULT_TENANT_ID,
         },
       });
       const { ipAddress, userAgent } = getClientInfo(req);
