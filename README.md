@@ -48,10 +48,10 @@
 
 ## 🚀 Live Demo
 
-> **Production URL:** [https://windsurf-project-three-topaz.vercel.app](https://windsurf-project-three-topaz.vercel.app)
+> **Production URL:** [https://windsurf-project-three-topaz.vercel.app]([https://bajajelprince.vercel.app)
 >
 > **Admin Login:** `admin` / `Admin@123`
-> **Admin Panel:** [https://windsurf-project-three-topaz.vercel.app/admin](https://windsurf-project-three-topaz.vercel.app/admin)
+> **Admin Panel:** [https://windsurf-project-three-topaz.vercel.app/admin](https://bajajelprince.vercel.app/admin)
 
 ---
 
