@@ -5,7 +5,13 @@ import { FEATURE_FLAGS } from '../src/lib/features';
 import { DEFAULT_TENANT_ID, setTenantContext } from '../src/lib/tenant-context';
 
 async function seed() {
-  const adminPassword = process.env.ADMIN_INITIAL_PASSWORD || 'admin123';
+  const adminPassword = process.env.ADMIN_INITIAL_PASSWORD;
+  if (!adminPassword) {
+    throw new Error(
+      'ADMIN_INITIAL_PASSWORD environment variable is required for seeding. ' +
+      'Set it to a strong password (min 8 chars, uppercase, lowercase, digit).'
+    );
+  }
 
   // Ensure the default tenant exists
   await prisma.tenant.upsert({
@@ -28,6 +34,7 @@ async function seed() {
         username: 'admin',
         password: await hashPassword(adminPassword),
         role: 'admin',
+        tenantId: DEFAULT_TENANT_ID,
       },
     });
     console.log('Admin user created');
@@ -51,7 +58,7 @@ async function seed() {
     await prisma.vehicleModel.upsert({
       where: { tenantId_name: { tenantId: DEFAULT_TENANT_ID, name } },
       update: {},
-      create: { name, make: 'Bajaj' },
+      create: { name, make: 'Bajaj', tenantId: DEFAULT_TENANT_ID },
     });
   }
   console.log('Default vehicle models seeded');
@@ -75,7 +82,7 @@ async function seed() {
     await prisma.whatsAppMessageTemplate.upsert({
       where: { tenantId_event: { tenantId: DEFAULT_TENANT_ID, event: tmpl.event } },
       update: {},
-      create: { event: tmpl.event, message: tmpl.message, isActive: true },
+      create: { event: tmpl.event, message: tmpl.message, isActive: true, tenantId: DEFAULT_TENANT_ID },
     });
   }
   console.log('Default WhatsApp templates seeded');
@@ -88,9 +95,9 @@ async function seed() {
   ];
 
   for (const sch of defaultSchedules) {
-    const existing = await prisma.reminderSchedule.findFirst({ where: { name: sch.name } });
+    const existing = await prisma.reminderSchedule.findFirst({ where: { name: sch.name, tenantId: DEFAULT_TENANT_ID } });
     if (!existing) {
-      await prisma.reminderSchedule.create({ data: sch });
+      await prisma.reminderSchedule.create({ data: { ...sch, tenantId: DEFAULT_TENANT_ID } });
     }
   }
   console.log('Default reminder schedules seeded');
@@ -111,6 +118,7 @@ async function seed() {
         name: def.name,
         description: def.description,
         category: def.category,
+        tenantId: DEFAULT_TENANT_ID,
       },
     });
   }
@@ -136,7 +144,7 @@ async function seed() {
 
       if (!existing) {
         await prisma.rolePermission.create({
-          data: { role, permissionId },
+          data: { role, permissionId, tenantId: DEFAULT_TENANT_ID },
         });
       } else if (existing.isDeleted) {
         await prisma.rolePermission.update({
@@ -166,6 +174,7 @@ async function seed() {
         description: def.description,
         category: def.category,
         defaultEnabled: def.defaultEnabled,
+        tenantId: DEFAULT_TENANT_ID,
       },
     });
   }

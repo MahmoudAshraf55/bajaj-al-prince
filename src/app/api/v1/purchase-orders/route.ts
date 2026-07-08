@@ -5,6 +5,7 @@ import { checkRateLimit } from '@/lib/rate-limit';
 import { sanitizedString } from '@/lib/sanitize';
 import { logAudit, getClientInfo } from '@/lib/audit';
 import { withSecurityHeaders } from '@/lib/security';
+import { getTenantId, DEFAULT_TENANT_ID } from '@/lib/tenant-context';
 import { z } from 'zod';
 import { Prisma } from '@prisma/client';
 
@@ -100,6 +101,7 @@ export async function POST(req: NextRequest) {
           discount: data.discount,
           total: data.total,
           createdById: payload.userId,
+          tenantId: getTenantId() ?? DEFAULT_TENANT_ID,
           items: {
             create: data.items.map((item) => ({
               productId: item.productId,

@@ -42,7 +42,5 @@ export async function GET() {
     status,
     timestamp,
     services,
-    version: process.env.npm_package_version || 'unknown',
-    environment: process.env.NODE_ENV || 'development',
   }, { status: httpStatus }));
 }

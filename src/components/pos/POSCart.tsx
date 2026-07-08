@@ -30,6 +30,8 @@ interface POSCartProps {
   updateQuantity: (productId: string, delta: number) => void;
   removeFromCart: (productId: string) => void;
   change: number;
+  selectedWorkOrderId: string | null;
+  setShowWorkOrderSelect: (val: boolean) => void;
 }
 
 export default function POSCart({
@@ -59,6 +61,8 @@ export default function POSCart({
   updateQuantity,
   removeFromCart,
   change,
+  selectedWorkOrderId,
+  setShowWorkOrderSelect,
 }: POSCartProps) {
   const addSplitPayment = () => {
     setSplitPayments([...splitPayments, { method: 'cash', amount: '' }]);
@@ -121,12 +125,20 @@ export default function POSCart({
       </div>
 
       <div className="border-t border-border p-4 space-y-3">
-        <button
-          onClick={() => setShowCustomerModal(true)}
-          className="w-full text-left px-3 py-2 rounded-xl bg-white/5 text-sm text-muted-foreground hover:bg-white/10 transition-colors"
-        >
-          {selectedCustomer ? `${selectedCustomer.name}${selectedCustomer.phone ? ` - ${selectedCustomer.phone}` : ''}` : t('pos_select_customer')}
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setShowCustomerModal(true)}
+            className="flex-1 px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 transition-colors text-sm font-medium flex items-center justify-center gap-2"
+          >
+            {selectedCustomer ? selectedCustomer.name : t('pos_select_customer')}
+          </button>
+          <button
+            onClick={() => setShowWorkOrderSelect(true)}
+            className={`flex-1 px-3 py-2 rounded-xl transition-colors text-sm font-medium flex items-center justify-center gap-2 ${selectedWorkOrderId ? 'bg-primary/20 text-primary' : 'bg-white/5 hover:bg-white/10'}`}
+          >
+            {selectedWorkOrderId ? 'Work Order Linked' : 'Link Work Order'}
+          </button>
+        </div>
 
         <div className="space-y-1.5 text-sm">
           <div className="flex justify-between text-muted-foreground">

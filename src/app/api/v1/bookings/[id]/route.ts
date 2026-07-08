@@ -6,6 +6,7 @@ import { logAudit, getClientInfo, type AuditAction } from '@/lib/audit';
 import { logger } from '@/lib/logger';
 import { sendWhatsAppMessageViaService } from '@/lib/whatsapp-client';
 import { buildMessage, type EventKey } from '@/lib/whatsapp-templates';
+import { getTenantId, DEFAULT_TENANT_ID } from '@/lib/tenant-context';
 import { z } from 'zod';
 import { withSecurityHeaders } from '@/lib/security';
 
@@ -42,6 +43,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
               status: 'pending',
               vehicleId: booking.vehicleId,
               bookingId: booking.id,
+              tenantId: getTenantId() ?? DEFAULT_TENANT_ID,
             },
           });
         } catch (woErr) {

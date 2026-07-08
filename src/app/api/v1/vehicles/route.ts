@@ -7,6 +7,7 @@ import { logAudit, getClientInfo } from '@/lib/audit';
 import { logger } from '@/lib/logger';
 import { sendWhatsAppMessageViaService } from '@/lib/whatsapp-client';
 import { buildMessage } from '@/lib/whatsapp-templates';
+import { getTenantId, DEFAULT_TENANT_ID } from '@/lib/tenant-context';
 import { Prisma } from '@prisma/client';
 import { z } from 'zod';
 import { withSecurityHeaders } from '@/lib/security';
@@ -56,7 +57,7 @@ export async function POST(req: NextRequest) {
     return await withRole(req, ['admin', 'staff'], async (payload) => {
       const body = await req.json();
       const data = vehicleSchema.parse(body);
-      const vehicle = await prisma.vehicle.create({ data, include: { customer: true } });
+      const vehicle = await prisma.vehicle.create({ data: { ...data, tenantId: getTenantId() ?? DEFAULT_TENANT_ID }, include: { customer: true } });
       const { ipAddress, userAgent } = getClientInfo(req);
       await logAudit({
         userId: payload.userId,

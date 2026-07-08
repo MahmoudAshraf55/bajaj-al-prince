@@ -15,6 +15,7 @@ export async function GET(req: NextRequest) {
         products,
         pendingBookings,
         totalBookings,
+        todayNewBookings,
         todayTransactions,
         totalMessages,
         recentInvoices,
@@ -31,6 +32,7 @@ export async function GET(req: NextRequest) {
         }),
         prisma.booking.count({ where: { status: 'pending', isDeleted: false } }),
         prisma.booking.count({ where: { isDeleted: false } }),
+        prisma.booking.count({ where: { isDeleted: false, createdAt: { gte: todayStart, lte: todayEnd } } }),
         prisma.transaction.findMany({
           where: { isDeleted: false, createdAt: { gte: todayStart, lte: todayEnd } },
           select: { type: true, amount: true },
@@ -87,6 +89,7 @@ export async function GET(req: NextRequest) {
           bookings: {
             pending: pendingBookings,
             total: totalBookings,
+            todayNew: todayNewBookings,
           },
           customers: {
             total: totalCustomers,

@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { checkRateLimit } from '@/lib/rate-limit';
+import { withSecurityHeaders } from '@/lib/security';
 import { z } from 'zod';
 
 const FAQ: Record<string, { en: string; ar: string }> = {
@@ -62,6 +64,9 @@ function findBestMatch(message: string): string | null {
 }
 
 export async function POST(req: NextRequest) {
+  const rateLimit = await checkRateLimit(req, 'public');
+  if (!rateLimit.allowed) return withSecurityHeaders(rateLimit.response!);
+
   try {
     const body = await req.json();
     const { message, lang } = chatSchema.parse(body);
@@ -70,7 +75,7 @@ export async function POST(req: NextRequest) {
     const contactWhatsApp = process.env.WHATSAPP_NUMBER || '201015544084';
 
     if (matchedKey === 'contact') {
-      return NextResponse.json({
+      return withSecurityHeaders(NextResponse.json({
         success: true,
         data: {
           reply: lang === 'ar'
@@ -79,32 +84,32 @@ export async function POST(req: NextRequest) {
           action: 'whatsapp',
           whatsapp: `https://wa.me/${contactWhatsApp.replace(/\D/g, '')}`,
         },
-      });
+      }));
     }
 
     if (matchedKey && FAQ[matchedKey]) {
-      return NextResponse.json({
+      return withSecurityHeaders(NextResponse.json({
         success: true,
         data: { reply: FAQ[matchedKey][lang], action: 'text' },
-      });
+      }));
     }
 
     const fallback = lang === 'ar'
       ? 'لم أتمكن من فهم سؤالك. يمكنك التواصل مع خدمة العملاء مباشرة عبر واتساب.'
       : 'I could not understand your question. You can contact customer service directly on WhatsApp.';
 
-    return NextResponse.json({
+    return withSecurityHeaders(NextResponse.json({
       success: true,
       data: {
         reply: fallback,
         action: 'whatsapp',
         whatsapp: `https://wa.me/${contactWhatsApp.replace(/\D/g, '')}`,
       },
-    });
+    }));
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return NextResponse.json({ success: false, errors: error.issues }, { status: 400 });
+      return withSecurityHeaders(NextResponse.json({ success: false, errors: error.issues }, { status: 400 }));
     }
-    return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
+    return withSecurityHeaders(NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 }));
   }
 }

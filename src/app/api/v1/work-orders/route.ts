@@ -7,6 +7,7 @@ import { sanitizedString } from '@/lib/sanitize';
 import { logger } from '@/lib/logger';
 import { sendWhatsAppMessageViaService } from '@/lib/whatsapp-client';
 import { buildMessage } from '@/lib/whatsapp-templates';
+import { getTenantId, DEFAULT_TENANT_ID } from '@/lib/tenant-context';
 import { z } from 'zod';
 
 const workOrderSchema = z.object({
@@ -86,6 +87,7 @@ export async function POST(req: NextRequest) {
           status: data.status || 'pending',
           cost: data.cost || null,
           vehicleId: data.vehicleId,
+          tenantId: getTenantId() ?? DEFAULT_TENANT_ID,
         },
         include: { vehicle: { include: { customer: true } } },
       });

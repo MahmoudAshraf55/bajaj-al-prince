@@ -8,6 +8,7 @@ import { logger } from '@/lib/logger';
 import { z } from 'zod';
 import { withSecurityHeaders } from '@/lib/security';
 import { Prisma } from '@prisma/client';
+import { AccountingService } from '@/services/AccountingService';
 
 const createPartSchema = z.object({
   productId: z.string().uuid(),
@@ -51,19 +52,76 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         return withSecurityHeaders(NextResponse.json({ success: false, error: 'Product not found' }, { status: 404 }));
       }
 
+      if (product.stock < data.quantity) {
+        return withSecurityHeaders(NextResponse.json({ success: false, error: 'Insufficient stock' }, { status: 400 }));
+      }
+
       const unitPrice = data.unitPrice ?? Number(product.price);
       const total = new Prisma.Decimal(unitPrice).times(data.quantity);
 
-      const part = await prisma.workOrderPart.create({
-        data: {
-          workOrderId: id,
-          productId: data.productId,
-          quantity: data.quantity,
-          unitPrice,
-          total,
-          tenantId: getTenantId() ?? DEFAULT_TENANT_ID,
-        },
-        include: { product: { select: { id: true, name: true, barcode: true } } },
+      const part = await prisma.$transaction(async (tx) => {
+        // Deduct from stock
+        await tx.product.update({
+          where: { id: data.productId },
+          data: { stock: { decrement: data.quantity } },
+        });
+
+        // Create accounting journal entry
+        const tenantId = getTenantId() ?? DEFAULT_TENANT_ID;
+        
+        try {
+          const cogsAccountId = await AccountingService.getAccountId(tx, '5100', tenantId); // COGS
+          const inventoryAccountId = await AccountingService.getAccountId(tx, '1201', tenantId); // Inventory
+
+          const journalEntry = await tx.journalEntry.create({
+            data: {
+              date: new Date(),
+              description: `Work Order Part: ${product.name} x${data.quantity}`,
+              type: 'STOCK_ADJUSTMENT',
+              amount: Number(total),
+              createdById: payload.userId,
+              tenantId,
+            },
+          });
+
+          // Debit COGS
+          await tx.journalEntryLine.create({
+            data: {
+              journalEntryId: journalEntry.id,
+              accountId: cogsAccountId,
+              debit: Number(total),
+              credit: 0,
+              tenantId,
+            },
+          });
+
+          // Credit Inventory
+          await tx.journalEntryLine.create({
+            data: {
+              journalEntryId: journalEntry.id,
+              accountId: inventoryAccountId,
+              debit: 0,
+              credit: Number(total),
+              tenantId,
+            },
+          });
+        } catch (accountingError) {
+          // If accounting fails, log but don't fail the entire transaction
+          console.error('Accounting entry creation failed:', accountingError);
+        }
+
+        // Create work order part
+        return await tx.workOrderPart.create({
+          data: {
+            workOrderId: id,
+            productId: data.productId,
+            quantity: data.quantity,
+            unitPrice,
+            total,
+            tenantId,
+          },
+          include: { product: { select: { id: true, name: true, barcode: true } } },
+        });
       });
 
       const { ipAddress, userAgent } = getClientInfo(req);
@@ -80,11 +138,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       return withSecurityHeaders(NextResponse.json({ success: true, data: { part } }, { status: 201 }));
     });
   } catch (error) {
+    console.error('Work Order Part creation error:', error);
     if (error instanceof z.ZodError) {
       return withSecurityHeaders(NextResponse.json({ success: false, errors: error.issues }, { status: 400 }));
     }
     logger.error('Work order parts POST error', error);
-    return withSecurityHeaders(NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 }));
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    return withSecurityHeaders(NextResponse.json({ success: false, error: errorMessage }, { status: 500 }));
   }
 }
 

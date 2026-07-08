@@ -28,6 +28,10 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
             orderBy: { date: 'desc' },
             include: { vehicle: { where: { isDeleted: false } } },
           },
+          invoices: {
+            where: { isDeleted: false },
+            orderBy: { createdAt: 'desc' },
+          },
         },
       });
       if (!customer) {

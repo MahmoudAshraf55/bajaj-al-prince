@@ -72,11 +72,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       return withSecurityHeaders(NextResponse.json({ success: true, data: { labour } }, { status: 201 }));
     });
   } catch (error) {
+    console.error('Work Order Labour creation error:', error);
     if (error instanceof z.ZodError) {
       return withSecurityHeaders(NextResponse.json({ success: false, errors: error.issues }, { status: 400 }));
     }
     logger.error('Work order labour POST error', error);
-    return withSecurityHeaders(NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 }));
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    return withSecurityHeaders(NextResponse.json({ success: false, error: errorMessage }, { status: 500 }));
   }
 }
 

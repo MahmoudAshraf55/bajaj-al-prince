@@ -5,6 +5,7 @@ import { checkRateLimit } from '@/lib/rate-limit';
 import { sanitizedString } from '@/lib/sanitize';
 import { logAudit, getClientInfo } from '@/lib/audit';
 import { withSecurityHeaders } from '@/lib/security';
+import { getTenantId, DEFAULT_TENANT_ID } from '@/lib/tenant-context';
 import { z } from 'zod';
 import { Prisma } from '@prisma/client';
 
@@ -82,6 +83,7 @@ export async function POST(req: NextRequest) {
           address: data.address || null,
           taxId: data.taxId || null,
           notes: data.notes || null,
+          tenantId: getTenantId() ?? DEFAULT_TENANT_ID,
         },
       });
 

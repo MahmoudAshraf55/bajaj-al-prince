@@ -28,12 +28,20 @@ jobs:
 
       - name: TypeScript check
         run: npx tsc --noEmit
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET || 'skip' }}
 
       - name: Lint
         run: npm run lint
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
       - name: Unit tests
         run: npm run test
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET || 'skip' }}
 
       - name: Build
         run: npm run build
