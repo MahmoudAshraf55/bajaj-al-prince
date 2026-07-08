@@ -4,6 +4,7 @@ import { withAuth } from '@/lib/auth';
 import { checkRateLimit } from '@/lib/rate-limit';
 import { validateOrigin, withSecurityHeaders } from '@/lib/security';
 import { sanitizedString } from '@/lib/sanitize';
+import { getTenantId, DEFAULT_TENANT_ID } from '@/lib/tenant-context';
 import { z } from 'zod';
 
 const contactSchema = z.object({
@@ -23,7 +24,7 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const data = contactSchema.parse(body);
-    const message = await prisma.contactMessage.create({ data });
+    const message = await prisma.contactMessage.create({ data: { ...data, tenantId: getTenantId() ?? DEFAULT_TENANT_ID } });
     return withSecurityHeaders(NextResponse.json({ success: true, data: { message } }, { status: 201 }));
   } catch (error) {
     if (error instanceof z.ZodError) {

@@ -11,6 +11,7 @@ import {
   Check, Printer, FileText, TrendingUp,
 } from 'lucide-react';
 import { Product, Customer, Invoice } from '@/types/pos';
+import type { WorkOrder } from '@/types';
 import POSProductGrid from '@/components/pos/POSProductGrid';
 import POSCart from '@/components/pos/POSCart';
 import POSInvoiceList from '@/components/pos/POSInvoiceList';
@@ -59,8 +60,23 @@ export default function AdminPOS() {
   const barcodeInputRef = useRef<HTMLInputElement>(null);
   const barcodeDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Work Order linking
+  const [selectedWorkOrderId, setSelectedWorkOrderId] = useState<string | null>(null);
+  const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
+  const [showWorkOrderSelect, setShowWorkOrderSelect] = useState(false);
+
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [invSearch, setInvSearch] = useState('');
+
+  // Fetch work orders
+  useEffect(() => {
+    fetch('/api/v1/work-orders?status=pending', { credentials: 'include' })
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.success) setWorkOrders(d.data.workOrders || []);
+      })
+      .catch(() => setWorkOrders([]));
+  }, []);
   const [invTypeFilter, setInvTypeFilter] = useState('');
   const [invStatusFilter, setInvStatusFilter] = useState('');
   const [invPage, setInvPage] = useState(1);
@@ -244,6 +260,7 @@ export default function AdminPOS() {
           notes: notes || null,
           customerId: selectedCustomer?.id || null,
           customerName: selectedCustomer?.name || null,
+          workOrderId: selectedWorkOrderId || null,
         }),
       });
       const d = await res.json();
@@ -611,6 +628,8 @@ export default function AdminPOS() {
                 updateQuantity={updateQuantity}
                 removeFromCart={removeFromCart}
                 change={change}
+                selectedWorkOrderId={selectedWorkOrderId}
+                setShowWorkOrderSelect={setShowWorkOrderSelect}
               />
             </div>
 
@@ -678,6 +697,40 @@ export default function AdminPOS() {
                   </motion.div>
                 </motion.div>
               )}
+
+              {/* Work Order Selection Modal */}
+              <AnimatePresence>
+                {showWorkOrderSelect && (
+                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-40 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+                    <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} exit={{ scale: 0.95 }} onClick={(e) => e.stopPropagation()}
+                  role="dialog"
+                  aria-modal="true" className="glass rounded-2xl p-6 w-full max-w-sm">
+                      <div className="flex items-center justify-between mb-4">
+                        <h3 className="font-bold">Link to Work Order</h3>
+                        <button onClick={() => setShowWorkOrderSelect(false)} className="text-muted-foreground hover:text-foreground"><X className="w-5 h-5" /></button>
+                      </div>
+                      <div className="max-h-60 overflow-auto space-y-1">
+                        <button onClick={() => { setSelectedWorkOrderId(null); setShowWorkOrderSelect(false); }} className="w-full text-left px-3 py-2 rounded-xl text-sm text-muted-foreground hover:bg-white/5 transition-colors">
+                          — No Work Order
+                        </button>
+                        {workOrders.map((wo) => (
+                          <button
+                            key={wo.id}
+                            onClick={() => { setSelectedWorkOrderId(wo.id); setShowWorkOrderSelect(false); }}
+                            className={`w-full text-left px-3 py-2 rounded-xl text-sm hover:bg-white/5 transition-colors ${selectedWorkOrderId === wo.id ? 'bg-white/10' : ''}`}
+                          >
+                            <span className="font-medium">{wo.vehicle?.model || 'Unknown'}</span>
+                            <span className="text-muted-foreground ml-2">- {wo.description?.substring(0, 30) || 'No description'}</span>
+                          </button>
+                        ))}
+                        {workOrders.length === 0 && (
+                          <p className="text-center text-muted-foreground text-sm py-4">No pending work orders</p>
+                        )}
+                      </div>
+                    </motion.div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </AnimatePresence>
           </>
         )}

@@ -70,11 +70,16 @@ export async function GET(req: NextRequest) {
           const cat = p.category || 'Uncategorized';
           const entry = byCategory.get(cat) || { count: 0, stockValue: 0, retailValue: 0 };
           entry.count += 1;
-          entry.stockValue += Number(p.costPrice || 0) * p.stock;
+          // Use price as fallback if costPrice is null or zero
+          const cost = Number(p.costPrice || 0);
+          entry.stockValue += (cost > 0 ? cost : Number(p.price)) * p.stock;
           entry.retailValue += Number(p.price) * p.stock;
           byCategory.set(cat, entry);
         }
-        const totalStockValue = products.reduce((s, p) => s + Number(p.costPrice || 0) * p.stock, 0);
+        const totalStockValue = products.reduce((s, p) => {
+          const cost = Number(p.costPrice || 0);
+          return s + (cost > 0 ? cost : Number(p.price)) * p.stock;
+        }, 0);
         const totalRetailValue = products.reduce((s, p) => s + Number(p.price) * p.stock, 0);
         return withSecurityHeaders(NextResponse.json({
           success: true,

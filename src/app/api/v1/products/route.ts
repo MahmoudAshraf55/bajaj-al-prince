@@ -4,6 +4,7 @@ import { withRole } from '@/lib/auth';
 import { checkRateLimit } from '@/lib/rate-limit';
 import { sanitizedString } from '@/lib/sanitize';
 import { logAudit, getClientInfo } from '@/lib/audit';
+import { getTenantId, DEFAULT_TENANT_ID } from '@/lib/tenant-context';
 import { z } from 'zod';
 import { withSecurityHeaders } from '@/lib/security';
 
@@ -79,7 +80,7 @@ export async function POST(req: NextRequest) {
     return await withRole(req, ['admin', 'staff'], async (payload) => {
       const body = await req.json();
       const data = productSchema.parse(body);
-      const product = await prisma.product.create({ data });
+      const product = await prisma.product.create({ data: { ...data, tenantId: getTenantId() ?? DEFAULT_TENANT_ID } });
       const { ipAddress, userAgent } = getClientInfo(req);
       await logAudit({
         userId: payload.userId,

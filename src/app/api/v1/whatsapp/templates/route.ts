@@ -4,6 +4,7 @@ import { withRole } from '@/lib/auth';
 import { checkRateLimit } from '@/lib/rate-limit';
 import { withSecurityHeaders } from '@/lib/security';
 import { logAudit, getClientInfo } from '@/lib/audit';
+import { getTenantId, DEFAULT_TENANT_ID } from '@/lib/tenant-context';
 import { z } from 'zod';
 
 const templateSchema = z.object({
@@ -35,7 +36,7 @@ export async function GET(req: NextRequest) {
       if (templates.length === 0) {
         for (const t of DEFAULT_TEMPLATES) {
           await prisma.whatsAppMessageTemplate.create({
-            data: { event: t.event, message: t.message, isActive: true },
+            data: { event: t.event, message: t.message, isActive: true, tenantId: getTenantId() ?? DEFAULT_TENANT_ID },
           });
         }
         templates = await prisma.whatsAppMessageTemplate.findMany({
@@ -62,7 +63,7 @@ export async function POST(req: NextRequest) {
       const data = templateSchema.parse(body);
 
       const template = await prisma.whatsAppMessageTemplate.create({
-        data: { event: data.event, message: data.message, isActive: data.isActive ?? true },
+        data: { event: data.event, message: data.message, isActive: data.isActive ?? true, tenantId: getTenantId() ?? DEFAULT_TENANT_ID },
       });
 
       const { ipAddress, userAgent } = getClientInfo(req);

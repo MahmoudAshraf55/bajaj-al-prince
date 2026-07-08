@@ -12,7 +12,7 @@ import CustomerTimeline from '@/components/CustomerTimeline';
 import {
   ArrowLeft, User, Phone, Mail, MapPin, Car, Plus, Calendar,
   AlertCircle, CheckCircle2, X, Hash, Gauge, Pencil, ChevronDown,
-  Wrench, ClipboardList, Clock, Bell, History,
+  Wrench, ClipboardList, Clock, Bell, History, Receipt, ArrowRight,
 } from 'lucide-react';
 
 export default function CustomerDetailPage() {
@@ -28,7 +28,7 @@ export default function CustomerDetailPage() {
   const [showVehicleModal, setShowVehicleModal] = useState(false);
   const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [timelineView, setTimelineView] = useState(false);
+  const [historyTab, setHistoryTab] = useState<'bookings' | 'timeline' | 'invoices'>('bookings');
 
   const [form, setForm] = useState({
     make: 'Bajaj', model: '', year: '', chassisNumber: '', plateNumber: '',
@@ -41,6 +41,11 @@ export default function CustomerDetailPage() {
   const [showBookingModal, setShowBookingModal] = useState(false);
   const [editingBooking, setEditingBooking] = useState<Booking | null>(null);
   const [bookingForm, setBookingForm] = useState({ issue: '' });
+
+  // Work Order modal state
+  const [showWorkOrderModal, setShowWorkOrderModal] = useState(false);
+  const [workOrderForm, setWorkOrderForm] = useState({ vehicleId: '', description: '' });
+  const [workOrderSubmitting, setWorkOrderSubmitting] = useState(false);
 
   const fetchCustomer = useCallback(async (signal?: AbortSignal) => {
     setError('');
@@ -199,6 +204,36 @@ export default function CustomerDetailPage() {
     }
   };
 
+  const handleCreateWorkOrder = async () => {
+    if (!workOrderForm.vehicleId || !workOrderForm.description) {
+      addToast('error', 'Please select a vehicle and enter a description');
+      return;
+    }
+
+    setWorkOrderSubmitting(true);
+    try {
+      const res = await fetch('/api/v1/work-orders/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(workOrderForm),
+      });
+      const data = await res.json();
+      if (data.success) {
+        addToast('success', 'Work Order created successfully');
+        setShowWorkOrderModal(false);
+        setWorkOrderForm({ vehicleId: '', description: '' });
+        fetchCustomer();
+      } else {
+        addToast('error', data.error || 'Failed to create Work Order');
+      }
+    } catch {
+      addToast('error', 'Network error');
+    } finally {
+      setWorkOrderSubmitting(false);
+    }
+  };
+
   const handleOpenIssueEdit = (b: Booking) => {
     setEditingBooking(b);
     setBookingForm({ issue: b.issue });
@@ -342,13 +377,22 @@ export default function CustomerDetailPage() {
               <Car className="w-5 h-5 text-primary" />
               {t('crm_garage')} ({customer?.vehicles?.length ?? 0})
             </h3>
-            <button
-              onClick={openAddModal}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
-            >
-              <Plus className="w-4 h-4" />
-              {t('crm_add_vehicle')}
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowWorkOrderModal(true)}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary/10 text-primary text-sm font-medium hover:bg-primary/20 transition-colors"
+              >
+                <Wrench className="w-4 h-4" />
+                Create Work Order
+              </button>
+              <button
+                onClick={openAddModal}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
+              >
+                <Plus className="w-4 h-4" />
+                {t('crm_add_vehicle')}
+              </button>
+            </div>
           </div>
 
           {customer?.vehicles && customer.vehicles.length > 0 ? (
@@ -419,9 +463,9 @@ export default function CustomerDetailPage() {
         {/* History Tabs */}
         <div className="flex gap-1 bg-white/5 rounded-xl p-1">
           <button
-            onClick={() => setTimelineView(false)}
+            onClick={() => setHistoryTab('bookings')}
             className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all ${
-              !timelineView
+              historyTab === 'bookings'
                 ? 'bg-primary text-primary-foreground shadow-lg'
                 : 'text-muted-foreground hover:text-foreground hover:bg-white/5'
             }`}
@@ -430,9 +474,9 @@ export default function CustomerDetailPage() {
             {t('crm_service_history')} ({customer?.bookings?.length ?? 0})
           </button>
           <button
-            onClick={() => setTimelineView(true)}
+            onClick={() => setHistoryTab('timeline')}
             className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all ${
-              timelineView
+              historyTab === 'timeline'
                 ? 'bg-primary text-primary-foreground shadow-lg'
                 : 'text-muted-foreground hover:text-foreground hover:bg-white/5'
             }`}
@@ -440,10 +484,84 @@ export default function CustomerDetailPage() {
             <History className="w-4 h-4" />
             {t('crm_timeline')}
           </button>
+          <button
+            onClick={() => setHistoryTab('invoices')}
+            className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+              historyTab === 'invoices'
+                ? 'bg-primary text-primary-foreground shadow-lg'
+                : 'text-muted-foreground hover:text-foreground hover:bg-white/5'
+            }`}
+          >
+            <Receipt className="w-4 h-4" />
+            Invoices ({customer?.invoices?.length ?? 0})
+          </button>
         </div>
 
-        {timelineView ? (
+        {historyTab === 'timeline' ? (
           <CustomerTimeline customerId={customerId} />
+        ) : historyTab === 'invoices' ? (
+          <>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-semibold">Purchase History</h3>
+              {customer?.invoices && customer.invoices.length > 0 && (
+                <div className="text-sm text-muted-foreground">
+                  Total Spent: <span className="text-primary font-bold">
+                    {customer.invoices.reduce((sum, inv) => sum + Number(inv.total), 0).toLocaleString()} EGP
+                  </span>
+                </div>
+              )}
+            </div>
+            {customer?.invoices && customer.invoices.length > 0 ? (
+              <div className="space-y-3">
+                {customer.invoices.map((inv, idx) => (
+                  <motion.div
+                    key={inv.id}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: idx * 0.05 }}
+                    className="glass rounded-2xl p-5"
+                  >
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                          <Receipt className="w-5 h-5 text-primary" />
+                        </div>
+                        <div>
+                          <p className="font-semibold text-sm">{inv.number}</p>
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <Calendar className="w-3 h-3" />
+                            <span>{new Date(inv.createdAt).toLocaleDateString()}</span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-bold text-sm">{Number(inv.total).toLocaleString()} EGP</p>
+                        <span className={`text-xs px-2 py-1 rounded-full ${
+                          inv.status === 'confirmed' && Number(inv.paid) >= Number(inv.total) ? 'bg-green-500/10 text-green-400' :
+                          inv.status === 'confirmed' ? 'bg-amber-500/10 text-amber-400' :
+                          'bg-red-500/10 text-red-400'
+                        }`}>
+                          {inv.status}
+                        </span>
+                      </div>
+                    </div>
+                    <Link
+                      href={`/admin/invoices/${inv.id}`}
+                      className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                    >
+                      View Details
+                      <ArrowRight className="w-3 h-3" />
+                    </Link>
+                  </motion.div>
+                ))}
+              </div>
+            ) : (
+              <div className="glass rounded-2xl p-8 text-center">
+                <Receipt className="w-10 h-10 text-muted-foreground/30 mx-auto mb-3" />
+                <p className="text-muted-foreground text-sm">No invoices yet</p>
+              </div>
+            )}
+          </>
         ) : (
           <>
             {customer?.bookings && customer.bookings.length > 0 && (
@@ -774,6 +892,84 @@ export default function CustomerDetailPage() {
                   </button>
                 </div>
               </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Work Order Create Modal */}
+      <AnimatePresence>
+        {showWorkOrderModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-40 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+            onClick={() => setShowWorkOrderModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              role="dialog"
+              aria-modal="true"
+              className="glass rounded-2xl p-6 w-full max-w-md border border-border"
+            >
+              <div className="flex items-center justify-between mb-5">
+                <h3 className="text-lg font-bold">Create Work Order</h3>
+                <button
+                  onClick={() => setShowWorkOrderModal(false)}
+                  className="p-1 rounded-lg hover:bg-white/5 text-muted-foreground"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              <div className="space-y-4">
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Vehicle</label>
+                  <select
+                    required
+                    value={workOrderForm.vehicleId}
+                    onChange={(e) => setWorkOrderForm({ ...workOrderForm, vehicleId: e.target.value })}
+                    className="w-full px-4 py-2.5 rounded-xl bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm"
+                  >
+                    <option value="">Select a vehicle</option>
+                    {customer?.vehicles?.map((v) => (
+                      <option key={v.id} value={v.id}>
+                        {v.make} {v.model} {v.plateNumber ? `(${v.plateNumber})` : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Description</label>
+                  <textarea
+                    required
+                    rows={4}
+                    value={workOrderForm.description}
+                    onChange={(e) => setWorkOrderForm({ ...workOrderForm, description: e.target.value })}
+                    className="w-full px-4 py-2.5 rounded-xl bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm resize-none"
+                    placeholder="Describe the work needed..."
+                  />
+                </div>
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setShowWorkOrderModal(false)}
+                    className="flex-1 py-2.5 rounded-xl bg-muted text-muted-foreground font-medium text-sm hover:bg-muted/80 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleCreateWorkOrder}
+                    disabled={workOrderSubmitting}
+                    className="flex-1 py-2.5 rounded-xl bg-primary text-primary-foreground font-medium text-sm hover:bg-primary/90 transition-colors disabled:opacity-50"
+                  >
+                    {workOrderSubmitting ? 'Creating...' : 'Create Work Order'}
+                  </button>
+                </div>
+              </div>
             </motion.div>
           </motion.div>
         )}
