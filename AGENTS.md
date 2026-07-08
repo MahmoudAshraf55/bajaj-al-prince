@@ -57,3 +57,15 @@ For implementation tasks, run the relevant checks when feasible:
 - Security review for auth, validation, XSS, secret handling, and protected feature impact
 
 If checks fail due to environment or dependency mismatches, include the error output, local Node/npm versions, OS, exact commands attempted, and CI logs if available. If a check cannot be run, report: (1) which check failed to run; (2) exact command and error output; (3) environment (OS, Node/npm versions); (4) steps attempted to fix; (5) a recommended next action.
+
+## Periodic Health Check (Every 10 Commits / Updates)
+
+Every ~10 commits (or on session start after 10+ new commits), run this checklist and report results:
+
+- `curl -sI https://bajajelprince.vercel.app | head -1` — Vercel returns HTTP 200
+- `npm run build` — local build passes with zero warnings
+- `npx tsc --noEmit` — TypeScript passes
+- `git log --oneline -5 origin/main` — last 5 commits
+- `gh run list -R MahmoudAshraf55/bajaj-al-prince --limit 3 --json conclusion,displayTitle` — last 3 CI runs pass
+- `gh secret list -R MahmoudAshraf55/bajaj-al-prince` — all 6 secrets present (DATABASE_URL, JWT_SECRET, JWT_REFRESH_SECRET, VERCEL_ORG_ID, VERCEL_PROJECT_ID, VERCEL_TOKEN)
+- No exposed tokens in git history (`git log --all --oneline --source | grep -i token`)

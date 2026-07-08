@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { verifyToken } from '@/lib/auth';
+import { verifyToken } from '@/lib/edge-auth';
 import { DEFAULT_TENANT_ID } from '@/lib/tenant-context';
 
 /**
