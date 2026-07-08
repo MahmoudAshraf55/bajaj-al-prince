@@ -94,6 +94,11 @@ services/whatsapp/.baileys_auth/
 # user uploads (ephemeral / local only; use S3/R2 in production)
 public/uploads/
 
+# generated documentation / presentations
+*.pdf
+*.pptx
+create_*.py
+
 # Playwright local screenshots at repo root
-admin-*.png
+/admin-*.png
 .env*

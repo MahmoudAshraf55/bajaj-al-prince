@@ -1,16 +1,29 @@
-# EL PRINCE BAJAJ — Enterprise Motorcycle ERP Platform
+<h1 align="center">🏍️ EL PRINCE BAJAJ — Enterprise Motorcycle ERP</h1>
 
-[![Next.js](https://img.shields.io/badge/Next.js-15.3-black?logo=next.js)](https://nextjs.org/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue?logo=typescript)](https://www.typescriptlang.org/)
-[![Tailwind CSS](https://img.shields.io/badge/Tailwind%20CSS-4.0-38B2AC?logo=tailwind-css)](https://tailwindcss.com/)
-[![Prisma](https://img.shields.io/badge/Prisma-6.19-2D3748?logo=prisma)](https://prisma.io/)
-[![Playwright](https://img.shields.io/badge/Playwright-1.60-2EAD33?logo=playwright)](https://playwright.dev/)
-[![Vitest](https://img.shields.io/badge/Vitest-4.1-6E9F18?logo=vitest)](https://vitest.dev/)
-[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Neon-336791?logo=postgresql)](https://neon.tech/)
-[![Vercel](https://img.shields.io/badge/Deploy-Vercel-black?logo=vercel)](https://vercel.com)
+<p align="center">
+  <em>Multi-tenant ERP platform for Bajaj motorcycle service centers.</em>
+  <br />
+  POS · Inventory · Accounting · CRM · Work Orders · WhatsApp
+</p>
 
-> **Full-stack ERP platform for Bajaj motorcycle service centers.**
-> Multi-tenant, double-entry accounting, POS, inventory, CRM, purchase orders, and financial reporting — all in one intelligent platform.
+<p align="center">
+  <a href="https://bajajelprince.vercel.app"><img src="https://img.shields.io/badge/Live%20Demo-bajajelprince.vercel.app-00C853?style=for-the-badge&logo=vercel&logoColor=white" alt="Live Demo" /></a>
+</p>
+
+<p align="center">
+  <a href="https://github.com/MahmoudAshraf55/bajaj-al-prince/actions"><img src="https://img.shields.io/github/actions/workflow/status/MahmoudAshraf55/bajaj-al-prince/ci.yml?branch=main&label=CI&logo=github" alt="CI" /></a>
+  <a href="https://nextjs.org/"><img src="https://img.shields.io/badge/Next.js-15.3-black?logo=next.js" alt="Next.js" /></a>
+  <a href="https://www.typescriptlang.org/"><img src="https://img.shields.io/badge/TypeScript-5.x-blue?logo=typescript" alt="TypeScript" /></a>
+  <a href="https://tailwindcss.com/"><img src="https://img.shields.io/badge/Tailwind%20CSS-4-38B2AC?logo=tailwind-css" alt="Tailwind CSS" /></a>
+  <a href="https://prisma.io/"><img src="https://img.shields.io/badge/Prisma-6.19-2D3748?logo=prisma" alt="Prisma" /></a>
+  <a href="https://neon.tech/"><img src="https://img.shields.io/badge/PostgreSQL-Neon-336791?logo=postgresql" alt="PostgreSQL" /></a>
+  <a href="https://playwright.dev/"><img src="https://img.shields.io/badge/Playwright-1.60-2EAD33?logo=playwright" alt="Playwright" /></a>
+  <a href="https://vitest.dev/"><img src="https://img.shields.io/badge/Vitest-4.1-6E9F18?logo=vitest" alt="Vitest" /></a>
+  <br />
+  <img src="https://img.shields.io/github/license/MahmoudAshraf55/bajaj-al-prince?color=blue" alt="License" />
+  <img src="https://img.shields.io/github/last-commit/MahmoudAshraf55/bajaj-al-prince?color=purple" alt="Last Commit" />
+  <img src="https://img.shields.io/github/stars/MahmoudAshraf55/bajaj-al-prince?style=social" alt="Stars" />
+</p>
 
 ---
 
@@ -48,10 +61,10 @@
 
 ## 🚀 Live Demo
 
-> **Production URL:** [https://windsurf-project-three-topaz.vercel.app](https://windsurf-project-three-topaz.vercel.app)
+> **Production URL:** [https://bajajelprince.vercel.app](https://bajajelprince.vercel.app)
 >
 > **Admin Login:** `admin` / `Admin@123`
-> **Admin Panel:** [https://windsurf-project-three-topaz.vercel.app/admin](https://windsurf-project-three-topaz.vercel.app/admin)
+> **Admin Panel:** [https://bajajelprince.vercel.app/admin](https://bajajelprince.vercel.app/admin)
 
 ---
 
@@ -437,6 +450,12 @@ ADMIN_INITIAL_PASSWORD="Admin@123"
 
 ## 🚀 Deploy (Vercel)
 
+### One-click Deploy
+
+[![Deploy to Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FMahmoudAshraf55%2Fbajaj-al-prince&env=DATABASE_URL,JWT_SECRET,NEXT_PUBLIC_APP_URL&envDescription=PostgreSQL%20connection%20string%2C%20JWT%20secret%2C%20and%20public%20URL&project-name=bajaj-al-prince&repository-name=bajaj-al-prince)
+
+### Manual Deployment
+
 ```bash
 # Install Vercel CLI
 npm i -g vercel
@@ -448,12 +467,27 @@ vercel
 vercel --prod
 ```
 
-The project includes `vercel.json` with:
-- WhatsApp cron job every 10 minutes
-- Environment variable configuration
-- Serverless function configuration
+### CI/CD (Automatic)
 
-**Required Vercel Environment Variables:** `DATABASE_URL`, `JWT_SECRET`, `JWT_REFRESH_SECRET`, `NEXT_PUBLIC_APP_URL`
+The project includes a full CI/CD pipeline (`.github/workflows/ci.yml`):
+
+| Branch | Action |
+|--------|--------|
+| `push` → `develop` | TypeScript check → Lint → Unit tests → Build → **Vercel Preview** |
+| `push` → `main` | TypeScript check → Lint → Unit tests → Build → E2E tests → **Vercel Production** |
+
+### Required Environment Variables
+
+| Variable | Description |
+|----------|-------------|
+| `DATABASE_URL` | PostgreSQL connection string (Neon recommended) |
+| `JWT_SECRET` | 64-char hex string for JWT signing |
+| `JWT_REFRESH_SECRET` | Separate secret for refresh tokens |
+| `NEXT_PUBLIC_APP_URL` | `https://bajajelprince.vercel.app` |
+
+### Vercel Cron
+
+The project uses Vercel Cron Jobs for WhatsApp reminders (configured in `vercel.json`).
 
 ---
 
@@ -546,7 +580,17 @@ All 8 phases of the [Enterprise Audit Plan](docs/ENTERPRISE_AUDIT_REPORT.md) are
 ---
 
 <p align="center">
-  <sub>Built with precision for EL PRINCE BAJAJ Service Centers.</sub>
+  <a href="https://bajajelprince.vercel.app">🌐 Live Demo</a> ·
+  <a href="https://github.com/MahmoudAshraf55/bajaj-al-prince/issues">🐛 Report Bug</a> ·
+  <a href="https://github.com/MahmoudAshraf55/bajaj-al-prince/issues">💡 Request Feature</a>
+</p>
+
+<p align="center">
+  <sub>Built with precision for <strong>EL PRINCE BAJAJ</strong> Service Centers.</sub>
   <br>
-  <sub>2026 — All rights reserved.</sub>
+  <sub>© 2026 — All rights reserved.</sub>
+  <br>
+  <a href="https://vercel.com/?utm_source=bajaj-al-prince&utm_campaign=oss">
+    <img src="https://www.datocms-assets.com/31049/1618983297-powered-by-vercel.svg" alt="Powered by Vercel" height="32" />
+  </a>
 </p>

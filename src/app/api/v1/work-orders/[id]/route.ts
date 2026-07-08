@@ -10,6 +10,7 @@ import { logger } from '@/lib/logger';
 import { sendWhatsAppMessageViaService } from '@/lib/whatsapp-client';
 import { buildMessage } from '@/lib/whatsapp-templates';
 import { z } from 'zod';
+import { AccountingService } from '@/services/AccountingService';
 
 import { WorkOrderService } from '@/services/WorkOrderService';
 const updateSchema = z.object({
@@ -34,6 +35,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       }
 
       const isCompleting = data.status === 'completed' && existing.status !== 'completed';
+      const isCostUpdate = data.cost !== undefined && data.cost !== Number(existing.cost);
       const tenantId = getTenantId() ?? DEFAULT_TENANT_ID;
 
       const workOrder = await prisma.$transaction(async (tx) => {
@@ -50,6 +52,42 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
             labourLines: { where: { isDeleted: false } },
           },
         });
+
+        // Record cost change in accounting
+        if (isCostUpdate && data.cost != null) {
+          const costDifference = Number(data.cost) - (Number(existing.cost) || 0);
+          if (costDifference !== 0) {
+            const workOrderCostAccountId = await AccountingService.getAccountId(tx, '5201', tenantId); // RENT_EXPENSE (using as work order expense)
+            const cashAccountId = await AccountingService.getAccountId(tx, '1101', tenantId); // CASH
+
+            const journalEntry = await tx.journalEntry.create({
+              data: {
+                date: new Date(),
+                description: `Work Order Cost Adjustment: ${updated.vehicle.make} ${updated.vehicle.model}`,
+                type: 'EXPENSE',
+                amount: Math.abs(costDifference),
+                createdById: payload.userId,
+                tenantId,
+              },
+            });
+
+            if (costDifference > 0) {
+              await tx.journalEntryLine.create({
+                data: { journalEntryId: journalEntry.id, accountId: workOrderCostAccountId, debit: costDifference, credit: 0, tenantId },
+              });
+              await tx.journalEntryLine.create({
+                data: { journalEntryId: journalEntry.id, accountId: cashAccountId, debit: 0, credit: costDifference, tenantId },
+              });
+            } else {
+              await tx.journalEntryLine.create({
+                data: { journalEntryId: journalEntry.id, accountId: workOrderCostAccountId, debit: 0, credit: Math.abs(costDifference), tenantId },
+              });
+              await tx.journalEntryLine.create({
+                data: { journalEntryId: journalEntry.id, accountId: cashAccountId, debit: Math.abs(costDifference), credit: 0, tenantId },
+              });
+            }
+          }
+        }
 
         if (isCompleting) {
           try {
