@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { withRole } from '@/lib/auth';
 import { checkRateLimit } from '@/lib/rate-limit';
 import { logAudit, getClientInfo, type AuditAction } from '@/lib/audit';
+import { logger } from '@/lib/logger';
 import { sendWhatsAppMessageViaService } from '@/lib/whatsapp-client';
 import { buildMessage, type EventKey } from '@/lib/whatsapp-templates';
 import { getTenantId, DEFAULT_TENANT_ID } from '@/lib/tenant-context';
@@ -35,15 +36,19 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
       // Auto-create WorkOrder when booking is accepted
       if (data.status === 'accepted' && booking.vehicleId) {
-        await prisma.workOrder.create({
-          data: {
-            description: booking.issue,
-            status: 'pending',
-            vehicleId: booking.vehicleId,
-            bookingId: booking.id,
-            tenantId: getTenantId() ?? DEFAULT_TENANT_ID,
-          },
-        }).catch(() => {});
+        try {
+          await prisma.workOrder.create({
+            data: {
+              description: booking.issue,
+              status: 'pending',
+              vehicleId: booking.vehicleId,
+              bookingId: booking.id,
+              tenantId: getTenantId() ?? DEFAULT_TENANT_ID,
+            },
+          });
+        } catch (woErr) {
+          logger.error('Failed to auto-create work order for accepted booking', woErr, { bookingId: booking.id, vehicleId: booking.vehicleId });
+        }
       }
 
       let action: AuditAction = 'update';
@@ -92,7 +97,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
             issue: data.issue ?? oldBooking.issue ?? '',
           }).then((message) => {
             if (message) {
-              sendWhatsAppMessageViaService(oldBooking.phone!, message).catch(() => {});
+              sendWhatsAppMessageViaService(oldBooking.phone!, message).catch((err) => {
+                logger.warn('Booking WhatsApp status notification failed', { bookingId: id, error: err instanceof Error ? err.message : String(err) });
+              });
             }
           });
         }
@@ -105,7 +112,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
             work: booking.issue,
           }).then((message) => {
             if (message) {
-              sendWhatsAppMessageViaService(oldBooking.phone!, message).catch(() => {});
+              sendWhatsAppMessageViaService(oldBooking.phone!, message).catch((err) => {
+                logger.warn('Booking work order WhatsApp notification failed', { bookingId: id, error: err instanceof Error ? err.message : String(err) });
+              });
             }
           });
         }
@@ -117,8 +126,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     if (error instanceof z.ZodError) {
       return withSecurityHeaders(NextResponse.json({ success: false, errors: error.issues }, { status: 400 }));
     }
-    const message = error instanceof Error ? error.message : 'Unauthorized';
-    const status = message === 'Forbidden' ? 403 : 401;
-    return withSecurityHeaders(NextResponse.json({ success: false, error: message }, { status }));
+    const message = error instanceof Error ? error.message : 'Internal server error';
+    const status = message === 'Unauthorized' || message === 'Invalid token' ? 401 : message === 'Forbidden' ? 403 : 500;
+    return withSecurityHeaders(NextResponse.json({ success: false, error: status === 500 ? 'Internal server error' : message }, { status }));
   }
 }

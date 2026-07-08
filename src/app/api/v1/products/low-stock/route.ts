@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { withRole } from '@/lib/auth';
 import { checkRateLimit } from '@/lib/rate-limit';
 import { withSecurityHeaders } from '@/lib/security';
+import { logger } from '@/lib/logger';
 
 export async function GET(req: NextRequest) {
   const limit = await checkRateLimit(req, 'admin');
@@ -25,7 +26,8 @@ export async function GET(req: NextRequest) {
         },
       }));
     });
-  } catch {
+  } catch (error) {
+    logger.error('Low stock products GET error', error);
     return withSecurityHeaders(NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 }));
   }
 }

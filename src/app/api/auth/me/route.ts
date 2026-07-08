@@ -8,7 +8,7 @@ export async function GET(req: NextRequest) {
       return withSecurityHeaders(NextResponse.json({ success: true, data: { user: payload } }));
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unauthorized';
+    const message = error instanceof Error ? error.message : 'Internal server error';
     return withSecurityHeaders(NextResponse.json({ success: false, error: message }, { status: 401 }));
   }
 }

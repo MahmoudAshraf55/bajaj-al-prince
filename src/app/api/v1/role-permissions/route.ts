@@ -42,7 +42,7 @@ export async function GET(req: NextRequest) {
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Internal server error';
     const status = message === 'Forbidden' ? 403 : message === 'Unauthorized' ? 401 : 500;
-    return withSecurityHeaders(NextResponse.json({ success: false, error: message }, { status }));
+    return withSecurityHeaders(NextResponse.json({ success: false, error: status === 500 ? 'Internal server error' : message }, { status }));
   }
 }
 
@@ -101,6 +101,6 @@ export async function POST(req: NextRequest) {
     }
     const message = error instanceof Error ? error.message : 'Internal server error';
     const status = message === 'Forbidden' ? 403 : message === 'Unauthorized' ? 401 : 500;
-    return withSecurityHeaders(NextResponse.json({ success: false, error: message }, { status }));
+    return withSecurityHeaders(NextResponse.json({ success: false, error: status === 500 ? 'Internal server error' : message }, { status }));
   }
 }

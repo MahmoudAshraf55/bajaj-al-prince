@@ -71,8 +71,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       return withSecurityHeaders(NextResponse.json({ success: false, error: 'Product not found' }, { status: 404 }));
     }
     const message = error instanceof Error ? error.message || 'Unauthorized' : 'Unauthorized';
-    const status = message === 'Forbidden' ? 403 : 401;
-    return withSecurityHeaders(NextResponse.json({ success: false, error: message }, { status }));
+    const status = message === 'Unauthorized' || message === 'Invalid token' ? 401 : message === 'Forbidden' ? 403 : 500;
+    return withSecurityHeaders(NextResponse.json({ success: false, error: status === 500 ? 'Internal server error' : message }, { status }));
   }
 }
 
@@ -110,6 +110,6 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   } catch (error) {
     const message = error instanceof Error ? (error.message || 'Unauthorized') : 'Unauthorized';
     const status = message === 'Forbidden' ? 403 : message === 'Unauthorized' ? 401 : 500;
-    return withSecurityHeaders(NextResponse.json({ success: false, error: message }, { status }));
+    return withSecurityHeaders(NextResponse.json({ success: false, error: status === 500 ? 'Internal server error' : message }, { status }));
   }
 }
