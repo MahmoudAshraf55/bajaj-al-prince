@@ -61,6 +61,9 @@ export async function checkRateLimit(
   req: NextRequest,
   prefix: 'contact' | 'booking' | 'login' | 'admin' | 'public'
 ): Promise<{ allowed: boolean; response?: NextResponse }> {
+  if (process.env.E2E_TEST) {
+    return { allowed: true };
+  }
   const ip = getClientIp(req);
   const key = `${prefix}:${ip}`;
   let result: { success: boolean; limit: number; remaining: number; reset: number };
