@@ -79,6 +79,9 @@ jobs:
         run: npx tsx prisma/seed.ts
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          ADMIN_INITIAL_PASSWORD: 'Admin@123'
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          JWT_REFRESH_SECRET: ${{ secrets.JWT_REFRESH_SECRET }}
 
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
