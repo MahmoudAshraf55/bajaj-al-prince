@@ -1,12 +1,18 @@
+import { PrismaClient } from '@prisma/client';
 import { hashPassword } from '../src/lib/auth';
 import { prisma } from '../src/lib/prisma';
 import { PERMISSION_DEFINITIONS, DEFAULT_ROLE_PERMISSIONS } from '../src/lib/permissions';
 import { FEATURE_FLAGS } from '../src/lib/features';
 import { DEFAULT_TENANT_ID, setTenantContext } from '../src/lib/tenant-context';
 
+// Use a raw client for Tenant operations to bypass the Prisma extension
+// that auto-injects tenantId (Tenant model has no tenantId field).
+const rawPrisma = new PrismaClient();
+
 async function seed() {
   const adminPassword = process.env.ADMIN_INITIAL_PASSWORD;
   if (!adminPassword) {
+    await rawPrisma.$disconnect();
     throw new Error(
       'ADMIN_INITIAL_PASSWORD environment variable is required for seeding. ' +
       'Set it to a strong password (min 8 chars, uppercase, lowercase, digit).'
@@ -14,7 +20,7 @@ async function seed() {
   }
 
   // Ensure the default tenant exists
-  await prisma.tenant.upsert({
+  await rawPrisma.tenant.upsert({
     where: { slug: 'default' },
     update: {},
     create: {
@@ -192,4 +198,5 @@ main()
   })
   .finally(async () => {
     await prisma.$disconnect();
+    await rawPrisma.$disconnect();
   });
