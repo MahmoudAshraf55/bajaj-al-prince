@@ -4,6 +4,11 @@ import { prisma } from '../src/lib/prisma';
 import { PERMISSION_DEFINITIONS, DEFAULT_ROLE_PERMISSIONS } from '../src/lib/permissions';
 import { FEATURE_FLAGS } from '../src/lib/features';
 import { DEFAULT_TENANT_ID, setTenantContext } from '../src/lib/tenant-context';
+import { seedAccounts } from './seed-accounts';
+
+// Use a raw client for Tenant operations to bypass the Prisma extension
+// that auto-injects tenantId (Tenant model has no tenantId field).
+const rawPrisma = new PrismaClient();
 
 // Use a raw client for Tenant operations to bypass the Prisma extension
 // that auto-injects tenantId (Tenant model has no tenantId field).
@@ -185,6 +190,9 @@ async function seed() {
     });
   }
   console.log('Default feature flags seeded');
+
+  // Seed Chart of Accounts
+  await seedAccounts();
 }
 
 async function main() {

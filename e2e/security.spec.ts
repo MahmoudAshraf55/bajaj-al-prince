@@ -132,16 +132,19 @@ test.describe('Security — Tenant Isolation', () => {
       data: { username: 'admin', password: 'Admin@123' },
     });
     if (loginRes.ok()) {
-      const cookies = loginRes.headers()['set-cookie'] || '';
+      const raw = loginRes.headers()['set-cookie'] || '';
+      // Parse set-cookie header(s) into a single cookie string with just name=value pairs.
+      // Playwright concatenates multiple Set-Cookie headers with newlines.
+      const cookieValue = raw.split('\n').map(c => c.split(';')[0]).filter(Boolean).join('; ');
 
-      // Try to access products
+      if (!cookieValue) return;
+
       const productsRes = await request.get('/api/v1/products/', {
-        headers: { cookie: cookies },
+        headers: { cookie: cookieValue },
       });
 
       if (productsRes.ok()) {
         const body = await productsRes.json();
-        // All products should belong to the same tenant
         if (body.data?.products) {
           const tenantIds = new Set(body.data.products.map((p: { tenantId?: string }) => p.tenantId));
           expect(tenantIds.size).toBeLessThanOrEqual(1);

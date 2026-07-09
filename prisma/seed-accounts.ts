@@ -9,7 +9,7 @@ interface AccountDef {
   children?: AccountDef[];
 }
 
-const CHART_OF_ACCOUNTS: AccountDef[] = [
+export const CHART_OF_ACCOUNTS: AccountDef[] = [
   {
     code: '1000',
     name: 'Assets',
@@ -77,7 +77,7 @@ const CHART_OF_ACCOUNTS: AccountDef[] = [
   },
 ];
 
-async function seedAccounts() {
+export async function seedAccounts() {
   console.log('Seeding Chart of Accounts...');
 
   for (const group of CHART_OF_ACCOUNTS) {
@@ -112,11 +112,14 @@ async function seedAccounts() {
   console.log('Chart of Accounts seeded successfully');
 }
 
-seedAccounts()
-  .catch((e) => {
-    console.error('Seed failed:', e);
-    process.exit(1);
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });
+// Run standalone when executed directly
+if (process.argv[1]?.endsWith('seed-accounts.ts') || process.argv[1]?.endsWith('seed-accounts.js')) {
+  seedAccounts()
+    .catch((e) => {
+      console.error('Seed failed:', e);
+      process.exit(1);
+    })
+    .finally(async () => {
+      await prisma.$disconnect();
+    });
+}
