@@ -66,8 +66,7 @@ function withTenantUniqueWhere<T extends { where?: Record<string, unknown> }>(ar
  * back to the default tenant when no explicit context is set. Used for creates
  * and the create branch of upsert only — updates never inject tenantId.
  */
-function withTenantData<T extends { data?: Record<string, unknown> | Record<string, unknown>[] }>(args: T, model?: string): T {
-  if (model === 'Tenant') return args;
+function withTenantData<T extends { data?: Record<string, unknown> | Record<string, unknown>[] }>(args: T): T {
   const tenantId = getTenantId() ?? DEFAULT_TENANT_ID;
 
   if (Array.isArray(args.data)) {
@@ -146,11 +145,11 @@ const prismaClientSingleton = () => {
         async groupBy({ args, query }) {
           return query(withTenantFilterWhere(args) as unknown as typeof args);
         },
-        async create({ model, args, query }) {
-          return query(withTenantData(args, model) as unknown as typeof args);
+        async create({ args, query }) {
+          return query(withTenantData(args) as unknown as typeof args);
         },
-        async createMany({ model, args, query }) {
-          return query(withTenantData(args, model) as unknown as typeof args);
+        async createMany({ args, query }) {
+          return query(withTenantData(args) as unknown as typeof args);
         },
         async update({ args, query }) {
           return query(withTenantUpdate(args) as unknown as typeof args);
