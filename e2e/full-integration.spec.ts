@@ -187,24 +187,46 @@ test.describe('End-to-End System Integration Flow', () => {
   });
 
   test.afterAll(async () => {
-    // Cleanup
-    if (workOrderId) {
-      await prisma.journalEntryLine.deleteMany({ where: { journalEntry: { referenceId: workOrderId } } });
-      await prisma.journalEntry.deleteMany({ where: { referenceId: workOrderId } });
-      await prisma.stockMovement.deleteMany({ where: { reference: `work-order-${workOrderId}` } });
-      await prisma.workOrderPart.deleteMany({ where: { workOrderId } });
-      await prisma.workOrderLabour.deleteMany({ where: { workOrderId } });
-      await prisma.workOrder.deleteMany({ where: { id: workOrderId } });
+    try {
+      // تنظيف آمن مع التحقق من الوجود
+      if (workOrderId) {
+        await prisma.journalEntryLine.deleteMany({ where: { journalEntry: { referenceId: workOrderId } } });
+        await prisma.journalEntry.deleteMany({ where: { referenceId: workOrderId } });
+        await prisma.stockMovement.deleteMany({ where: { reference: `work-order-${workOrderId}` } });
+        await prisma.workOrderPart.deleteMany({ where: { workOrderId } });
+        await prisma.workOrderLabour.deleteMany({ where: { workOrderId } });
+        await prisma.workOrder.deleteMany({ where: { id: workOrderId } });
+      }
+
+      const invoice = await prisma.invoice.findFirst({ where: { customerId } });
+      if (invoice) {
+        await prisma.invoiceItem.deleteMany({ where: { invoiceId: invoice.id } });
+        await prisma.invoice.deleteMany({ where: { id: invoice.id } });
+      }
+
+      if (vehicleId) {
+        await prisma.vehicle.deleteMany({ where: { id: vehicleId } });
+      }
+
+      if (customerId) {
+        await prisma.customer.deleteMany({ where: { id: customerId } });
+      }
+
+      if (partId) {
+        await prisma.product.deleteMany({ where: { id: partId } });
+      }
+
+      // تحقق من وجود المستخدم قبل الحذف
+      if (testAdminId) {
+        const userExists = await prisma.user.findUnique({ where: { id: testAdminId } });
+        if (userExists) {
+          await prisma.user.delete({ where: { id: testAdminId } });
+        }
+      }
+    } catch (error) {
+      console.error('خطأ في التنظيف:', error);
+    } finally {
+      await prisma.$disconnect();
     }
-    const invoice = await prisma.invoice.findFirst({ where: { customerId } });
-    if (invoice) {
-      await prisma.invoiceItem.deleteMany({ where: { invoiceId: invoice.id } });
-      await prisma.invoice.deleteMany({ where: { id: invoice.id } });
-    }
-    await prisma.vehicle.deleteMany({ where: { id: vehicleId } });
-    await prisma.customer.deleteMany({ where: { id: customerId } });
-    await prisma.product.deleteMany({ where: { id: partId } });
-    await prisma.user.deleteMany({ where: { id: testAdminId } });
-    await prisma.$disconnect();
   });
 });
