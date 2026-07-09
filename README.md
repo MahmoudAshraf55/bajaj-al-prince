@@ -591,6 +591,6 @@ All 8 phases of the [Enterprise Audit Plan](docs/ENTERPRISE_AUDIT_REPORT.md) are
   <sub>© 2026 — All rights reserved.</sub>
   <br>
   <a href="https://vercel.com/?utm_source=bajaj-al-prince&utm_campaign=oss">
-    <img src="https://www.datocms-assets.com/31049/1618983297-powered-by-vercel.svg" alt="Powered by Vercel" height="32" />
+    <img src="https://www.datocms-assets.com/31049/1618983297-powered-by-vercel.svg" alt="Powered by Dev Mahmoud Ashraf" height="32" />
   </a>
 </p>

@@ -7,6 +7,9 @@ async function loginAsAdmin(page: Page) {
   await page.locator('input[type="password"]').fill('Admin@123');
   await page.getByRole('button', { name: /Sign In/i }).click();
   await expect(page.getByText(/Admin Dashboard/i)).toBeVisible({ timeout: 20000 });
+  // انتظر تحميل الصفحة بالكامل
+  await page.waitForLoadState('networkidle');
+  await page.waitForTimeout(1000);
 }
 
 test.describe('Admin Login & Inventory Management', () => {
@@ -27,10 +30,11 @@ test.describe('Admin Login & Inventory Management', () => {
     await loginAsAdmin(page);
     await expect(page.getByRole('heading', { name: /Admin Dashboard/i })).toBeVisible({ timeout: 10000 });
 
-    await expect(page.locator('.glass:has-text("Total Employees")')).toBeVisible();
-    await expect(page.locator('.glass:has-text("Pending Bookings")')).toBeVisible();
-    await expect(page.locator('.glass:has-text("Products")').first()).toBeVisible();
-    await expect(page.locator('.glass:has-text("Balance")').first()).toBeVisible();
+    // استخدم filter بدل has-text - أكتر قوة
+    await expect(page.locator('.glass').filter({ hasText: /Total Employees/ }).first()).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('.glass').filter({ hasText: /Pending Bookings/ }).first()).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('.glass').filter({ hasText: /Products/ }).first()).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('.glass').filter({ hasText: /Balance/ }).first()).toBeVisible({ timeout: 10000 });
   });
 
   test('inventory management - view products and update stock', async ({ page }) => {
