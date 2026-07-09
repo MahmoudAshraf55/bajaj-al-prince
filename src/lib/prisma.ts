@@ -105,6 +105,7 @@ function withTenantUpsert<T extends { where?: Record<string, unknown>; create?: 
 const prismaClientSingleton = () => {
   return new PrismaClient({
     datasources: { db: { url: getDatabaseUrl() } },
+    transactionOptions: { maxWait: 10000, timeout: 20000 },
     log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
   }).$extends({
     model: {

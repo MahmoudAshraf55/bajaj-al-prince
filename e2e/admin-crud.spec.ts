@@ -39,7 +39,7 @@ test.describe('Admin CRUD — Suppliers', () => {
     await page.locator('input[placeholder="Supplier Name"]').fill(`Test Supplier ${unique}`);
     await page.locator('input[placeholder="+20 123 456 7890"]').fill('+201001234567');
     await page.locator('input[placeholder="supplier@example.com"]').fill(`supplier${unique}@test.com`);
-    await page.getByRole('button', { name: /Add Supplier/i }).click();
+    await page.getByRole('dialog').getByRole('button', { name: /Add Supplier/i }).click();
 
     await expect(page.getByText(/created successfully/i)).toBeVisible({ timeout: 10000 });
   });

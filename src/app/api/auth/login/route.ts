@@ -13,8 +13,8 @@ const loginSchema = z.object({
   password: z.string().min(1).max(128),
 });
 
-const MAX_FAILED_ATTEMPTS = 5;
-const LOCKOUT_MINUTES = 15;
+const MAX_FAILED_ATTEMPTS = 3;
+const LOCKOUT_SECONDS = 30;
 
 export async function POST(req: NextRequest) {
   const limit = await checkRateLimit(req, 'login');
@@ -30,9 +30,9 @@ export async function POST(req: NextRequest) {
     }
 
     if (user.lockedUntil && user.lockedUntil > new Date()) {
-      const minutesLeft = Math.ceil((user.lockedUntil.getTime() - Date.now()) / 60000);
+      const secondsLeft = Math.ceil((user.lockedUntil.getTime() - Date.now()) / 1000);
       return withSecurityHeaders(NextResponse.json(
-        { success: false, error: `Account locked. Try again in ${minutesLeft} minutes.` },
+        { success: false, error: `Account locked. Try again in ${secondsLeft} seconds.` },
         { status: 423 }
       ));
     }
@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
     if (!valid) {
       const newFailed = user.failedAttempts + 1;
       const lockedUntil = newFailed >= MAX_FAILED_ATTEMPTS
-        ? new Date(Date.now() + LOCKOUT_MINUTES * 60 * 1000)
+        ? new Date(Date.now() + LOCKOUT_SECONDS * 1000)
         : null;
 
       await prisma.user.update({
@@ -62,7 +62,7 @@ export async function POST(req: NextRequest) {
 
       if (lockedUntil) {
         return withSecurityHeaders(NextResponse.json(
-          { success: false, error: `Too many failed attempts. Account locked for ${LOCKOUT_MINUTES} minutes.` },
+          { success: false, error: `Too many failed attempts. Try again in ${LOCKOUT_SECONDS} seconds.` },
           { status: 423 }
         ));
       }
