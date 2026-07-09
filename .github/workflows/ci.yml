@@ -75,6 +75,11 @@ jobs:
       - name: Prisma generate
         run: npx prisma generate
 
+      - name: Seed database
+        run: npx tsx prisma/seed.ts
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
 
