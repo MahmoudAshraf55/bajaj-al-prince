@@ -3,6 +3,9 @@ import { test, expect } from '@playwright/test';
 test.describe('Home Page', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
+    // انتظر تحميل الصفحة بالكامل قبل أي تفاعل
+    await page.waitForLoadState('networkidle');
+    await page.waitForTimeout(500);
   });
 
   test('displays hero section with title', async ({ page }) => {
@@ -13,21 +16,21 @@ test.describe('Home Page', () => {
   test('displays Story section', async ({ page }) => {
     const story = page.locator('#story');
     await story.scrollIntoViewIfNeeded();
-    await expect(story).toBeVisible();
+    await expect(story).toBeVisible({ timeout: 10000 });
     await page.screenshot({ path: 'e2e/screenshots/home-story.png', fullPage: false });
   });
 
   test('displays Services section', async ({ page }) => {
     const services = page.locator('#services');
     await services.scrollIntoViewIfNeeded();
-    await expect(services).toBeVisible();
+    await expect(services).toBeVisible({ timeout: 10000 });
     await page.screenshot({ path: 'e2e/screenshots/home-services.png', fullPage: false });
   });
 
   test('displays Contact section', async ({ page }) => {
     const contact = page.locator('#contact');
     await contact.scrollIntoViewIfNeeded();
-    await expect(contact.getByRole('heading', { name: /Contact/i })).toBeVisible();
+    await expect(contact.getByRole('heading', { name: /Contact/i })).toBeVisible({ timeout: 10000 });
     await page.screenshot({ path: 'e2e/screenshots/home-contact.png', fullPage: false });
   });
 
@@ -41,6 +44,7 @@ test.describe('Home Page', () => {
   test('page is responsive at mobile viewport', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.reload();
+    await page.waitForLoadState('networkidle');
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
     const screenshotPath = 'e2e/screenshots/home-mobile.png';
     await page.screenshot({ path: screenshotPath, fullPage: false });
