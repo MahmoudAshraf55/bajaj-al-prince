@@ -81,6 +81,7 @@ jobs:
       - name: Run E2E tests (chromium only on CI)
         run: npx playwright test --project=chromium
         env:
+          E2E_TEST: 'true'
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
           JWT_REFRESH_SECRET: ${{ secrets.JWT_REFRESH_SECRET }}
