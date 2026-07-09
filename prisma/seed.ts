@@ -1,3 +1,4 @@
+import { PrismaClient } from '@prisma/client';
 import { hashPassword } from '../src/lib/auth';
 import { prisma } from '../src/lib/prisma';
 import { PERMISSION_DEFINITIONS, DEFAULT_ROLE_PERMISSIONS } from '../src/lib/permissions';
@@ -14,16 +15,22 @@ async function seed() {
     );
   }
 
-  // Ensure the default tenant exists
-  await prisma.tenant.upsert({
-    where: { slug: 'default' },
-    update: {},
-    create: {
-      id: DEFAULT_TENANT_ID,
-      name: 'Default Tenant',
-      slug: 'default',
-    },
-  });
+  // Use a raw client for Tenant upsert to bypass the Prisma extension
+  // that auto-injects tenantId (Tenant model has no tenantId field).
+  const rawPrisma = new PrismaClient();
+  try {
+    await rawPrisma.tenant.upsert({
+      where: { slug: 'default' },
+      update: {},
+      create: {
+        id: DEFAULT_TENANT_ID,
+        name: 'Default Tenant',
+        slug: 'default',
+      },
+    });
+  } finally {
+    await rawPrisma.$disconnect();
+  }
 
   const existing = await prisma.user.findUnique({
     where: { username: 'admin' },
