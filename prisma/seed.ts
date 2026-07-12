@@ -50,6 +50,14 @@ async function seed() {
     console.log('Admin user already exists');
   }
 
+  // Seed default Bajaj manufacturer
+  await prisma.manufacturer.upsert({
+    where: { tenantId_name: { tenantId: DEFAULT_TENANT_ID, name: 'Bajaj' } },
+    update: {},
+    create: { name: 'Bajaj', nameAr: 'باجاج', isActive: true, tenantId: DEFAULT_TENANT_ID },
+  });
+  console.log('Bajaj manufacturer seeded');
+
   // Seed default Bajaj models
   const defaultModels = [
     'Bajaj Pulsar N160',

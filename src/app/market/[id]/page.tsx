@@ -9,16 +9,33 @@ interface Props {
   params: Promise<{ id: string }>;
 }
 
+export async function generateStaticParams() {
+  // Pre-render top 50 products for better SEO and performance
+  const products = await prisma.product.findMany({
+    where: { isDeleted: false, available: true },
+    select: { id: true },
+    orderBy: { createdAt: 'desc' },
+    take: 50,
+  });
+
+  return products.map((product) => ({
+    id: product.id,
+  }));
+}
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
   const product = await prisma.product.findFirst({
     where: { id, isDeleted: false, available: true },
-    select: { name: true, nameAr: true, description: true, category: true, price: true },
+    select: { name: true, nameAr: true, description: true, category: true, price: true, image: true },
   });
 
   if (!product) {
     return { title: 'Product Not Found | El Prince Bajaj' };
   }
+
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://bajajelprince.vercel.app';
+  const productUrl = `${baseUrl}/market/${id}`;
 
   return {
     title: `${product.name} | El Prince Bajaj Market`,
@@ -26,10 +43,29 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     alternates: { canonical: `/market/${id}` },
     openGraph: {
       title: product.name,
+      description: product.description || `Genuine ${product.category} at El Prince Bajaj`,
+      url: productUrl,
+      type: 'website',
+      images: product.image ? [
+        {
+          url: product.image,
+          width: 800,
+          height: 600,
+          alt: product.name,
+          type: 'image/jpeg',
+        },
+      ] : [],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: product.name,
       description: product.description || '',
+      images: product.image ? [product.image] : [],
     },
   };
 }
+
+export const dynamic = 'auto';
 
 export default async function ProductDetailPage({ params }: Props) {
   const { id } = await params;

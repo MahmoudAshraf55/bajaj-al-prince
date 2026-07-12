@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { X } from 'lucide-react';
 
 interface Toast {
   id: string;
@@ -41,11 +42,18 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: 20 }}
-              className={`px-4 py-2.5 rounded-xl text-sm font-medium shadow-lg ${
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium shadow-lg ${
                 toast.type === 'success' ? 'bg-green-500/20 text-green-400 border border-green-500/30' : 'bg-red-500/20 text-red-400 border border-red-500/30'
               }`}
             >
-              {toast.message}
+              <span className="flex-1">{toast.message}</span>
+              <button
+                onClick={() => setToasts((prev) => prev.filter((t) => t.id !== toast.id))}
+                className="shrink-0 p-0.5 rounded hover:bg-white/10 transition-colors"
+                aria-label="Dismiss"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
             </motion.div>
           ))}
         </AnimatePresence>

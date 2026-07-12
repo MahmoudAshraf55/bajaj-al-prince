@@ -19,7 +19,7 @@ interface ScanLog {
 }
 
 export default function ScanLogsPage() {
-  const { language } = useTranslation();
+  const { t, language } = useTranslation();
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [logs, setLogs] = useState<ScanLog[]>([]);
@@ -36,11 +36,11 @@ export default function ScanLogsPage() {
         setLogs(data.data.logs);
         setTotalPages(data.meta.totalPages || 1);
       } else {
-        setError(data?.error || 'Failed to load logs');
+        setError(data?.error || t('scans_failed_load'));
       }
     } catch (err) {
       if (err instanceof Error && err.name === 'AbortError') return;
-      setError('Network error');
+      setError(t('scans_network_error'));
     }
   }, []);
 
@@ -75,7 +75,7 @@ export default function ScanLogsPage() {
           <BackButton fallback="/admin/reports/" />
           <h2 className="text-2xl font-bold flex items-center gap-2">
             <History className="w-6 h-6 text-primary" />
-            Scanner Audit Logs
+            {t('scans_title')}
           </h2>
         </div>
 
@@ -91,12 +91,12 @@ export default function ScanLogsPage() {
             <table className="w-full text-sm text-left">
               <thead>
                 <tr className="border-b border-border text-muted-foreground bg-white/5">
-                  <th className="px-5 py-4 font-medium">Time</th>
-                  <th className="px-5 py-4 font-medium">User</th>
-                  <th className="px-5 py-4 font-medium">Barcode</th>
-                  <th className="px-5 py-4 font-medium">Product</th>
-                  <th className="px-5 py-4 font-medium">Source</th>
-                  <th className="px-5 py-4 font-medium">Status</th>
+                  <th scope="col" className="px-5 py-4 font-medium">{t('scans_col_time')}</th>
+                  <th scope="col" className="px-5 py-4 font-medium">{t('scans_col_user')}</th>
+                  <th scope="col" className="px-5 py-4 font-medium">{t('scans_col_barcode')}</th>
+                  <th scope="col" className="px-5 py-4 font-medium">{t('scans_col_product')}</th>
+                  <th scope="col" className="px-5 py-4 font-medium">{t('scans_col_source')}</th>
+                  <th scope="col" className="px-5 py-4 font-medium">{t('scans_col_status')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -105,7 +105,7 @@ export default function ScanLogsPage() {
                     <td className="px-5 py-4 whitespace-nowrap text-muted-foreground">
                       {new Date(log.createdAt).toLocaleString()}
                     </td>
-                    <td className="px-5 py-4 font-medium">{log.user?.username || 'System'}</td>
+                    <td className="px-5 py-4 font-medium">{log.user?.username || t('scans_system')}</td>
                     <td className="px-5 py-4 font-mono">{log.barcode}</td>
                     <td className="px-5 py-4 text-muted-foreground">
                       {log.product ? (language === 'ar' && log.product.nameAr ? log.product.nameAr : log.product.name) : '—'}
@@ -126,7 +126,7 @@ export default function ScanLogsPage() {
                         log.status === 'not_found' ? 'bg-yellow-500/10 text-yellow-400' :
                         'bg-red-500/10 text-red-400'
                       }`}>
-                        {log.status}
+                        {log.status === 'success' ? t('scans_status_success') : log.status === 'not_found' || log.status === 'error' ? t('scans_status_error') : log.status}
                       </span>
                     </td>
                   </tr>
@@ -134,7 +134,7 @@ export default function ScanLogsPage() {
                 {logs.length === 0 && (
                   <tr>
                     <td colSpan={6} className="px-5 py-8 text-center text-muted-foreground">
-                      No scan logs found.
+                      {t('scans_no_logs')}
                     </td>
                   </tr>
                 )}
@@ -148,15 +148,15 @@ export default function ScanLogsPage() {
                 disabled={page === 1}
                 className="px-3 py-1 rounded-lg bg-white/5 hover:bg-white/10 disabled:opacity-50"
               >
-                Previous
+                {t('pos_previous')}
               </button>
-              <span className="text-sm font-medium">Page {page} of {totalPages}</span>
+              <span className="text-sm font-medium">{page} / {totalPages}</span>
               <button
                 onClick={() => setPage(p => Math.min(totalPages, p + 1))}
                 disabled={page === totalPages}
                 className="px-3 py-1 rounded-lg bg-white/5 hover:bg-white/10 disabled:opacity-50"
               >
-                Next
+                {t('pos_next')}
               </button>
             </div>
           )}

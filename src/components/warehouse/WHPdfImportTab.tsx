@@ -165,12 +165,12 @@ export default function WHPdfImportTab() {
             <table className="w-full text-xs">
               <thead>
                 <tr className="bg-white/5">
-                  <th className="text-left p-2 font-medium whitespace-nowrap">#</th>
-                  <th className="text-left p-2 font-medium whitespace-nowrap">{t('wh_import_sku')}</th>
-                  <th className="text-left p-2 font-medium whitespace-nowrap">{t('wh_import_barcode')}</th>
-                  <th className="text-left p-2 font-medium whitespace-nowrap">{t('wh_import_en_name')}</th>
-                  <th className="text-right p-2 font-medium whitespace-nowrap">{t('admin_market_price')}</th>
-                  <th className="text-right p-2 font-medium whitespace-nowrap">{t('wh_import_stock')}</th>
+                  <th scope="col" className="text-left p-2 font-medium whitespace-nowrap">#</th>
+                  <th scope="col" className="text-left p-2 font-medium whitespace-nowrap">{t('wh_import_sku')}</th>
+                  <th scope="col" className="text-left p-2 font-medium whitespace-nowrap">{t('wh_import_barcode')}</th>
+                  <th scope="col" className="text-left p-2 font-medium whitespace-nowrap">{t('wh_import_en_name')}</th>
+                  <th scope="col" className="text-right p-2 font-medium whitespace-nowrap">{t('admin_market_price')}</th>
+                  <th scope="col" className="text-right p-2 font-medium whitespace-nowrap">{t('wh_import_stock')}</th>
                 </tr>
               </thead>
               <tbody>

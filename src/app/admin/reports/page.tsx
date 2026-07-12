@@ -71,7 +71,7 @@ export default function ReportsPage() {
   const exportExcel = () => {
     let url = '';
     if (tab === 'financial') {
-      addToast('error', 'Excel export for financial reports coming soon');
+      addToast('error', t('rpt_excel_coming_soon'));
       return;
     }
     if (tab === 'inventory') {
@@ -222,19 +222,19 @@ function PnLReport({ data, t }: { data: Record<string, unknown>; t: (k: string) 
     <div className="space-y-3">
       <h3 className="text-lg font-bold">{t('rpt_profit_loss')}</h3>
       <div className="space-y-1.5 text-sm">
-        <Row label="Revenue" value={d.revenue} />
-        <Row label="Returns" value={-d.returns} negative />
-        <Row label="Net Sales" value={d.netSales} bold />
-        <Row label="COGS" value={-d.cogs} negative />
-        <Row label="Gross Profit" value={d.grossProfit} bold highlight />
-        <Row label="Gross Margin" value={d.grossMargin} suffix="%" />
+        <Row label={t('rpt_revenue')} value={d.revenue} />
+        <Row label={t('rpt_returns')} value={-d.returns} negative />
+        <Row label={t('rpt_net_sales')} value={d.netSales} bold />
+        <Row label={t('rpt_cogs')} value={-d.cogs} negative />
+        <Row label={t('rpt_gross_profit')} value={d.grossProfit} bold highlight />
+        <Row label={t('rpt_gross_margin')} value={d.grossMargin} suffix="%" />
         <hr className="border-border my-2" />
-        <Row label="Other Income" value={d.otherIncome} />
-        <Row label="Operating Expenses" value={-d.operatingExpenses} negative />
-        <Row label="Work Order Costs" value={-d.workOrderCosts} negative />
+        <Row label={t('rpt_other_income')} value={d.otherIncome} />
+        <Row label={t('rpt_operating_expenses')} value={-d.operatingExpenses} negative />
+        <Row label={t('rpt_work_order_costs')} value={-d.workOrderCosts} negative />
         <hr className="border-border my-2" />
-        <Row label="Net Profit" value={d.netProfit} bold highlight />
-        <Row label="Net Margin" value={d.netMargin} suffix="%" />
+        <Row label={t('rpt_net_profit')} value={d.netProfit} bold highlight />
+        <Row label={t('rpt_net_margin')} value={d.netMargin} suffix="%" />
       </div>
     </div>
   );
@@ -246,23 +246,23 @@ function BalanceReport({ data, t }: { data: Record<string, unknown>; t: (k: stri
     <div className="space-y-4">
       <h3 className="text-lg font-bold">{t('rpt_balance_sheet')}</h3>
       <div>
-        <h4 className="font-bold text-sm mb-2 text-blue-400">Assets</h4>
+        <h4 className="font-bold text-sm mb-2 text-blue-400">{t('rpt_assets')}</h4>
         <div className="space-y-1 text-sm">
-          <Row label="Cash" value={d.assets?.cash || 0} />
-          <Row label="Accounts Receivable" value={d.assets?.accountsReceivable || 0} />
-          <Row label="Inventory" value={d.assets?.inventory || 0} />
-          <Row label="Total Assets" value={d.assets?.total || 0} bold />
+          <Row label={t('rpt_cash')} value={d.assets?.cash || 0} />
+          <Row label={t('rpt_accounts_receivable')} value={d.assets?.accountsReceivable || 0} />
+          <Row label={t('rpt_inventory_label')} value={d.assets?.inventory || 0} />
+          <Row label={t('rpt_total_assets')} value={d.assets?.total || 0} bold />
         </div>
       </div>
       <div>
-        <h4 className="font-bold text-sm mb-2 text-orange-400">Liabilities</h4>
+        <h4 className="font-bold text-sm mb-2 text-orange-400">{t('rpt_liabilities')}</h4>
         <div className="space-y-1 text-sm">
-          <Row label="Accounts Payable" value={d.liabilities?.accountsPayable || 0} />
-          <Row label="Total Liabilities" value={d.liabilities?.total || 0} bold />
+          <Row label={t('rpt_accounts_payable')} value={d.liabilities?.accountsPayable || 0} />
+          <Row label={t('rpt_total_liabilities')} value={d.liabilities?.total || 0} bold />
         </div>
       </div>
       <div>
-        <Row label="Equity" value={d.equity} bold highlight />
+        <Row label={t('rpt_equity')} value={d.equity} bold highlight />
       </div>
     </div>
   );
@@ -274,14 +274,14 @@ function CashFlowReport({ data, t }: { data: Record<string, unknown>; t: (k: str
     <div className="space-y-3">
       <h3 className="text-lg font-bold">{t('rpt_cash_flow')}</h3>
       <div className="space-y-1.5 text-sm">
-        <Row label="Cash Sales" value={d.operating?.cashSales || 0} />
-        <Row label="Card Sales" value={d.operating?.cardSales || 0} />
-        <Row label="Transfer Sales" value={d.operating?.transferSales || 0} />
-        <Row label="Other Income" value={d.operating?.otherIncome || 0} />
-        <Row label="Expenses" value={-(d.operating?.expenses || 0)} negative />
-        <Row label="Purchase Payments" value={-(d.operating?.purchasePayments || 0)} negative />
+        <Row label={t('rpt_cash_sales')} value={d.operating?.cashSales || 0} />
+        <Row label={t('rpt_card_sales')} value={d.operating?.cardSales || 0} />
+        <Row label={t('rpt_transfer_sales')} value={d.operating?.transferSales || 0} />
+        <Row label={t('rpt_other_income')} value={d.operating?.otherIncome || 0} />
+        <Row label={t('rpt_expenses')} value={-(d.operating?.expenses || 0)} negative />
+        <Row label={t('rpt_purchase_payments')} value={-(d.operating?.purchasePayments || 0)} negative />
         <hr className="border-border my-2" />
-        <Row label="Net Cash Flow" value={d.netCashFlow} bold highlight />
+        <Row label={t('rpt_net_cash_flow')} value={d.netCashFlow} bold highlight />
       </div>
     </div>
   );
@@ -293,11 +293,11 @@ function InventorySummary({ data, t }: { data: Record<string, unknown>; t: (k: s
     <div className="space-y-4">
       <h3 className="text-lg font-bold">{t('rpt_stock_summary')}</h3>
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-        <Card label="Total Products" value={d.totalProducts} />
-        <Card label="Total Stock Units" value={d.totalStock} />
-        <Card label="Low Stock Items" value={d.lowStockCount} color="amber" />
-        <Card label="Out of Stock" value={d.outOfStockCount} color="red" />
-        <Card label="Stock Value (EGP)" value={d.totalStockValue.toFixed(2)} color="green" />
+        <Card label={t('rpt_total_products')} value={d.totalProducts} />
+        <Card label={t('rpt_total_stock_units')} value={d.totalStock} />
+        <Card label={t('rpt_low_stock_items')} value={d.lowStockCount} color="amber" />
+        <Card label={t('rpt_out_of_stock')} value={d.outOfStockCount} color="red" />
+        <Card label={t('rpt_stock_value_egp')} value={d.totalStockValue.toFixed(2)} color="green" />
       </div>
     </div>
   );
@@ -312,10 +312,10 @@ function LowStockReport({ data, t }: { data: Record<string, unknown>; t: (k: str
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border text-muted-foreground">
-              <th scope="col" className="text-left py-2 px-2">Name</th>
-              <th scope="col" className="text-center py-2 px-2">Stock</th>
-              <th scope="col" className="text-center py-2 px-2">Reorder Point</th>
-              <th scope="col" className="text-center py-2 px-2">Shortfall</th>
+              <th scope="col" className="text-left py-2 px-2">{t('rpt_name')}</th>
+              <th scope="col" className="text-center py-2 px-2">{t('rpt_stock')}</th>
+              <th scope="col" className="text-center py-2 px-2">{t('rpt_reorder_point')}</th>
+              <th scope="col" className="text-center py-2 px-2">{t('rpt_shortfall')}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
@@ -340,19 +340,19 @@ function StockValueReport({ data, t }: { data: Record<string, unknown>; t: (k: s
     <div className="space-y-4">
       <h3 className="text-lg font-bold">{t('rpt_stock_value')}</h3>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <Card label="Products" value={d.totalProducts} />
-        <Card label="Stock Value" value={d.totalStockValue.toFixed(2)} color="blue" />
-        <Card label="Retail Value" value={d.totalRetailValue.toFixed(2)} color="green" />
-        <Card label="Potential Profit" value={d.potentialProfit.toFixed(2)} color="green" />
+        <Card label={t('rpt_products')} value={d.totalProducts} />
+        <Card label={t('rpt_stock_value_label')} value={d.totalStockValue.toFixed(2)} color="blue" />
+        <Card label={t('rpt_retail_value')} value={d.totalRetailValue.toFixed(2)} color="green" />
+        <Card label={t('rpt_potential_profit')} value={d.potentialProfit.toFixed(2)} color="green" />
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border text-muted-foreground">
-              <th scope="col" className="text-left py-2 px-2">Category</th>
-              <th scope="col" className="text-center py-2 px-2">Items</th>
-              <th scope="col" className="text-right py-2 px-2">Stock Value</th>
-              <th scope="col" className="text-right py-2 px-2">Retail Value</th>
+              <th scope="col" className="text-left py-2 px-2">{t('rpt_category')}</th>
+              <th scope="col" className="text-center py-2 px-2">{t('rpt_items')}</th>
+              <th scope="col" className="text-right py-2 px-2">{t('rpt_stock_value_label')}</th>
+              <th scope="col" className="text-right py-2 px-2">{t('rpt_retail_value')}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
@@ -380,11 +380,11 @@ function CustomerReportView({ data, t, type }: { data: Record<string, unknown>; 
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border text-muted-foreground">
-              <th scope="col" className="text-left py-2 px-2">Name</th>
-              <th scope="col" className="text-right py-2 px-2">Total Spent</th>
-              <th scope="col" className="text-center py-2 px-2">Invoices</th>
-              <th scope="col" className="text-center py-2 px-2">Bookings</th>
-              <th scope="col" className="text-center py-2 px-2">Vehicles</th>
+              <th scope="col" className="text-left py-2 px-2">{t('rpt_name')}</th>
+              <th scope="col" className="text-right py-2 px-2">{t('rpt_total_spent')}</th>
+              <th scope="col" className="text-center py-2 px-2">{t('rpt_invoices')}</th>
+              <th scope="col" className="text-center py-2 px-2">{t('rpt_bookings')}</th>
+              <th scope="col" className="text-center py-2 px-2">{t('rpt_vehicles')}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">

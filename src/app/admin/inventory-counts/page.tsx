@@ -55,7 +55,7 @@ export default function InventoryCountsPage() {
       const json = await res.json();
       if (json.success) setCounts(json.data.counts ?? json.data ?? []);
     } catch {
-      addToast('error', 'Failed to load inventory counts');
+      addToast('error', t('ic_failed_load_counts'));
     } finally {
       setLoading(false);
     }
@@ -87,22 +87,22 @@ export default function InventoryCountsPage() {
       });
       const json = await res.json();
       if (json.success) {
-        addToast('success', json.message || 'Count created');
+        addToast('success', json.message || t('ic_count_created'));
         setCounts((prev) => [json.data.count ?? json.data, ...prev]);
         setShowModal(false);
         setName('');
       } else {
-        addToast('error', json.error || 'Failed to create count');
+        addToast('error', json.error || t('ic_failed_create_count'));
       }
     } catch {
-      addToast('error', 'Network error');
+      addToast('error', t('ic_network_error'));
     } finally {
       setSubmitting(false);
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Delete this inventory count?')) return;
+    if (!confirm(t('ic_delete_confirm'))) return;
     setDeleting(id);
     try {
       const res = await fetch(`/api/v1/inventory-counts/${id}/`, {
@@ -110,14 +110,14 @@ export default function InventoryCountsPage() {
         credentials: 'include',
       });
       if (res.ok) {
-        addToast('success', 'Count deleted');
+        addToast('success', t('ic_count_deleted'));
         setCounts((prev) => prev.filter((c) => c.id !== id));
       } else {
         const json = await res.json().catch(() => ({}));
-        addToast('error', json.error || 'Failed to delete count');
+        addToast('error', json.error || t('ic_failed_delete_count'));
       }
     } catch {
-      addToast('error', 'Network error');
+      addToast('error', t('ic_network_error'));
     } finally {
       setDeleting(null);
     }

@@ -8,7 +8,7 @@ import { useToast } from '@/components/ToastContext';
 import BackButton from '@/components/BackButton';
 import {
   Save, Loader2, Percent, Settings2, Package, Bell,
-  AlertTriangle, Globe, MapPin, Phone,
+  AlertTriangle, Globe, MapPin, Phone, Upload, X,
 } from 'lucide-react';
 
 type TabId = 'general' | 'inventory' | 'notifications' | 'branding' | 'location' | 'contact';
@@ -23,7 +23,7 @@ const tabs: { id: TabId; icon: React.ComponentType<{ className?: string }> }[] =
 ];
 
 export default function SettingsPage() {
-  const { t, language, isRTL } = useTranslation();
+  const { t, isRTL } = useTranslation();
   const { addToast } = useToast();
   const router = useRouter();
   const [loading, setLoading] = useState(true);
@@ -38,6 +38,8 @@ export default function SettingsPage() {
 
   const [brandName, setBrandName] = useState('El Prince Bajaj');
   const [brandTagline, setBrandTagline] = useState('');
+  const [brandLogo, setBrandLogo] = useState('');
+  const [brandLogoSaving, setBrandLogoSaving] = useState(false);
 
   const [locationAddress, setLocationAddress] = useState('35JH+PC مركز أوسيم');
   const [locationMapUrl, setLocationMapUrl] = useState('https://maps.app.goo.gl/fh1AgzDpB6K87iAs5');
@@ -68,6 +70,7 @@ export default function SettingsPage() {
               setNotifyOnBooking(s.notify_on_booking !== 'false');
               setBrandName(s.brand_name ?? 'El Prince Bajaj');
               setBrandTagline(s.brand_tagline ?? '');
+              setBrandLogo(s.brand_logo ?? '');
               setLocationAddress(s.location_address ?? '35JH+PC مركز أوسيم');
               setLocationMapUrl(s.location_map_url ?? 'https://maps.app.goo.gl/fh1AgzDpB6K87iAs5');
               setContactPhone1(s.contact_phone1 ?? '0122 137 0120');
@@ -90,13 +93,13 @@ export default function SettingsPage() {
     setSaving(true);
     const rate = parseFloat(taxRate);
     if (isNaN(rate) || rate < 0 || rate > 100) {
-      addToast('error', language === 'ar' ? 'معدل الضريبة يجب أن يكون بين 0 و 100' : 'Tax rate must be between 0 and 100');
+      addToast('error', t('settings_tax_rate_invalid'));
       setSaving(false);
       return;
     }
     const threshold = parseInt(lowStockThreshold);
     if (isNaN(threshold) || threshold < 0) {
-      addToast('error', language === 'ar' ? 'حد المخزون المنخفض يجب أن يكون 0 أو أكثر' : 'Low stock threshold must be 0 or greater');
+      addToast('error', t('settings_low_stock_invalid'));
       setSaving(false);
       return;
     }
@@ -113,6 +116,7 @@ export default function SettingsPage() {
             { key: 'notify_on_booking', value: notifyOnBooking ? 'true' : 'false' },
             { key: 'brand_name', value: brandName },
             { key: 'brand_tagline', value: brandTagline },
+            { key: 'brand_logo', value: brandLogo },
             { key: 'location_address', value: locationAddress },
             { key: 'location_map_url', value: locationMapUrl },
             { key: 'contact_phone1', value: contactPhone1 },
@@ -191,12 +195,12 @@ export default function SettingsPage() {
                     <Percent className="w-5 h-5 text-primary" />
                   </div>
                   <div>
-                    <h2 className="font-bold">{language === 'ar' ? 'عام' : 'General'}</h2>
-                    <p className="text-xs text-muted-foreground">{language === 'ar' ? 'الإعدادات العامة للنظام' : 'General system settings'}</p>
+                    <h2 className="font-bold">{t('settings_general_title')}</h2>
+                    <p className="text-xs text-muted-foreground">{t('settings_general_desc')}</p>
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-2">{language === 'ar' ? 'معدل الضريبة (%)' : 'Tax Rate (%)'}</label>
+                  <label className="block text-sm font-medium mb-2">{t('settings_tax_rate')}</label>
                   <div className="relative max-w-xs">
                     <input
                       type="number"
@@ -209,9 +213,7 @@ export default function SettingsPage() {
                     />
                     <Percent className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   </div>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {language === 'ar' ? 'القيمة الافتراضية 14%. أدخل 0 لإلغاء الضريبة.' : 'Default 14%. Enter 0 to disable tax.'}
-                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">{t('settings_tax_hint')}</p>
                 </div>
               </>
             )}
@@ -223,12 +225,12 @@ export default function SettingsPage() {
                     <Package className="w-5 h-5 text-primary" />
                   </div>
                   <div>
-                    <h2 className="font-bold">{language === 'ar' ? 'المخزون' : 'Inventory'}</h2>
-                    <p className="text-xs text-muted-foreground">{language === 'ar' ? 'إعدادات إدارة المخزون والمنتجات' : 'Inventory and product management settings'}</p>
+                    <h2 className="font-bold">{t('settings_inventory_title')}</h2>
+                    <p className="text-xs text-muted-foreground">{t('settings_inventory_desc')}</p>
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-2">{language === 'ar' ? 'حد المخزون المنخفض' : 'Low Stock Threshold'}</label>
+                  <label className="block text-sm font-medium mb-2">{t('settings_low_stock_threshold')}</label>
                   <div className="relative max-w-xs">
                     <input
                       type="number"
@@ -239,11 +241,7 @@ export default function SettingsPage() {
                     />
                     <AlertTriangle className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   </div>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {language === 'ar'
-                      ? 'عند وصول المخزون لهذا الحد أو أقل، يظهر تحذير في لوحة التحكم.'
-                      : 'When stock reaches this value or below, a warning appears on the dashboard.'}
-                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">{t('settings_low_stock_hint')}</p>
                 </div>
               </>
             )}
@@ -255,17 +253,15 @@ export default function SettingsPage() {
                     <Bell className="w-5 h-5 text-primary" />
                   </div>
                   <div>
-                    <h2 className="font-bold">{language === 'ar' ? 'الإشعارات' : 'Notifications'}</h2>
-                    <p className="text-xs text-muted-foreground">{language === 'ar' ? 'إعدادات الإشعارات والتنبيهات' : 'Notification and alert settings'}</p>
+                    <h2 className="font-bold">{t('settings_notifications_title')}</h2>
+                    <p className="text-xs text-muted-foreground">{t('settings_notifications_desc')}</p>
                   </div>
                 </div>
                 <div className="space-y-4">
                   <label className="flex items-center justify-between p-4 rounded-xl bg-white/5 hover:bg-white/10 transition-colors cursor-pointer">
                     <div>
-                      <p className="font-medium text-sm">{language === 'ar' ? 'تنبيه المخزون المنخفض' : 'Low Stock Alert'}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {language === 'ar' ? 'إرسال إشعار عند انخفاض مخزون المنتج عن الحد المحدد.' : 'Send notification when product stock goes below threshold.'}
-                      </p>
+                      <p className="font-medium text-sm">{t('settings_low_stock_alert')}</p>
+                      <p className="text-xs text-muted-foreground">{t('settings_low_stock_alert_desc')}</p>
                     </div>
                     <input
                       type="checkbox"
@@ -276,10 +272,8 @@ export default function SettingsPage() {
                   </label>
                   <label className="flex items-center justify-between p-4 rounded-xl bg-white/5 hover:bg-white/10 transition-colors cursor-pointer">
                     <div>
-                      <p className="font-medium text-sm">{language === 'ar' ? 'إشعار الحجوزات الجديدة' : 'New Booking Notification'}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {language === 'ar' ? 'إشعار عند تقديم عميل حجز جديد عبر الموقع.' : 'Notify when a customer submits a new booking via the website.'}
-                      </p>
+                      <p className="font-medium text-sm">{t('settings_new_booking_notification')}</p>
+                      <p className="text-xs text-muted-foreground">{t('settings_new_booking_notification_desc')}</p>
                     </div>
                     <input
                       type="checkbox"
@@ -299,12 +293,12 @@ export default function SettingsPage() {
                     <Globe className="w-5 h-5 text-primary" />
                   </div>
                   <div>
-                    <h2 className="font-bold">{language === 'ar' ? 'العلامة التجارية' : 'Branding'}</h2>
-                    <p className="text-xs text-muted-foreground">{language === 'ar' ? 'بيانات العلامة التجارية الرئيسية للموقع' : 'Main brand information for the website'}</p>
+                    <h2 className="font-bold">{t('settings_branding_title')}</h2>
+                    <p className="text-xs text-muted-foreground">{t('settings_branding_desc')}</p>
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-2">{language === 'ar' ? 'اسم الموقع' : 'Site Name'}</label>
+                  <label className="block text-sm font-medium mb-2">{t('settings_site_name')}</label>
                   <input
                     type="text"
                     value={brandName}
@@ -314,14 +308,73 @@ export default function SettingsPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-2">{language === 'ar' ? 'الشعار النصي' : 'Tagline'}</label>
+                  <label className="block text-sm font-medium mb-2">{t('settings_tagline')}</label>
                   <input
                     type="text"
                     value={brandTagline}
                     onChange={(e) => { setBrandTagline(e.target.value); setDirty(true); }}
                     className="w-full px-4 py-3 rounded-xl bg-input border border-border text-base focus:outline-none focus:ring-2 focus:ring-ring"
-                    placeholder={language === 'ar' ? 'شعار الموقع' : 'Site tagline'}
+                    placeholder={t('settings_tagline_placeholder')}
                   />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">{t('settings_logo')}</label>
+                  <div className="flex items-center gap-4">
+                    {(brandLogo || '/Logo.png') && (
+                      <div className="w-16 h-16 rounded-xl overflow-hidden bg-white/5 flex items-center justify-center border border-border">
+                        <img
+                          src={brandLogo || '/Logo.png'}
+                          alt="Logo preview"
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    )}
+                    <label className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary/10 text-primary text-sm font-medium hover:bg-primary/20 transition-colors cursor-pointer">
+                      {brandLogoSaving ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Upload className="w-4 h-4" />
+                      )}
+                      {t('settings_logo_upload')}
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        disabled={brandLogoSaving}
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          setBrandLogoSaving(true);
+                          try {
+                            const fd = new FormData();
+                            fd.append('file', file);
+                            fd.append('prefix', 'logo');
+                            const res = await fetch('/api/v1/upload/', { method: 'POST', credentials: 'include', body: fd });
+                            const d = await res.json();
+                            if (d.success) {
+                              setBrandLogo(d.data.url);
+                              setDirty(true);
+                            } else {
+                              addToast('error', d.error || 'Upload failed');
+                            }
+                          } catch {
+                            addToast('error', 'Network error');
+                          } finally {
+                            setBrandLogoSaving(false);
+                          }
+                        }}
+                      />
+                    </label>
+                    {brandLogo && (
+                      <button
+                        onClick={() => { setBrandLogo(''); setDirty(true); }}
+                        className="p-2 rounded-lg hover:bg-white/5 text-muted-foreground hover:text-red-400 transition-colors"
+                        title="Remove"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
                 </div>
               </>
             )}
@@ -333,12 +386,12 @@ export default function SettingsPage() {
                     <MapPin className="w-5 h-5 text-primary" />
                   </div>
                   <div>
-                    <h2 className="font-bold">{language === 'ar' ? 'الموقع' : 'Location'}</h2>
-                    <p className="text-xs text-muted-foreground">{language === 'ar' ? 'بيانات عنوان الشركة وخريطة الموقع' : 'Company address and map settings'}</p>
+                    <h2 className="font-bold">{t('settings_location_title')}</h2>
+                    <p className="text-xs text-muted-foreground">{t('settings_location_desc')}</p>
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-2">{language === 'ar' ? 'العنوان' : 'Address'}</label>
+                  <label className="block text-sm font-medium mb-2">{t('settings_address')}</label>
                   <input
                     type="text"
                     value={locationAddress}
@@ -348,7 +401,7 @@ export default function SettingsPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-2">{language === 'ar' ? 'رابط خرائط Google' : 'Google Maps URL'}</label>
+                  <label className="block text-sm font-medium mb-2">{t('settings_google_maps_url')}</label>
                   <input
                     type="url"
                     value={locationMapUrl}
@@ -367,13 +420,13 @@ export default function SettingsPage() {
                     <Phone className="w-5 h-5 text-primary" />
                   </div>
                   <div>
-                    <h2 className="font-bold">{language === 'ar' ? 'جهات الاتصال' : 'Contact Info'}</h2>
-                    <p className="text-xs text-muted-foreground">{language === 'ar' ? 'أرقام الهواتف وروابط التواصل الاجتماعي' : 'Phone numbers and social media links'}</p>
+                    <h2 className="font-bold">{t('settings_contact_title')}</h2>
+                    <p className="text-xs text-muted-foreground">{t('settings_contact_desc')}</p>
                   </div>
                 </div>
                 <div className="grid sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium mb-2">{language === 'ar' ? 'رقم الهاتف 1' : 'Phone 1'}</label>
+                    <label className="block text-sm font-medium mb-2">{t('settings_phone_1')}</label>
                     <input
                       type="text"
                       value={contactPhone1}
@@ -383,7 +436,7 @@ export default function SettingsPage() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium mb-2">{language === 'ar' ? 'رقم الهاتف 2' : 'Phone 2'}</label>
+                    <label className="block text-sm font-medium mb-2">{t('settings_phone_2')}</label>
                     <input
                       type="text"
                       value={contactPhone2}
@@ -393,7 +446,7 @@ export default function SettingsPage() {
                     />
                   </div>
                   <div className="sm:col-span-2">
-                    <label className="block text-sm font-medium mb-2">{language === 'ar' ? 'البريد الإلكتروني' : 'Email'}</label>
+                    <label className="block text-sm font-medium mb-2">{t('settings_email')}</label>
                     <input
                       type="email"
                       value={contactEmail}
@@ -404,7 +457,7 @@ export default function SettingsPage() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium mb-2">Facebook</label>
+                    <label className="block text-sm font-medium mb-2">{t('settings_facebook')}</label>
                     <input
                       type="url"
                       value={contactFacebook}
@@ -414,7 +467,7 @@ export default function SettingsPage() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium mb-2">Instagram</label>
+                    <label className="block text-sm font-medium mb-2">{t('settings_instagram')}</label>
                     <input
                       type="url"
                       value={contactInstagram}
@@ -424,7 +477,7 @@ export default function SettingsPage() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium mb-2">TikTok</label>
+                    <label className="block text-sm font-medium mb-2">{t('settings_tiktok')}</label>
                     <input
                       type="url"
                       value={contactTiktok}
@@ -434,7 +487,7 @@ export default function SettingsPage() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium mb-2">WhatsApp</label>
+                    <label className="block text-sm font-medium mb-2">{t('settings_whatsapp')}</label>
                     <input
                       type="text"
                       value={contactWhatsapp}
@@ -456,9 +509,7 @@ export default function SettingsPage() {
           className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-primary text-primary-foreground font-bold hover:opacity-90 transition-opacity disabled:opacity-40"
         >
           {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
-          {saving
-            ? (language === 'ar' ? 'جاري الحفظ...' : 'Saving...')
-            : (language === 'ar' ? 'حفظ جميع الإعدادات' : 'Save All Settings')}
+          {saving ? t('settings_saving') : t('settings_save_all')}
         </button>
       </motion.div>
     </div>

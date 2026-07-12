@@ -206,7 +206,7 @@ export default function CustomerDetailPage() {
 
   const handleCreateWorkOrder = async () => {
     if (!workOrderForm.vehicleId || !workOrderForm.description) {
-      addToast('error', 'Please select a vehicle and enter a description');
+      addToast('error', t('wo_validation_vehicle_description'));
       return;
     }
 
@@ -220,15 +220,15 @@ export default function CustomerDetailPage() {
       });
       const data = await res.json();
       if (data.success) {
-        addToast('success', 'Work Order created successfully');
+        addToast('success', t('wo_created_success'));
         setShowWorkOrderModal(false);
         setWorkOrderForm({ vehicleId: '', description: '' });
         fetchCustomer();
       } else {
-        addToast('error', data.error || 'Failed to create Work Order');
+        addToast('error', data.error || t('wo_create_failed'));
       }
     } catch {
-      addToast('error', 'Network error');
+      addToast('error', t('crm_network_error'));
     } finally {
       setWorkOrderSubmitting(false);
     }
@@ -383,7 +383,7 @@ export default function CustomerDetailPage() {
                 className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary/10 text-primary text-sm font-medium hover:bg-primary/20 transition-colors"
               >
                 <Wrench className="w-4 h-4" />
-                Create Work Order
+                {t('wo_create')}
               </button>
               <button
                 onClick={openAddModal}
@@ -493,7 +493,7 @@ export default function CustomerDetailPage() {
             }`}
           >
             <Receipt className="w-4 h-4" />
-            Invoices ({customer?.invoices?.length ?? 0})
+            {t('crm_invoices_tab').replace('{count}', String(customer?.invoices?.length ?? 0))}
           </button>
         </div>
 
@@ -502,10 +502,10 @@ export default function CustomerDetailPage() {
         ) : historyTab === 'invoices' ? (
           <>
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold">Purchase History</h3>
+              <h3 className="font-semibold">{t('crm_purchase_history')}</h3>
               {customer?.invoices && customer.invoices.length > 0 && (
                 <div className="text-sm text-muted-foreground">
-                  Total Spent: <span className="text-primary font-bold">
+                  {t('crm_total_spent')} <span className="text-primary font-bold">
                     {customer.invoices.reduce((sum, inv) => sum + Number(inv.total), 0).toLocaleString()} EGP
                   </span>
                 </div>
@@ -549,7 +549,7 @@ export default function CustomerDetailPage() {
                       href={`/admin/invoices/${inv.id}`}
                       className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
                     >
-                      View Details
+                      {t('crm_view_details')}
                       <ArrowRight className="w-3 h-3" />
                     </Link>
                   </motion.div>
@@ -558,7 +558,7 @@ export default function CustomerDetailPage() {
             ) : (
               <div className="glass rounded-2xl p-8 text-center">
                 <Receipt className="w-10 h-10 text-muted-foreground/30 mx-auto mb-3" />
-                <p className="text-muted-foreground text-sm">No invoices yet</p>
+                <p className="text-muted-foreground text-sm">{t('crm_no_invoices')}</p>
               </div>
             )}
           </>
@@ -917,7 +917,7 @@ export default function CustomerDetailPage() {
               className="glass rounded-2xl p-6 w-full max-w-md border border-border"
             >
               <div className="flex items-center justify-between mb-5">
-                <h3 className="text-lg font-bold">Create Work Order</h3>
+                <h3 className="text-lg font-bold">{t('wo_create')}</h3>
                 <button
                   onClick={() => setShowWorkOrderModal(false)}
                   className="p-1 rounded-lg hover:bg-white/5 text-muted-foreground"
@@ -927,14 +927,14 @@ export default function CustomerDetailPage() {
               </div>
               <div className="space-y-4">
                 <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Vehicle</label>
+                  <label className="text-xs font-medium text-muted-foreground mb-1.5 block">{t('crm_vehicle')}</label>
                   <select
                     required
                     value={workOrderForm.vehicleId}
                     onChange={(e) => setWorkOrderForm({ ...workOrderForm, vehicleId: e.target.value })}
                     className="w-full px-4 py-2.5 rounded-xl bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm"
                   >
-                    <option value="">Select a vehicle</option>
+                    <option value="">{t('wo_select_vehicle')}</option>
                     {customer?.vehicles?.map((v) => (
                       <option key={v.id} value={v.id}>
                         {v.make} {v.model} {v.plateNumber ? `(${v.plateNumber})` : ''}
@@ -943,14 +943,14 @@ export default function CustomerDetailPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Description</label>
+                  <label className="text-xs font-medium text-muted-foreground mb-1.5 block">{t('crm_description')}</label>
                   <textarea
                     required
                     rows={4}
                     value={workOrderForm.description}
                     onChange={(e) => setWorkOrderForm({ ...workOrderForm, description: e.target.value })}
                     className="w-full px-4 py-2.5 rounded-xl bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm resize-none"
-                    placeholder="Describe the work needed..."
+                    placeholder={t('wo_describe_work')}
                   />
                 </div>
                 <div className="flex gap-3">
@@ -959,14 +959,14 @@ export default function CustomerDetailPage() {
                     onClick={() => setShowWorkOrderModal(false)}
                     className="flex-1 py-2.5 rounded-xl bg-muted text-muted-foreground font-medium text-sm hover:bg-muted/80 transition-colors"
                   >
-                    Cancel
+                    {t('crm_cancel')}
                   </button>
                   <button
                     onClick={handleCreateWorkOrder}
                     disabled={workOrderSubmitting}
                     className="flex-1 py-2.5 rounded-xl bg-primary text-primary-foreground font-medium text-sm hover:bg-primary/90 transition-colors disabled:opacity-50"
                   >
-                    {workOrderSubmitting ? 'Creating...' : 'Create Work Order'}
+                    {workOrderSubmitting ? t('wo_creating') : t('wo_create')}
                   </button>
                 </div>
               </div>

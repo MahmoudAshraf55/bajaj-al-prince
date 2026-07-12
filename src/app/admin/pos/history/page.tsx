@@ -6,7 +6,7 @@ import { motion } from 'framer-motion';
 import { useTranslation } from '@/components/useTranslation';
 import { useToast } from '@/components/ToastContext';
 import {
-  FileText, Search, X, Printer, ArrowLeft, Download,
+  FileText, Search, X, Printer, ArrowLeft, Download, RotateCcw,
 } from 'lucide-react';
 
 interface InvoiceItem {
@@ -93,20 +93,30 @@ export default function InvoiceHistory() {
     loadInvoices();
   }, [loading, loadInvoices]);
 
-  const handleCancelInvoice = async (invoice: Invoice) => {
-    if (!confirm(`${t('pos_confirm_return')} ${invoice.number}?`)) return;
-    const res = await fetch(`/api/v1/invoices/${invoice.id}/`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ status: 'cancelled' }),
-    });
-    const d = await res.json();
-    if (d.success) {
-      addToast('success', t('pos_cancel_invoice') + ' ' + invoice.number);
-      await loadInvoices();
-    } else {
-      addToast('error', d.error || 'Failed');
+  const handleReturnInvoice = async (orig: Invoice) => {
+    try {
+      const res = await fetch('/api/v1/invoices/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          type: 'return',
+          items: orig.items.filter((item) => item.productId).map((item) => ({ productId: item.productId!, quantity: item.quantity })),
+          paid: Number(orig.total),
+          paymentMethod: orig.paymentMethod || 'cash',
+          notes: `${t('pos_return_for')} ${orig.number}`,
+          customerName: orig.customerName,
+        }),
+      });
+      const d = await res.json();
+      if (d.success) {
+        addToast('success', t('pos_return_created', { number: d.data.invoice.number }));
+        await loadInvoices();
+      } else {
+        addToast('error', d.error || t('pos_return_failed'));
+      }
+    } catch {
+      addToast('error', t('pos_network_error'));
     }
   };
 
@@ -134,7 +144,7 @@ export default function InvoiceHistory() {
             </button>
             <div>
               <h1 className="text-2xl font-bold">{t('pos_history_title')}</h1>
-              <p className="text-muted-foreground text-sm">{invoices.length} invoices</p>
+              <p className="text-muted-foreground text-sm">{invoices.length} {t('pos_invoices')}</p>
             </div>
           </div>
           <button
@@ -163,9 +173,9 @@ export default function InvoiceHistory() {
             className="px-4 py-2.5 rounded-xl bg-input border border-border text-sm focus:outline-none focus:ring-2 focus:ring-ring"
           >
             <option value="">{t('pos_invoice_type')}</option>
-            <option value="sale">Sale</option>
-            <option value="purchase">Purchase</option>
-            <option value="return">Return</option>
+            <option value="sale">{t('pos_type_sale')}</option>
+            <option value="purchase">{t('pos_type_purchase')}</option>
+            <option value="return">{t('pos_type_return')}</option>
           </select>
           <select
             value={statusFilter}
@@ -173,8 +183,8 @@ export default function InvoiceHistory() {
             className="px-4 py-2.5 rounded-xl bg-input border border-border text-sm focus:outline-none focus:ring-2 focus:ring-ring"
           >
             <option value="">{t('pos_invoice_status')}</option>
-            <option value="confirmed">Confirmed</option>
-            <option value="draft">Draft</option>
+            <option value="confirmed">{t('pos_status_confirmed')}</option>
+            <option value="draft">{t('pos_status_draft')}</option>
             <option value="cancelled">{t('pos_cancelled')}</option>
           </select>
         </div>
@@ -215,15 +225,15 @@ export default function InvoiceHistory() {
               </div>
               <div className="text-right flex-shrink-0">
                 <p className="text-sm font-bold">{Number(inv.total).toFixed(2)} EGP</p>
-                <p className="text-xs text-muted-foreground">{inv.items.length} items</p>
+                <p className="text-xs text-muted-foreground">{inv.items.length} {t('pos_items')}</p>
               </div>
               <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                 <button onClick={() => setDetailInvoice(inv)} className="p-2 rounded-lg bg-white/5 text-muted-foreground hover:bg-white/10 transition-colors" title={t('pos_view_detail')}>
                   <FileText className="w-4 h-4" />
                 </button>
-                {inv.status === 'confirmed' && (
-                  <button onClick={() => handleCancelInvoice(inv)} className="p-2 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors" title={t('pos_cancel_invoice')}>
-                    <X className="w-4 h-4" />
+                {inv.status === 'confirmed' && inv.type === 'sale' && (
+                  <button onClick={() => handleReturnInvoice(inv)} className="p-2 rounded-lg bg-orange-500/10 text-orange-400 hover:bg-orange-500/20 transition-colors" title={t('pos_return_title')}>
+                    <RotateCcw className="w-4 h-4" />
                   </button>
                 )}
               </div>

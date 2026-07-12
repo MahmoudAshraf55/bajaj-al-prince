@@ -1,7 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { Search, Loader2, FileText, X } from 'lucide-react';
+import { Search, Loader2, FileText, RotateCcw } from 'lucide-react';
 import { Invoice } from '@/types/pos';
 
 interface POSInvoiceListProps {
@@ -16,7 +16,7 @@ interface POSInvoiceListProps {
   invPage: number;
   setInvPage: (val: number | ((prev: number) => number)) => void;
   invTotalPages: number;
-  handleCancelInvoice: (inv: Invoice) => Promise<void>;
+  handleReturnInvoice: (inv: Invoice) => void;
   setDetailInvoice: (inv: Invoice | null) => void;
   statusColors: Record<string, string>;
   t: (key: string) => string;
@@ -34,7 +34,7 @@ export default function POSInvoiceList({
   invPage,
   setInvPage,
   invTotalPages,
-  handleCancelInvoice,
+  handleReturnInvoice,
   setDetailInvoice,
   statusColors,
   t,
@@ -118,9 +118,9 @@ export default function POSInvoiceList({
                 <button onClick={() => setDetailInvoice(inv)} className="p-2 rounded-lg bg-white/5 text-muted-foreground hover:bg-white/10 transition-colors" title={t('pos_view_detail')}>
                   <FileText className="w-4 h-4" />
                 </button>
-                {inv.status === 'confirmed' && (
-                  <button onClick={() => handleCancelInvoice(inv)} className="p-2 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors" title={t('pos_cancel_invoice')}>
-                    <X className="w-4 h-4" />
+                {inv.status === 'confirmed' && inv.type === 'sale' && (
+                  <button onClick={() => handleReturnInvoice(inv)} className="p-2 rounded-lg bg-orange-500/10 text-orange-400 hover:bg-orange-500/20 transition-colors" title={t('pos_return_title')}>
+                    <RotateCcw className="w-4 h-4" />
                   </button>
                 )}
               </div>

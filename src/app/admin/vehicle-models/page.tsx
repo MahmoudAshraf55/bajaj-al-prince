@@ -196,7 +196,7 @@ export default function VehicleModelsPage() {
                 <tr className="border-b border-border text-muted-foreground">
                   <th scope="col" className="text-left px-5 py-3 font-medium">{t('vmodels_name')}</th>
                   <th scope="col" className="text-left px-5 py-3 font-medium">{t('vmodels_make')}</th>
-                  <th scope="col" className="text-left px-5 py-3 font-medium">Manufacturer</th>
+                  <th scope="col" className="text-left px-5 py-3 font-medium">{t('vmodels_manufacturer')}</th>
                   <th scope="col" className="text-left px-5 py-3 font-medium">{t('vmodels_active')}</th>
                   <th scope="col" className="text-right px-5 py-3 font-medium">{t('vmodels_actions')}</th>
                 </tr>
@@ -292,13 +292,13 @@ export default function VehicleModelsPage() {
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Manufacturer</label>
+                  <label className="text-xs font-medium text-muted-foreground mb-1.5 block">{t('vmodels_manufacturer')}</label>
                   <select
                     value={form.manufacturerId}
                     onChange={(e) => setForm((f) => ({ ...f, manufacturerId: e.target.value }))}
                     className="w-full px-4 py-2.5 rounded-xl bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm"
                   >
-                    <option value="">— No manufacturer —</option>
+                    <option value="">{t('vmodels_no_manufacturer')}</option>
                     {manufacturers.map((man) => (
                       <option key={man.id} value={man.id}>{man.name} {man.nameAr ? `(${man.nameAr})` : ''}</option>
                     ))}

@@ -3,6 +3,53 @@ import { logger } from '@/lib/logger';
 import { getTenantId, DEFAULT_TENANT_ID } from '@/lib/tenant-context';
 import type { NextRequest } from 'next/server';
 
+/**
+ * Extract client IP address from request, with security validation.
+ * 
+ * IMPORTANT: This function trusts X-Forwarded-For ONLY if:
+ * 1. The app runs behind a known trusted reverse proxy (Vercel, Nginx, Cloudflare, etc.)
+ * 2. You validate the proxy chain or restrict the proxy origin
+ * 
+ * In production:
+ * - Vercel automatically handles X-Forwarded-For correctly
+ * - For self-hosted deployments, ensure the load balancer/reverse proxy
+ *   is the ONLY source of these headers (configure firewall rules)
+ * 
+ * The current implementation assumes:
+ * - Deployment on Vercel (trusted proxy), OR
+ * - A properly configured internal reverse proxy
+ * 
+ * If deploying without a reverse proxy, disable X-Forwarded-For extraction
+ * by setting TRUST_PROXY_HEADERS=false
+ */
+export function extractClientIp(req: NextRequest): string {
+  const trustProxyHeaders = process.env.TRUST_PROXY_HEADERS !== 'false';
+  
+  if (!trustProxyHeaders) {
+    // If proxy headers are disabled, only use direct connection IP
+    // (Note: NextRequest doesn't expose direct socket IP, so we fall back)
+    return 'unknown';
+  }
+
+  // Extract IP from X-Forwarded-For (leftmost = original client)
+  // Format: "client, proxy1, proxy2"
+  const xForwardedFor = req.headers.get('x-forwarded-for');
+  if (xForwardedFor) {
+    const ips = xForwardedFor.split(',').map(ip => ip.trim());
+    if (ips.length > 0 && ips[0]) {
+      return ips[0];
+    }
+  }
+
+  // Fallback to X-Real-IP
+  const xRealIp = req.headers.get('x-real-ip');
+  if (xRealIp) {
+    return xRealIp.trim();
+  }
+
+  return 'unknown';
+}
+
 export type AuditAction =
   | 'create'
   | 'update'
@@ -16,6 +63,7 @@ export type AuditAction =
   | 'reopen'
   | 'lock'
   | 'complete'
+  | 'return'
   | 'payment'
   | 'import'
   | 'inventory_change'
@@ -95,17 +143,11 @@ export async function logAudit(input: AuditLogInput): Promise<void> {
 }
 
 /**
- * Extracts client IP and User-Agent from request headers.
- *
- * SECURITY NOTE: If the app is NOT behind a trusted reverse proxy
- * (nginx, Cloudflare, etc.), the X-Forwarded-For header can be forged
- * by the client. Always deploy behind a trusted proxy in production.
+ * Extract client IP address and User-Agent from request.
+ * Uses the security-aware extractClientIp function to handle proxy headers safely.
  */
 export function getClientInfo(req: NextRequest): { ipAddress: string; userAgent: string } {
-  const ipAddress =
-    req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
-    req.headers.get('x-real-ip') ||
-    'unknown';
+  const ipAddress = extractClientIp(req);
   const userAgent = req.headers.get('user-agent') || 'unknown';
   return { ipAddress, userAgent };
 }

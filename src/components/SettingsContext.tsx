@@ -5,6 +5,7 @@ import { createContext, useContext, useEffect, useState, ReactNode } from 'react
 interface PublicSettings {
   brand_name: string;
   brand_tagline: string;
+  brand_logo: string;
   location_address: string;
   location_map_url: string;
   contact_phone1: string;
@@ -19,6 +20,7 @@ interface PublicSettings {
 const defaults: PublicSettings = {
   brand_name: 'El Prince Bajaj',
   brand_tagline: '',
+  brand_logo: '',
   location_address: '35JH+PC مركز أوسيم',
   location_map_url: 'https://maps.app.goo.gl/fh1AgzDpB6K87iAs5',
   contact_phone1: '0122 137 0120',

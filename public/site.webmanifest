@@ -1,0 +1,73 @@
+{
+  "name": "El Prince Bajaj",
+  "short_name": "El Prince",
+  "description": "Trusted Bajaj motorcycle service center for sales, maintenance, genuine parts, and diagnostics.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "theme_color": "#000000",
+  "background_color": "#ffffff",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "256x256",
+      "type": "image/x-icon",
+      "purpose": "any"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "256x256",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/Logo.png",
+      "sizes": "256x256",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/screenshots/admin-dashboard.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide"
+    },
+    {
+      "src": "/screenshots/mobile-pos.png",
+      "sizes": "540x720",
+      "type": "image/png",
+      "form_factor": "narrow"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "POS System",
+      "short_name": "POS",
+      "description": "Open the point of sale system",
+      "url": "/admin/pos",
+      "icons": [
+        {
+          "src": "/Logo.png",
+          "sizes": "256x256",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Inventory",
+      "short_name": "Inventory",
+      "description": "Manage warehouse inventory",
+      "url": "/admin/warehouse",
+      "icons": [
+        {
+          "src": "/Logo.png",
+          "sizes": "256x256",
+          "type": "image/png"
+        }
+      ]
+    }
+  ]
+}

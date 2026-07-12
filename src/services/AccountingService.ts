@@ -13,7 +13,10 @@ interface JournalLineWithAccount extends JournalLine {
   accountId: string;
 }
 
-type WhereClause = Record<string, unknown> & { createdAt?: { gte?: Date; lte?: Date } };
+type WhereClause = Record<string, unknown> & {
+  accountId?: string;
+  journalEntry?: { date?: { gte?: Date; lte?: Date } };
+};
 
 const ACCOUNT_NAMES: Record<string, { name: string; nameAr: string; type: 'asset' | 'liability' | 'equity' | 'revenue' | 'expense' }> = {
   // Assets
@@ -83,7 +86,7 @@ export class AccountingService {
 
     const where: WhereClause = { accountId };
     if (asOfDate) {
-      where.createdAt = { lte: asOfDate };
+      where.journalEntry = { date: { lte: asOfDate } };
     }
 
     const journalLines = await tx.journalEntryLine.findMany({
@@ -115,7 +118,7 @@ export class AccountingService {
 
     const where: WhereClause = {};
     if (asOfDate) {
-      where.createdAt = { lte: asOfDate };
+      where.journalEntry = { date: { lte: asOfDate } };
     }
 
     const journalLines = await tx.journalEntryLine.findMany({
@@ -176,7 +179,7 @@ export class AccountingService {
 
     const where: WhereClause = {};
     if (asOfDate) {
-      where.createdAt = { lte: asOfDate };
+      where.journalEntry = { date: { lte: asOfDate } };
     }
 
     const journalLines = await tx.journalEntryLine.findMany({
@@ -246,9 +249,9 @@ export class AccountingService {
 
     const where: WhereClause = {};
     if (fromDate || toDate) {
-      where.createdAt = {};
-      if (fromDate) where.createdAt.gte = fromDate;
-      if (toDate) where.createdAt.lte = toDate;
+      where.journalEntry = { date: {} };
+      if (fromDate && where.journalEntry.date) where.journalEntry.date.gte = fromDate;
+      if (toDate && where.journalEntry.date) where.journalEntry.date.lte = toDate;
     }
 
     const journalLines = await tx.journalEntryLine.findMany({

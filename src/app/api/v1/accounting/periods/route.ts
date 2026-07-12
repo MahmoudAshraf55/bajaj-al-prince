@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { withRole } from '@/lib/auth';
+import { withSecurityHeaders } from '@/lib/security';
 import { logAudit, getClientInfo } from '@/lib/audit';
 import { getTenantId, DEFAULT_TENANT_ID } from '@/lib/tenant-context';
 import { z } from 'zod';
@@ -19,9 +20,9 @@ export async function GET(req: NextRequest) {
         orderBy: { startDate: 'desc' },
         include: { closedBy: { select: { id: true, username: true } } },
       });
-      return NextResponse.json({ success: true, data: { periods } });
+      return withSecurityHeaders(NextResponse.json({ success: true, data: { periods } }));
     });
-  } catch { return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 }); }
+  } catch { return withSecurityHeaders(NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })); }
 }
 
 export async function POST(req: NextRequest) {
@@ -29,13 +30,13 @@ export async function POST(req: NextRequest) {
     return await withRole(req, ['admin'], async (payload) => {
       const body = await req.json();
       const parsed = createSchema.safeParse(body);
-      if (!parsed.success) return NextResponse.json({ success: false, error: parsed.error.errors[0].message }, { status: 400 });
+      if (!parsed.success) return withSecurityHeaders(NextResponse.json({ success: false, error: parsed.error.errors[0].message }, { status: 400 }));
 
       const { name, startDate, endDate } = parsed.data;
       const existing = await prisma.accountingPeriod.findFirst({
         where: { startDate: new Date(startDate), isDeleted: false },
       });
-      if (existing) return NextResponse.json({ success: false, error: 'Period already exists' }, { status: 409 });
+      if (existing) return withSecurityHeaders(NextResponse.json({ success: false, error: 'Period already exists' }, { status: 409 }));
 
       const period = await prisma.accountingPeriod.create({
         data: { name, startDate: new Date(startDate), endDate: new Date(endDate), closedById: payload.userId, tenantId: getTenantId() ?? DEFAULT_TENANT_ID },
@@ -50,7 +51,7 @@ export async function POST(req: NextRequest) {
         ipAddress,
         userAgent,
       });
-      return NextResponse.json({ success: true, data: { period } }, { status: 201 });
+      return withSecurityHeaders(NextResponse.json({ success: true, data: { period } }, { status: 201 }));
     });
-  } catch { return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 }); }
+  } catch { return withSecurityHeaders(NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })); }
 }

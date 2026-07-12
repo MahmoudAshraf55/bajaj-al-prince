@@ -161,7 +161,7 @@ export class WorkOrderService {
 
         const subtotal = invoiceItems.reduce((s, i) => s + i.total, 0);
 
-        await tx.invoice.create({
+        const woInvoice = await tx.invoice.create({
           data: {
             number: invoiceNumber,
             type: 'sale',
@@ -174,10 +174,17 @@ export class WorkOrderService {
             change: 0,
             customerId: customer.id,
             customerName: customer.name,
+            workOrderId,
             createdById: userId,
             tenantId,
             items: { create: invoiceItems },
           },
+          select: { id: true },
+        });
+
+        await tx.workOrder.update({
+          where: { id: workOrderId },
+          data: { invoiceId: woInvoice.id },
         });
       }
     }

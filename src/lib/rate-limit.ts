@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Ratelimit } from '@upstash/ratelimit';
 import { Redis } from '@upstash/redis';
+import { extractClientIp } from '@/lib/audit';
 
 /* ── In-memory fallback store ── */
 interface MemoryEntry { count: number; resetAt: number }
@@ -52,9 +53,7 @@ const windowMap: Record<string, { max: number; ms: number }> = {
 };
 
 function getClientIp(req: NextRequest): string {
-  return req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
-    || req.headers.get('x-real-ip')
-    || 'unknown';
+  return extractClientIp(req);
 }
 
 export async function checkRateLimit(

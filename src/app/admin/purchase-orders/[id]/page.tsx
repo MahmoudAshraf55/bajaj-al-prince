@@ -94,7 +94,7 @@ export default function PurchaseOrderDetailPage() {
       .map(([orderItemId, quantity]) => ({ orderItemId, quantity }));
 
     if (items.length === 0) {
-      setReceiveError('At least one item with quantity > 0 is required');
+      setReceiveError(t('po_at_least_one_qty'));
       return;
     }
 
@@ -108,14 +108,14 @@ export default function PurchaseOrderDetailPage() {
       });
       const data = await res.json();
       if (data.success) {
-        addToast('success', 'Receipt created successfully');
+        addToast('success', t('po_receipt_created'));
         setShowReceiveModal(false);
         fetchOrder();
       } else {
-        setReceiveError(data.error || 'Failed to create receipt');
+        setReceiveError(data.error || t('po_receipt_failed'));
       }
     } catch {
-      setReceiveError('Network error');
+      setReceiveError(t('po_network_error'));
     } finally {
       setReceiving(false);
     }
@@ -242,7 +242,7 @@ export default function PurchaseOrderDetailPage() {
                 className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
               >
                 <Download className="w-4 h-4" />
-                PDF
+                {t('po_pdf')}
               </a>
               {['ordered', 'partially_received'].includes(order.status) && (
                 <button
@@ -316,7 +316,7 @@ export default function PurchaseOrderDetailPage() {
                 <tr className="border-b border-border text-muted-foreground">
                   <th scope="col" className="text-left pb-3 font-medium">{t('po_select_product')}</th>
                   <th scope="col" className="text-center pb-3 font-medium">{t('po_qty')}</th>
-                  <th scope="col" className="text-center pb-3 font-medium">{t('sup_pagination_of')} Received</th>
+                  <th scope="col" className="text-center pb-3 font-medium">{t('po_received')}</th>
                   <th scope="col" className="text-right pb-3 font-medium">{t('po_unit_price')}</th>
                   <th scope="col" className="text-right pb-3 font-medium">{t('po_line_total')}</th>
                 </tr>
@@ -414,7 +414,7 @@ export default function PurchaseOrderDetailPage() {
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium truncate">{item.product.name}</p>
                         <p className="text-xs text-muted-foreground">
-                          Ordered: {item.quantity} | Received: {item.receivedQty} | Remaining: {maxQty}
+                          {t('po_ordered')}: {item.quantity} | {t('po_received')}: {item.receivedQty} | {t('po_remaining')}: {maxQty}
                         </p>
                       </div>
                       <div className="w-20">

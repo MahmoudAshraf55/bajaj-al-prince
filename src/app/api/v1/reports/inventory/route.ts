@@ -103,7 +103,11 @@ export async function GET(req: NextRequest) {
       const totalStock = products.reduce((s, p) => s + p.stock, 0);
       const lowStockCount = products.filter((p) => p.stock <= p.lowStockThreshold).length;
       const outOfStockCount = products.filter((p) => p.stock === 0).length;
-      const totalStockValue = products.reduce((s, p) => s + Number(p.costPrice || 0) * p.stock, 0);
+      // Use price as fallback if costPrice is null/zero (consistent with stock_value report)
+      const totalStockValue = products.reduce((s, p) => {
+        const cost = Number(p.costPrice || 0);
+        return s + (cost > 0 ? cost : Number(p.price)) * p.stock;
+      }, 0);
 
       if (format === 'excel') {
         const rows = products.map((p) => ({
@@ -115,7 +119,7 @@ export async function GET(req: NextRequest) {
           'Status': p.stock === 0 ? 'Out of Stock' : p.stock <= p.lowStockThreshold ? 'Low Stock' : 'OK',
           'Price': Number(p.price),
           'Cost': Number(p.costPrice || 0),
-          'Stock Value': Number(p.costPrice || 0) * p.stock,
+          'Stock Value': (() => { const c = Number(p.costPrice || 0); return (c > 0 ? c : Number(p.price)) * p.stock; })(),
         }));
         const buffer = exportToExcel(rows, 'stock-summary', 'Stock');
         return new NextResponse(buffer, {

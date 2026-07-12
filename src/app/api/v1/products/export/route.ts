@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { withRole } from '@/lib/auth';
 import { exportToExcel } from '@/lib/export-excel';
+import { withSecurityHeaders } from '@/lib/security';
 
 export async function GET(req: NextRequest) {
   try {
@@ -63,6 +64,6 @@ export async function GET(req: NextRequest) {
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Internal server error';
     const status = message === 'Forbidden' ? 403 : message === 'Unauthorized' ? 401 : 500;
-    return NextResponse.json({ success: false, error: status === 500 ? 'Internal server error' : message }, { status });
+    return withSecurityHeaders(NextResponse.json({ success: false, error: status === 500 ? 'Internal server error' : message }, { status }));
   }
 }

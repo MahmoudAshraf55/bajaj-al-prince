@@ -249,19 +249,19 @@ export default function AccountingPage() {
             onClick={() => setActiveView('trial-balance')}
             className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${activeView === 'trial-balance' ? 'bg-background shadow-sm' : 'hover:bg-background/50'}`}
           >
-            Trial Balance
+            {t('acc_trial_balance')}
           </button>
           <button
             onClick={() => setActiveView('balance-sheet')}
             className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${activeView === 'balance-sheet' ? 'bg-background shadow-sm' : 'hover:bg-background/50'}`}
           >
-            Balance Sheet
+            {t('acc_balance_sheet')}
           </button>
           <button
             onClick={() => setActiveView('income-statement')}
             className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${activeView === 'income-statement' ? 'bg-background shadow-sm' : 'hover:bg-background/50'}`}
           >
-            Income Statement
+            {t('acc_income_statement')}
           </button>
         </div>
 
@@ -289,10 +289,10 @@ export default function AccountingPage() {
         {summary && (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
             <Card label={t('acc_revenue')} value={`${Number(summary.revenue).toLocaleString()} EGP`} color="bg-gradient-to-br from-green-500/20 to-green-600/10 border border-green-500/20" icon={ArrowUpRight} sub={summary.period.label} />
-            <Card label={t('acc_cogs')} value={`${Number(summary.cogs).toLocaleString()} EGP`} color="bg-gradient-to-br from-orange-500/20 to-orange-600/10 border border-orange-500/20" icon={ArrowDownRight} sub={`${summary.invoiceCount} invoices`} />
-            <Card label={t('acc_gross_profit')} value={`${Number(summary.grossProfit).toLocaleString()} EGP`} color="bg-gradient-to-br from-blue-500/20 to-blue-600/10 border border-blue-500/20" sub={`${summary.grossMargin}% margin`} />
+            <Card label={t('acc_cogs')} value={`${Number(summary.cogs).toLocaleString()} EGP`} color="bg-gradient-to-br from-orange-500/20 to-orange-600/10 border border-orange-500/20" icon={ArrowDownRight} sub={`${summary.invoiceCount} ${t('acc_records')}`} />
+            <Card label={t('acc_gross_profit')} value={`${Number(summary.grossProfit).toLocaleString()} EGP`} color="bg-gradient-to-br from-blue-500/20 to-blue-600/10 border border-blue-500/20" sub={`${summary.grossMargin}% ${t('acc_margin')}`} />
             <Card label={t('acc_expenses')} value={`${Number(summary.expenses).toLocaleString()} EGP`} color="bg-gradient-to-br from-red-500/20 to-red-600/10 border border-red-500/20" icon={ArrowDownRight} />
-            <Card label={t('acc_net_profit')} value={`${Number(summary.netProfit).toLocaleString()} EGP`} color={summary.netProfit >= 0 ? 'bg-gradient-to-br from-emerald-500/20 to-emerald-600/10 border border-emerald-500/20' : 'bg-gradient-to-br from-red-500/20 to-red-600/10 border border-red-500/20'} sub={`${summary.netMargin}% margin`} />
+            <Card label={t('acc_net_profit')} value={`${Number(summary.netProfit).toLocaleString()} EGP`} color={summary.netProfit >= 0 ? 'bg-gradient-to-br from-emerald-500/20 to-emerald-600/10 border border-emerald-500/20' : 'bg-gradient-to-br from-red-500/20 to-red-600/10 border border-red-500/20'} sub={`${summary.netMargin}% ${t('acc_net_margin')}`} />
             <Card label={t('acc_taxes')} value={`${Number(summary.taxes).toLocaleString()} EGP`} color="bg-gradient-to-br from-purple-500/20 to-purple-600/10 border border-purple-500/20" sub={`${t('acc_discounts')}: ${Number(summary.discounts).toLocaleString()}`} />
           </div>
         )}
@@ -404,7 +404,7 @@ export default function AccountingPage() {
         {/* Trial Balance View */}
         {activeView === 'trial-balance' && (
           <div className="glass rounded-2xl p-4">
-            <h2 className="font-bold mb-3">Trial Balance</h2>
+            <h2 className="font-bold mb-3">{t('acc_trial_balance')}</h2>
             {trialBalanceLoading ? (
               <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>
             ) : trialBalance ? (
@@ -413,10 +413,10 @@ export default function AccountingPage() {
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b border-border">
-                        <th scope="col" className="text-left py-2 px-2 font-medium">Account Code</th>
-                        <th scope="col" className="text-left py-2 px-2 font-medium">Account Name</th>
-                        <th scope="col" className="text-right py-2 px-2 font-medium">Debit</th>
-                        <th scope="col" className="text-right py-2 px-2 font-medium">Credit</th>
+                        <th scope="col" className="text-left py-2 px-2 font-medium">{t('acc_account_code')}</th>
+                        <th scope="col" className="text-left py-2 px-2 font-medium">{t('acc_account_name')}</th>
+                        <th scope="col" className="text-right py-2 px-2 font-medium">{t('acc_debit')}</th>
+                        <th scope="col" className="text-right py-2 px-2 font-medium">{t('acc_credit')}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -431,7 +431,7 @@ export default function AccountingPage() {
                     </tbody>
                     <tfoot>
                       <tr className="border-t-2 border-border font-bold">
-                        <td colSpan={2} className="py-2 px-2">Total</td>
+                        <td colSpan={2} className="py-2 px-2">{t('acc_total')}</td>
                         <td className="text-right py-2 px-2">{trialBalance.totalDebit.toLocaleString()} EGP</td>
                         <td className="text-right py-2 px-2">{trialBalance.totalCredit.toLocaleString()} EGP</td>
                       </tr>
@@ -440,12 +440,12 @@ export default function AccountingPage() {
                 </div>
                 {trialBalance.totalDebit !== trialBalance.totalCredit && (
                   <div className="mt-4 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
-                    Trial Balance is not balanced! Debit: {trialBalance.totalDebit.toLocaleString()}, Credit: {trialBalance.totalCredit.toLocaleString()}
+                    {t('acc_tb_not_balanced')}
                   </div>
                 )}
               </>
             ) : (
-              <p className="text-center py-8 text-muted-foreground text-sm">No trial balance data available</p>
+              <p className="text-center py-8 text-muted-foreground text-sm">{t('acc_no_tb_data')}</p>
             )}
           </div>
         )}
@@ -453,14 +453,14 @@ export default function AccountingPage() {
         {/* Balance Sheet View */}
         {activeView === 'balance-sheet' && (
           <div className="glass rounded-2xl p-4">
-            <h2 className="font-bold mb-3">Balance Sheet</h2>
+            <h2 className="font-bold mb-3">{t('acc_balance_sheet')}</h2>
             {balanceSheetLoading ? (
               <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>
             ) : balanceSheet ? (
               <div className="grid md:grid-cols-2 gap-6">
                 {/* Assets */}
                 <div>
-                  <h3 className="font-semibold mb-3 text-green-400">Assets</h3>
+                  <h3 className="font-semibold mb-3 text-green-400">{t('acc_assets')}</h3>
                   <div className="space-y-2">
                     {balanceSheet.assets.map((acc: BalanceSheetAccount) => (
                       <div key={acc.code} className="flex justify-between p-2 rounded-lg bg-muted/50">
@@ -469,7 +469,7 @@ export default function AccountingPage() {
                       </div>
                     ))}
                     <div className="flex justify-between p-2 rounded-lg bg-green-500/10 border border-green-500/20 font-bold">
-                      <span>Total Assets</span>
+                      <span>{t('acc_total_assets')}</span>
                       <span>{balanceSheet.totalAssets.toLocaleString()} EGP</span>
                     </div>
                   </div>
@@ -477,7 +477,7 @@ export default function AccountingPage() {
 
                 {/* Liabilities & Equity */}
                 <div>
-                  <h3 className="font-semibold mb-3 text-red-400">Liabilities</h3>
+                  <h3 className="font-semibold mb-3 text-red-400">{t('acc_liabilities')}</h3>
                   <div className="space-y-2 mb-4">
                     {balanceSheet.liabilities.map((acc: BalanceSheetAccount) => (
                       <div key={acc.code} className="flex justify-between p-2 rounded-lg bg-muted/50">
@@ -486,12 +486,12 @@ export default function AccountingPage() {
                       </div>
                     ))}
                     <div className="flex justify-between p-2 rounded-lg bg-red-500/10 border border-red-500/20 font-bold">
-                      <span>Total Liabilities</span>
+                      <span>{t('acc_total_liabilities')}</span>
                       <span>{balanceSheet.totalLiabilities.toLocaleString()} EGP</span>
                     </div>
                   </div>
 
-                  <h3 className="font-semibold mb-3 text-blue-400">Equity</h3>
+                  <h3 className="font-semibold mb-3 text-blue-400">{t('acc_equity')}</h3>
                   <div className="space-y-2">
                     {balanceSheet.equity.map((acc: BalanceSheetAccount) => (
                       <div key={acc.code} className="flex justify-between p-2 rounded-lg bg-muted/50">
@@ -500,19 +500,19 @@ export default function AccountingPage() {
                       </div>
                     ))}
                     <div className="flex justify-between p-2 rounded-lg bg-blue-500/10 border border-blue-500/20 font-bold">
-                      <span>Total Equity</span>
+                      <span>{t('acc_total_equity')}</span>
                       <span>{balanceSheet.totalEquity.toLocaleString()} EGP</span>
                     </div>
                   </div>
 
                   <div className="mt-4 flex justify-between p-3 rounded-xl bg-primary/10 border border-primary/20 font-bold">
-                    <span>Total Liabilities + Equity</span>
+                    <span>{t('acc_total_liabilities_equity')}</span>
                     <span>{(balanceSheet.totalLiabilities + balanceSheet.totalEquity).toLocaleString()} EGP</span>
                   </div>
                 </div>
               </div>
             ) : (
-              <p className="text-center py-8 text-muted-foreground text-sm">No balance sheet data available</p>
+              <p className="text-center py-8 text-muted-foreground text-sm">{t('acc_no_bs_data')}</p>
             )}
           </div>
         )}
@@ -520,14 +520,14 @@ export default function AccountingPage() {
         {/* Income Statement View */}
         {activeView === 'income-statement' && (
           <div className="glass rounded-2xl p-4">
-            <h2 className="font-bold mb-3">Income Statement</h2>
+            <h2 className="font-bold mb-3">{t('acc_income_statement')}</h2>
             {incomeStatementLoading ? (
               <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>
             ) : incomeStatement ? (
               <div className="space-y-6">
                 {/* Revenue */}
                 <div>
-                  <h3 className="font-semibold mb-3 text-green-400">Revenue</h3>
+                  <h3 className="font-semibold mb-3 text-green-400">{t('acc_revenue_label')}</h3>
                   <div className="space-y-2">
                     {incomeStatement.revenue.map((acc: IncomeStatementAccount) => (
                       <div key={acc.code} className="flex justify-between p-2 rounded-lg bg-muted/50">
@@ -536,7 +536,7 @@ export default function AccountingPage() {
                       </div>
                     ))}
                     <div className="flex justify-between p-2 rounded-lg bg-green-500/10 border border-green-500/20 font-bold">
-                      <span>Total Revenue</span>
+                      <span>{t('acc_total_revenue')}</span>
                       <span>{incomeStatement.totalRevenue.toLocaleString()} EGP</span>
                     </div>
                   </div>
@@ -544,7 +544,7 @@ export default function AccountingPage() {
 
                 {/* Expenses */}
                 <div>
-                  <h3 className="font-semibold mb-3 text-red-400">Expenses</h3>
+                  <h3 className="font-semibold mb-3 text-red-400">{t('acc_expenses_label')}</h3>
                   <div className="space-y-2">
                     {incomeStatement.expenses.map((acc: IncomeStatementAccount) => (
                       <div key={acc.code} className="flex justify-between p-2 rounded-lg bg-muted/50">
@@ -553,7 +553,7 @@ export default function AccountingPage() {
                       </div>
                     ))}
                     <div className="flex justify-between p-2 rounded-lg bg-red-500/10 border border-red-500/20 font-bold">
-                      <span>Total Expenses</span>
+                      <span>{t('acc_total_expenses')}</span>
                       <span>{incomeStatement.totalExpenses.toLocaleString()} EGP</span>
                     </div>
                   </div>
@@ -562,17 +562,17 @@ export default function AccountingPage() {
                 {/* Summary */}
                 <div className="grid md:grid-cols-2 gap-4">
                   <div className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/20">
-                    <p className="text-sm text-muted-foreground mb-1">Gross Profit</p>
+                    <p className="text-sm text-muted-foreground mb-1">{t('acc_gross_profit')}</p>
                     <p className="text-2xl font-bold">{incomeStatement.grossProfit.toLocaleString()} EGP</p>
                   </div>
                   <div className={`p-4 rounded-xl border ${incomeStatement.netProfit >= 0 ? 'bg-green-500/10 border-green-500/20' : 'bg-red-500/10 border-red-500/20'}`}>
-                    <p className="text-sm text-muted-foreground mb-1">Net Profit</p>
+                    <p className="text-sm text-muted-foreground mb-1">{t('acc_net_profit')}</p>
                     <p className="text-2xl font-bold">{incomeStatement.netProfit.toLocaleString()} EGP</p>
                   </div>
                 </div>
               </div>
             ) : (
-              <p className="text-center py-8 text-muted-foreground text-sm">No income statement data available</p>
+              <p className="text-center py-8 text-muted-foreground text-sm">{t('acc_no_is_data')}</p>
             )}
           </div>
         )}

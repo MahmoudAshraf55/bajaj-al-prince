@@ -2,6 +2,7 @@
 
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
+import { usePublicSettings } from '@/components/SettingsContext';
 
 interface LogoProps {
   size?: 'sm' | 'md' | 'lg' | 'xl';
@@ -10,6 +11,8 @@ interface LogoProps {
 }
 
 export default function Logo({ size = 'md', showText = true, className }: LogoProps) {
+  const { brand_logo } = usePublicSettings();
+
   const sizes = {
     sm: { img: 44, text: 'text-sm', sub: 'text-[9px]', gap: 'gap-2.5' },
     md: { img: 52, text: 'text-base', sub: 'text-[10px]', gap: 'gap-3' },
@@ -18,6 +21,7 @@ export default function Logo({ size = 'md', showText = true, className }: LogoPr
   };
 
   const s = sizes[size];
+  const logoUrl = brand_logo || '/Logo.png';
 
   return (
     <div className={cn('flex items-center', s.gap, className)}>
@@ -26,7 +30,7 @@ export default function Logo({ size = 'md', showText = true, className }: LogoPr
         style={{ width: s.img, height: s.img }}
       >
         <Image
-          src="/Logo.png"
+          src={logoUrl}
           alt="El Prince Bajaj Logo"
           width={s.img}
           height={s.img}

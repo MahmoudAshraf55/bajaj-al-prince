@@ -196,8 +196,8 @@ export default function AdminDashboard() {
                 <Bell className="w-5 h-5 text-primary" />
               </div>
               <div>
-                <p className="font-semibold text-sm">{newBookingCount} new booking{newBookingCount > 1 ? 's' : ''} today</p>
-                <p className="text-xs text-muted-foreground">Check your bookings page</p>
+                <p className="font-semibold text-sm">{t('admin_new_bookings_today').replace('{count}', String(newBookingCount))}</p>
+                <p className="text-xs text-muted-foreground">{t('admin_check_bookings_page')}</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -205,7 +205,7 @@ export default function AdminDashboard() {
                 href="/admin/bookings"
                 className="px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity"
               >
-                View Bookings
+                {t('admin_view_bookings')}
               </Link>
               <button
                 onClick={() => setShowNotification(false)}
@@ -218,10 +218,15 @@ export default function AdminDashboard() {
         )}
       </AnimatePresence>
 
-      <nav className="flex flex-wrap gap-2 mb-6" aria-label="Dashboard tabs">
+      <nav className="flex flex-wrap gap-2 mb-6" role="tablist" aria-label="Dashboard tabs">
         {navItems.map((item) => (
           <button
             key={item.id}
+            role="tab"
+            id={`tab-${item.id}`}
+            aria-selected={tab === item.id}
+            aria-controls={`tabpanel-${item.id}`}
+            tabIndex={tab === item.id ? 0 : -1}
             onClick={() => setTab(item.id)}
             className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors ${
               tab === item.id ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:text-foreground hover:bg-muted/80'
@@ -234,19 +239,19 @@ export default function AdminDashboard() {
 
       <AnimatePresence mode="wait">
         {tab === 'overview' && (
-          <motion.div key="overview" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6">
+          <motion.div key="overview" role="tabpanel" aria-labelledby="tab-overview" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6">
             <h2 className="text-2xl font-bold">{t('admin_dashboard')}</h2>
 
             {/* KPI Cards */}
             <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {[
-                { label: t('admin_total_income') + ' (Today)', value: stats ? `${stats.today.sales.toLocaleString()} EGP` : '—', icon: ShoppingCart, color: 'text-green-400', bg: 'bg-green-400/10' },
-                { label: t('admin_pending_bookings'), value: stats ? stats.bookings.pending : pendingBookings, icon: Calendar, color: 'text-amber-400', bg: 'bg-amber-400/10', badge: stats?.bookings.todayNew ? `+${stats.bookings.todayNew} today` : undefined },
+                { label: t('admin_total_income') + ' ' + t('admin_today_suffix'), value: stats ? `${stats.today.sales.toLocaleString()} EGP` : '—', icon: ShoppingCart, color: 'text-green-400', bg: 'bg-green-400/10' },
+                { label: t('admin_pending_bookings'), value: stats ? stats.bookings.pending : pendingBookings, icon: Calendar, color: 'text-amber-400', bg: 'bg-amber-400/10', badge: stats?.bookings.todayNew ? t('admin_today_new_badge').replace('{count}', String(stats.bookings.todayNew)) : undefined },
                 { label: t('admin_products'), value: stats ? stats.inventory.totalProducts : products.length, icon: Package, color: 'text-emerald-400', bg: 'bg-emerald-400/10' },
                 { label: t('admin_net_balance'), value: `${balance.toLocaleString()} EGP`, icon: DollarSign, color: 'text-primary', bg: 'bg-primary/10' },
-                { label: 'Today Invoices', value: stats ? stats.today.invoiceCount : 0, icon: TrendingUp, color: 'text-blue-400', bg: 'bg-blue-400/10' },
+                { label: t('admin_today_invoices'), value: stats ? stats.today.invoiceCount : 0, icon: TrendingUp, color: 'text-blue-400', bg: 'bg-blue-400/10' },
                 { label: t('wh_low_stock'), value: stats ? stats.inventory.lowStockCount : 0, icon: AlertTriangle, color: 'text-red-400', bg: 'bg-red-400/10' },
-                { label: 'Inventory Value', value: stats ? `${stats.inventory.inventoryValue.toLocaleString()} EGP` : '—', icon: Package, color: 'text-purple-400', bg: 'bg-purple-400/10' },
+                { label: t('admin_inventory_value'), value: stats ? `${stats.inventory.inventoryValue.toLocaleString()} EGP` : '—', icon: Package, color: 'text-purple-400', bg: 'bg-purple-400/10' },
                 { label: t('admin_customers'), value: stats ? stats.customers.total : 0, icon: Users, color: 'text-cyan-400', bg: 'bg-cyan-400/10' },
               ].map((stat) => (
                 <div key={stat.label} className="glass rounded-2xl p-5">
@@ -271,18 +276,18 @@ export default function AdminDashboard() {
             {/* Today Payment Breakdown */}
             {stats && (
               <div className="glass rounded-2xl p-5">
-                <h3 className="font-semibold mb-4">Today Payment Breakdown</h3>
+                <h3 className="font-semibold mb-4">{t('admin_today_payment_breakdown')}</h3>
                 <div className="grid grid-cols-3 gap-4">
                   <div className="text-center p-3 rounded-xl bg-white/5">
-                    <p className="text-xs text-muted-foreground mb-1">Cash</p>
+                    <p className="text-xs text-muted-foreground mb-1">{t('admin_cash')}</p>
                     <p className="font-bold text-green-400">{(stats.today.cashSales ?? 0).toFixed(2)}</p>
                   </div>
                   <div className="text-center p-3 rounded-xl bg-white/5">
-                    <p className="text-xs text-muted-foreground mb-1">Card</p>
+                    <p className="text-xs text-muted-foreground mb-1">{t('admin_card')}</p>
                     <p className="font-bold text-blue-400">{(stats.today.cardSales ?? 0).toFixed(2)}</p>
                   </div>
                   <div className="text-center p-3 rounded-xl bg-white/5">
-                    <p className="text-xs text-muted-foreground mb-1">Transfer</p>
+                    <p className="text-xs text-muted-foreground mb-1">{t('admin_transfer')}</p>
                     <p className="font-bold text-purple-400">{(stats.today.transferSales ?? 0).toFixed(2)}</p>
                   </div>
                 </div>
@@ -312,13 +317,13 @@ export default function AdminDashboard() {
             <div className="grid lg:grid-cols-2 gap-6">
               {/* Recent Invoices */}
               <div className="glass rounded-2xl p-5">
-                <h3 className="font-semibold mb-4">Recent Invoices</h3>
+                <h3 className="font-semibold mb-4">{t('admin_recent_invoices')}</h3>
                 <div className="space-y-3">
                   {(stats?.recentInvoices || []).map((inv) => (
                     <div key={inv.id} className="flex items-center justify-between p-3 rounded-xl bg-white/5">
                       <div>
                         <p className="font-mono text-xs font-medium">{inv.number}</p>
-                        <p className="text-xs text-muted-foreground">{inv.customerName || 'Walk-in'}</p>
+                        <p className="text-xs text-muted-foreground">{inv.customerName || t('admin_walk_in')}</p>
                       </div>
                       <span className="text-sm font-bold">{inv.total.toFixed(2)} EGP</span>
                     </div>
@@ -367,7 +372,7 @@ export default function AdminDashboard() {
         )}
 
         {tab === 'messages' && (
-          <motion.div key="messages" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6">
+          <motion.div key="messages" role="tabpanel" aria-labelledby="tab-messages" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6">
             <div className="flex items-center justify-between">
               <h2 className="text-2xl font-bold">{t('admin_messages')}</h2>
               <div className="relative">
@@ -397,7 +402,7 @@ export default function AdminDashboard() {
         )}
 
         {tab === 'bookings' && (
-          <motion.div key="bookings" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6">
+          <motion.div key="bookings" role="tabpanel" aria-labelledby="tab-bookings" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6">
             <h2 className="text-2xl font-bold">{t('admin_bookings')}</h2>
             <div className="space-y-3">
               {bookings.map((b) => (
@@ -424,7 +429,7 @@ export default function AdminDashboard() {
         )}
 
         {tab === 'inventory' && (
-          <motion.div key="inventory" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6">
+          <motion.div key="inventory" role="tabpanel" aria-labelledby="tab-inventory" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6">
             <h2 className="text-2xl font-bold">{t('admin_inventory')}</h2>
             <div className="space-y-3">
               {products.map((p) => (
@@ -447,7 +452,7 @@ export default function AdminDashboard() {
         )}
 
         {tab === 'cashier' && (
-          <motion.div key="cashier" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6">
+          <motion.div key="cashier" role="tabpanel" aria-labelledby="tab-cashier" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6">
             <h2 className="text-2xl font-bold">{t('admin_cashier')}</h2>
 
             {/* Totals cards - visible right in the cashier tab */}
@@ -515,7 +520,7 @@ function CashierForm({ type, label, onSubmit, t }: { type: 'income' | 'expense';
       setAmount('');
       setDesc('');
     } else {
-      setError(t('admin_add_failed') || 'Failed to add');
+      setError(t('admin_add_failed'));
     }
   };
 

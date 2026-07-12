@@ -8,14 +8,6 @@ import { logAudit, getClientInfo } from '@/lib/audit';
 import { logger } from '@/lib/logger';
 import { AccountingService } from '@/services/AccountingService';
 import { ACCOUNT_CODES } from '@/constants/accounting';
-import { z } from 'zod';
-
-const completeAndPaySchema = z.object({
-  paymentMethod: z.enum(['cash', 'card', 'transfer']),
-  amountPaid: z.number().min(0),
-  partsTotal: z.number().min(0),
-  labourTotal: z.number().min(0),
-});
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const limit = await checkRateLimit(req, 'admin');
@@ -24,8 +16,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   try {
     return await withRole(req, ['admin', 'staff'], async (payload) => {
       const { id } = await params;
-      const body = await req.json();
-      const data = completeAndPaySchema.parse(body);
 
       const wo = await prisma.workOrder.findFirst({
         where: { id, isDeleted: false },
@@ -35,37 +25,56 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
           labourLines: { where: { isDeleted: false } },
         },
       });
+
       if (!wo) {
         return withSecurityHeaders(NextResponse.json({ success: false, error: 'Work order not found' }, { status: 404 }));
       }
-      if (wo.status === 'completed') {
-        return withSecurityHeaders(NextResponse.json({ success: false, error: 'Work order already completed' }, { status: 400 }));
+      if (wo.status !== 'completed') {
+        return withSecurityHeaders(NextResponse.json({ success: false, error: 'Only completed work orders can be returned' }, { status: 400 }));
       }
 
       const tenantId = getTenantId() ?? DEFAULT_TENANT_ID;
-      const total = data.partsTotal + data.labourTotal;
+      const total = wo.parts.reduce((s, p) => s + Number(p.total), 0) +
+        wo.labourLines.reduce((s, l) => s + Number(l.total || 0), 0);
 
       const result = await prisma.$transaction(async (tx) => {
         const now = new Date();
         const dateStr = now.toISOString().slice(0, 10).replace(/-/g, '');
-        const prefix = `INV-${dateStr}-`;
-        const lastInvoice = await tx.invoice.findFirst({
+        const prefix = `RET-${dateStr}-`;
+        const lastInv = await tx.invoice.findFirst({
           where: { tenantId, number: { startsWith: prefix } },
           orderBy: { number: 'desc' },
           select: { number: true },
         });
         let nextSeq = 1;
-        if (lastInvoice) {
-          const invParts = lastInvoice.number.split('-');
+        if (lastInv) {
+          const invParts = lastInv.number.split('-');
           nextSeq = parseInt(invParts[invParts.length - 1], 10) + 1;
         }
-        const invoiceNumber = `${prefix}${String(nextSeq).padStart(4, '0')}`;
+        const returnNumber = `${prefix}${String(nextSeq).padStart(4, '0')}`;
 
-        const updatedWo = await tx.workOrder.update({
+        await tx.workOrder.update({
           where: { id },
-          data: { status: 'completed', cost: total },
-          include: { vehicle: { include: { customer: true } } },
+          data: { status: 'returned' },
         });
+
+        for (const part of wo.parts) {
+          await tx.product.update({
+            where: { id: part.productId },
+            data: { stock: { increment: part.quantity } },
+          });
+          await tx.stockMovement.create({
+            data: {
+              productId: part.productId,
+              type: 'in',
+              quantity: part.quantity,
+              reference: `work-order-return-${id}`,
+              notes: `Return from work order ${wo.description?.substring(0, 100) || ''}`,
+              createdById: payload.userId,
+              tenantId,
+            },
+          });
+        }
 
         const itemMap = new Map<string, {
           productName: string;
@@ -98,7 +107,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         if (labourTotalAmount > 0) {
           const usedIds = new Set(wo.parts.map((p) => p.productId));
           let labourProductId: string | null | undefined;
-
           if (usedIds.size > 0) {
             labourProductId = (await tx.product.findFirst({
               where: { tenantId, id: { notIn: Array.from(usedIds) }, isDeleted: false },
@@ -113,7 +121,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
           }
           if (labourProductId && !usedIds.has(labourProductId)) {
             itemMap.set(labourProductId, {
-              productName: wo.labourLines.map((l) => l.description).join(', ') || 'Labour',
+              productName: wo.labourLines.map((l) => l.description).join(', ') || 'Labour Return',
               unitPrice: labourTotalAmount,
               costPrice: 0,
               quantity: 1,
@@ -131,96 +139,104 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         const subtotal = invoiceItems.reduce((s, i) => s + i.total, 0);
         const customer = wo.vehicle?.customer;
 
-        const invoice = await tx.invoice.create({
+        const returnInvoice = await tx.invoice.create({
           data: {
-            number: invoiceNumber,
-            type: 'sale',
+            number: returnNumber,
+            type: 'return',
             status: 'confirmed',
-            subtotal,
+            subtotal: -subtotal,
             taxTotal: 0,
             discount: 0,
-            total,
-            paid: data.amountPaid,
-            change: Math.max(0, data.amountPaid - total),
-            paymentMethod: data.paymentMethod,
+            total: -total,
+            paid: 0,
+            change: 0,
             customerId: customer?.id || null,
             customerName: customer?.name || null,
+            workOrderId: id,
             createdById: payload.userId,
             tenantId,
-            items: invoiceItems.length > 0 ? { create: invoiceItems } : undefined,
+            items: invoiceItems.length > 0 ? {
+              create: invoiceItems.map((item) => ({
+                ...item,
+                unitPrice: -item.unitPrice,
+                total: -item.total,
+              })),
+            } : undefined,
           },
         });
 
         try {
-          const salesRevenueAccountId = await AccountingService.getAccountId(tx, ACCOUNT_CODES.SALES_REVENUE, tenantId);
-          const accountsReceivableAccountId = await AccountingService.getAccountId(tx, ACCOUNT_CODES.ACCOUNTS_RECEIVABLE, tenantId);
-          let cashAccountId: string;
-          if (data.paymentMethod === 'cash') {
-            cashAccountId = await AccountingService.getAccountId(tx, ACCOUNT_CODES.CASH, tenantId);
-          } else {
-            // card و transfer → BANK (1102)
-            cashAccountId = await AccountingService.getAccountId(tx, ACCOUNT_CODES.BANK, tenantId);
+          const inventoryId = await AccountingService.getAccountId(tx, ACCOUNT_CODES.INVENTORY, tenantId);
+          const cogsId = await AccountingService.getAccountId(tx, ACCOUNT_CODES.COGS, tenantId);
+          const partsSalesId = await AccountingService.getAccountId(tx, ACCOUNT_CODES.PARTS_SALES, tenantId);
+          const serviceRevenueId = await AccountingService.getAccountId(tx, ACCOUNT_CODES.SERVICE_REVENUE, tenantId);
+          const cashId = await AccountingService.getAccountId(tx, ACCOUNT_CODES.CASH, tenantId);
+
+          const partsCostTotal = wo.parts.reduce((s, p) => s + (Number(p.product?.costPrice || 0) * p.quantity), 0);
+          const partsTotal = wo.parts.reduce((s, p) => s + Number(p.total), 0);
+
+          const reversalLines: Array<{
+            accountId: string;
+            debit: number;
+            credit: number;
+            description: string;
+            tenantId: string;
+          }> = [];
+
+          reversalLines.push({ accountId: cashId, debit: 0, credit: total, description: 'Work order return reversal', tenantId });
+
+          if (partsCostTotal > 0) {
+            reversalLines.push({ accountId: inventoryId, debit: partsCostTotal, credit: 0, description: 'Stock return', tenantId });
+            reversalLines.push({ accountId: cogsId, debit: 0, credit: partsCostTotal, description: 'COGS reversal', tenantId });
+          }
+          if (partsTotal > 0) {
+            reversalLines.push({ accountId: partsSalesId, debit: partsTotal, credit: 0, description: 'Parts revenue reversal', tenantId });
+          }
+          if (labourTotalAmount > 0) {
+            reversalLines.push({ accountId: serviceRevenueId, debit: labourTotalAmount, credit: 0, description: 'Labour revenue reversal', tenantId });
           }
 
-          const journalEntry = await tx.journalEntry.create({
+          await tx.journalEntry.create({
             data: {
-              date: now,
-              description: `Work Order Invoice: ${wo.vehicle?.make ?? ''} ${wo.vehicle?.model ?? ''}`.trim(),
-              type: 'SALE',
+              type: 'RETURN',
               amount: total,
+              description: `Work order return: ${wo.description?.substring(0, 100) || ''}`,
               referenceType: 'work_order',
               referenceId: id,
-              referenceNumber: invoiceNumber,
-              paymentMethod: data.paymentMethod,
+              referenceNumber: returnNumber,
+              category: undefined,
+              paymentMethod: undefined,
+              date: now,
               createdById: payload.userId,
               tenantId,
+              lines: { create: reversalLines },
             },
           });
-
-          if (data.amountPaid > 0) {
-            await tx.journalEntryLine.create({
-              data: { journalEntryId: journalEntry.id, accountId: cashAccountId, debit: data.amountPaid, credit: 0, tenantId },
-            });
-          }
-
-          await tx.journalEntryLine.create({
-            data: { journalEntryId: journalEntry.id, accountId: salesRevenueAccountId, debit: 0, credit: total, tenantId },
-          });
-
-          if (data.amountPaid < total) {
-            const remaining = total - data.amountPaid;
-            await tx.journalEntryLine.create({
-              data: { journalEntryId: journalEntry.id, accountId: accountsReceivableAccountId, debit: remaining, credit: 0, tenantId },
-            });
-          }
         } catch (accountingError) {
-          logger.error('Accounting entry creation failed in complete-and-pay', accountingError);
+          logger.error('Accounting entry creation failed in work order return', accountingError);
         }
 
-        return { updatedWo, invoice };
+        return { returnInvoice, returnNumber };
       });
 
       const { ipAddress, userAgent } = getClientInfo(req);
       await logAudit({
         userId: payload.userId,
-        action: 'complete',
+        action: 'return',
         entity: 'WorkOrder',
         entityId: id,
-        newValue: { status: 'completed', invoiceId: result.invoice.id, amountPaid: data.amountPaid } as Record<string, unknown>,
+        newValue: { status: 'returned', returnInvoice: result.returnNumber } as Record<string, unknown>,
         ipAddress,
         userAgent,
       });
 
       return withSecurityHeaders(NextResponse.json({
         success: true,
-        data: { workOrder: result.updatedWo, invoice: result.invoice },
+        data: { workOrderId: id, returnInvoice: result.returnInvoice },
       }));
     });
   } catch (error) {
-    logger.error('Complete and Pay error', error);
-    if (error instanceof z.ZodError) {
-      return withSecurityHeaders(NextResponse.json({ success: false, errors: error.issues }, { status: 400 }));
-    }
+    logger.error('Work order return error', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return withSecurityHeaders(NextResponse.json({ success: false, error: errorMessage }, { status: 500 }));
   }

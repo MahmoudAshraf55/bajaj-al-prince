@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Search, Plus, X, CheckCircle, Clock, Wrench, Edit3, Package, DollarSign, Trash2 } from 'lucide-react';
+import { Search, Plus, X, CheckCircle, Clock, Wrench, Package, DollarSign, Trash2, RotateCcw } from 'lucide-react';
 import { useTranslation } from '@/components/useTranslation';
 import { useToast } from '@/components/ToastContext';
 
@@ -83,8 +83,6 @@ export default function WorkOrdersPage() {
   const [vehicles, setVehicles] = useState<{ id: string; label: string }[]>([]);
   const [form, setForm] = useState({ vehicleId: '', description: '', cost: '' });
   const [updating, setUpdating] = useState<string | null>(null);
-  const [editing, setEditing] = useState<WorkOrderItem | null>(null);
-  const [editForm, setEditForm] = useState({ description: '', cost: '' });
 
   const [manageWo, setManageWo] = useState<WorkOrderItem | null>(null);
   const [manageParts, setManageParts] = useState<WorkOrderPart[]>([]);
@@ -163,9 +161,9 @@ export default function WorkOrdersPage() {
       setWorkOrders((prev) => [json.data.workOrder, ...prev]);
       setShowCreate(false);
       setForm({ vehicleId: '', description: '', cost: '' });
-      addToast('success', 'Work order created');
+      addToast('success', t('wo_created_toast'));
     } else {
-      addToast('error', json.error || 'Failed');
+      addToast('error', json.error || t('wo_failed'));
     }
   };
 
@@ -181,41 +179,34 @@ export default function WorkOrdersPage() {
       const json = await res.json();
       if (json.success) {
         setWorkOrders((prev) => prev.map((wo) => (wo.id === id ? json.data.workOrder : wo)));
-        addToast('success', `Status changed to ${status}`);
+        addToast('success', t('wo_status_changed', { status }));
       }
     } else {
       const json = await res.json().catch(() => ({}));
-      addToast('error', json.error || 'Failed to update');
+      addToast('error', json.error || t('wo_failed_update'));
     }
     setUpdating(null);
   };
 
-  const openEdit = (wo: WorkOrderItem) => {
-    setEditing(wo);
-    setEditForm({ description: wo.description, cost: wo.cost ? String(wo.cost) : '' });
-  };
-
-  const saveEdit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editing) return;
-    setUpdating(editing.id);
-    const body: Record<string, unknown> = { description: editForm.description };
-    if (editForm.cost) body.cost = parseFloat(editForm.cost);
-    const res = await fetch(`/api/v1/work-orders/${editing.id}/`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify(body),
-    });
-    if (res.ok) {
+  const handleReturn = async (wo: WorkOrderItem) => {
+    if (!confirm(t('wo_return_confirm'))) return;
+    setUpdating(wo.id);
+    try {
+      const res = await fetch(`/api/v1/work-orders/${wo.id}/return/`, {
+        method: 'POST', credentials: 'include',
+      });
       const json = await res.json();
       if (json.success) {
-        setWorkOrders((prev) => prev.map((wo) => (wo.id === editing.id ? json.data.workOrder : wo)));
-        addToast('success', 'Work order updated');
+        addToast('success', t('wo_returned_success'));
+        fetchWorkOrders();
+      } else {
+        addToast('error', json.error || t('wo_failed_return'));
       }
+    } catch {
+      addToast('error', t('wo_network_error'));
+    } finally {
+      setUpdating(null);
     }
-    setUpdating(null);
-    setEditing(null);
   };
 
   const openManage = (wo: WorkOrderItem) => {
@@ -240,12 +231,12 @@ export default function WorkOrdersPage() {
       const json = await res.json();
       if (json.success) {
         setManageParts((prev) => [...prev, json.data.part]);
-        addToast('success', `${product.name} added`);
+        addToast('success', t('wo_part_added', { name: product.name }));
       } else {
-        addToast('error', json.error || 'Failed');
+        addToast('error', json.error || t('wo_failed'));
       }
     } catch {
-      addToast('error', 'Network error');
+      addToast('error', t('wo_network_error'));
     } finally {
       setSavePartsBusy(false);
       setShowProductPicker(false);
@@ -260,7 +251,7 @@ export default function WorkOrdersPage() {
     if (res.ok) {
       setManageParts((prev) => prev.filter((p) => p.id !== partId));
     } else {
-      addToast('error', 'Failed to remove part');
+      addToast('error', t('wo_failed_remove_part'));
     }
   };
 
@@ -287,12 +278,12 @@ export default function WorkOrdersPage() {
         setManageLabour((prev) => [...prev, json.data.labour]);
         setLabourForm({ description: '', hours: '', rate: '', total: '' });
         setAddLabourOpen(false);
-        addToast('success', 'Labour line added');
+        addToast('success', t('wo_labour_added'));
       } else {
-        addToast('error', json.error || 'Failed');
+        addToast('error', json.error || t('wo_failed'));
       }
     } catch {
-      addToast('error', 'Network error');
+      addToast('error', t('wo_network_error'));
     } finally {
       setSavePartsBusy(false);
     }
@@ -306,7 +297,7 @@ export default function WorkOrdersPage() {
     if (res.ok) {
       setManageLabour((prev) => prev.filter((l) => l.id !== labourId));
     } else {
-      addToast('error', 'Failed to remove labour line');
+      addToast('error', t('wo_failed_remove_labour'));
     }
   };
 
@@ -331,15 +322,15 @@ export default function WorkOrdersPage() {
       });
       const json = await res.json();
       if (json.success) {
-        addToast('success', 'Work order completed and invoice created');
+        addToast('success', t('wo_completed_invoice'));
         setShowPaymentModal(false);
         setManageWo(null);
         fetchWorkOrders();
       } else {
-        addToast('error', json.error || 'Failed to complete');
+        addToast('error', json.error || t('wo_failed_complete'));
       }
     } catch {
-      addToast('error', 'Network error');
+      addToast('error', t('wo_network_error'));
     } finally {
       setProcessingPayment(false);
     }
@@ -451,11 +442,7 @@ export default function WorkOrdersPage() {
                 <div className="flex gap-2 flex-wrap">
                   <button onClick={() => openManage(wo)}
                     className="px-3 py-1.5 rounded-lg bg-primary/10 text-primary text-xs font-medium hover:bg-primary/20 transition-colors">
-                    <Package className="w-3 h-3 inline mr-1" /> Parts & Labour
-                  </button>
-                  <button onClick={() => openEdit(wo)} disabled={updating === wo.id}
-                    className="px-3 py-1.5 rounded-lg bg-white/5 text-muted-foreground text-xs font-medium hover:bg-white/10 disabled:opacity-50">
-                    <Edit3 className="w-3 h-3 inline mr-1" /> {t('wo_edit')}
+                    <Package className="w-3 h-3 inline mr-1" /> {t('wo_parts_labour')}
                   </button>
                   {wo.status === 'pending' && (
                     <>
@@ -463,23 +450,25 @@ export default function WorkOrdersPage() {
                         className="px-3 py-1.5 rounded-lg bg-blue-500/10 text-blue-400 text-xs font-medium hover:bg-blue-500/20 disabled:opacity-50">
                         {t('wo_start')}
                       </button>
-                      <button onClick={() => updateStatus(wo.id, 'cancelled')} disabled={updating === wo.id}
-                        className="px-3 py-1.5 rounded-lg bg-red-500/10 text-red-400 text-xs font-medium hover:bg-red-500/20 disabled:opacity-50">
-                        {t('wo_cancel')}
-                      </button>
                     </>
                   )}
                   {wo.status === 'in_progress' && (
                     <>
                       <button onClick={() => { setShowPaymentModal(true); setManageWo(wo); }}
                         className="px-3 py-1.5 rounded-lg bg-green-500/10 text-green-400 text-xs font-medium hover:bg-green-500/20">
-                        Complete & Pay
+                        {t('wo_complete_pay')}
                       </button>
                       <button onClick={() => updateStatus(wo.id, 'completed')} disabled={updating === wo.id}
                         className="px-3 py-1.5 rounded-lg bg-blue-500/10 text-blue-400 text-xs font-medium hover:bg-blue-500/20 disabled:opacity-50">
                         {t('wo_complete')}
                       </button>
                     </>
+                  )}
+                  {wo.status === 'completed' && (
+                    <button onClick={() => handleReturn(wo)} disabled={updating === wo.id}
+                      className="px-3 py-1.5 rounded-lg bg-amber-500/10 text-amber-400 text-xs font-medium hover:bg-amber-500/20 disabled:opacity-50">
+                      <RotateCcw className="w-3 h-3 inline mr-1" /> {t('wo_return')}
+                    </button>
                   )}
                 </div>
               </div>
@@ -489,35 +478,6 @@ export default function WorkOrdersPage() {
           <p className="text-center text-muted-foreground py-12">{t('wo_no_orders')}</p>
         )}
       </div>
-
-      {editing && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <div className="glass rounded-2xl p-6 w-full max-w-lg">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-bold text-lg">{t('wo_edit_title')}</h3>
-              <button onClick={() => setEditing(null)} className="p-2 hover:bg-white/5 rounded-lg"><X className="w-5 h-5" /></button>
-            </div>
-            <form onSubmit={saveEdit} className="space-y-4">
-              <textarea required placeholder={t('wo_describe_work')} value={editForm.description}
-                onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
-                className="w-full px-4 py-2.5 rounded-xl bg-input border border-border text-foreground text-sm min-h-[100px]" />
-              <input type="number" step="0.01" min="0" placeholder={t('wo_cost_optional')} value={editForm.cost}
-                onChange={(e) => setEditForm({ ...editForm, cost: e.target.value })}
-                className="w-full px-4 py-2.5 rounded-xl bg-input border border-border text-foreground text-sm" />
-              <div className="flex gap-3">
-                <button type="submit" disabled={updating === editing.id}
-                  className="flex-1 py-2.5 rounded-xl bg-primary text-primary-foreground font-medium text-sm disabled:opacity-50">
-                  {t('wo_save')}
-                </button>
-                <button type="button" onClick={() => setEditing(null)}
-                  className="px-6 py-2.5 rounded-xl bg-white/5 text-muted-foreground font-medium text-sm hover:bg-white/10">
-                  {t('wo_cancel_btn')}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
 
       {manageWo && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
@@ -656,7 +616,7 @@ export default function WorkOrdersPage() {
                           addPart(match);
                           setProductSearch('');
                         } else {
-                          addToast('error', 'Product out of stock');
+                          addToast('error', t('wo_out_of_stock'));
                         }
                       }
                     }
@@ -670,7 +630,7 @@ export default function WorkOrdersPage() {
                       <span className="text-muted-foreground text-xs">{p.price} EGP {p.stock < 1 && '(out)'}</span>
                     </button>
                   ))}
-                  {filteredProducts.length === 0 && <p className="text-xs text-muted-foreground px-3">No products found</p>}
+                  {filteredProducts.length === 0 && <p className="text-xs text-muted-foreground px-3">{t('wo_no_products')}</p>}
                 </div>
               </div>
             )}
@@ -682,41 +642,41 @@ export default function WorkOrdersPage() {
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
           <div className="glass rounded-2xl p-6 w-full max-w-md">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-bold text-lg">Complete & Pay</h3>
+              <h3 className="font-bold text-lg">{t('wo_complete_pay')}</h3>
               <button onClick={() => setShowPaymentModal(false)} className="p-2 hover:bg-white/5 rounded-lg">
                 <X className="w-5 h-5" />
               </button>
             </div>
             <div className="space-y-4">
               <div className="bg-white/5 rounded-lg p-3">
-                <p className="text-sm text-muted-foreground mb-1">Total Amount</p>
+                <p className="text-sm text-muted-foreground mb-1">{t('wo_total_amount')}</p>
                 <p className="text-2xl font-bold">{grandTotal.toFixed(2)} EGP</p>
               </div>
               <div>
-                <label className="text-sm text-muted-foreground mb-1 block">Payment Method</label>
+                <label className="text-sm text-muted-foreground mb-1 block">{t('pos_payment_method')}</label>
                 <select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value as 'cash' | 'card' | 'transfer')}
                   className="w-full px-4 py-2.5 rounded-xl bg-input border border-border text-sm">
-                  <option value="cash">Cash</option>
-                  <option value="card">Card</option>
-                  <option value="transfer">Transfer</option>
+                  <option value="cash">{t('pos_cash')}</option>
+                  <option value="card">{t('pos_card')}</option>
+                  <option value="transfer">{t('pos_transfer')}</option>
                 </select>
               </div>
               <div>
-                <label className="text-sm text-muted-foreground mb-1 block">Amount Paid</label>
+                <label className="text-sm text-muted-foreground mb-1 block">{t('wo_amount_paid')}</label>
                 <input type="number" step="0.01" min="0" value={paymentAmount}
                   onChange={(e) => setPaymentAmount(e.target.value)}
-                  placeholder="Enter amount"
+                  placeholder={t('wo_enter_amount')}
                   className="w-full px-4 py-2.5 rounded-xl bg-input border border-border text-sm" />
               </div>
               <div className="flex gap-3">
                 <button onClick={() => setShowPaymentModal(false)}
                   className="flex-1 py-2.5 rounded-xl bg-white/5 text-muted-foreground font-medium text-sm">
-                  Cancel
+                  {t('wo_cancel')}
                 </button>
                 <button onClick={() => handleCompleteAndPay()}
                   disabled={processingPayment || !paymentAmount || parseFloat(paymentAmount) <= 0}
                   className="flex-1 py-2.5 rounded-xl bg-primary text-primary-foreground font-medium text-sm disabled:opacity-50">
-                  {processingPayment ? 'Processing...' : 'Complete & Pay'}
+                  {processingPayment ? t('wo_processing') : t('wo_complete_pay')}
                 </button>
               </div>
             </div>

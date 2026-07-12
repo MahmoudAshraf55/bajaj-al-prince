@@ -108,11 +108,11 @@ export default function JournalEntriesPage() {
     e.preventDefault();
     setFormError('');
     if (!form.amount || parseFloat(form.amount) <= 0) {
-      setFormError('Amount must be positive');
+      setFormError(t('je_amount_positive'));
       return;
     }
     if (!form.description.trim()) {
-      setFormError('Description is required');
+      setFormError(t('je_description_required'));
       return;
     }
     setSubmitting(true);
@@ -208,7 +208,7 @@ export default function JournalEntriesPage() {
                 typeFilter === ft ? 'bg-primary text-primary-foreground' : 'bg-white/5 text-muted-foreground hover:text-foreground'
               }`}
             >
-              {ft || (t('admin_all') || 'All')}
+              {ft || t('admin_all')}
             </button>
           ))}
         </div>
@@ -334,9 +334,17 @@ export default function JournalEntriesPage() {
                     onChange={(e) => setForm((f) => ({ ...f, type: e.target.value }))}
                     className="w-full px-4 py-2.5 rounded-xl bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm"
                   >
-                    {['SALE', 'RETURN', 'PURCHASE', 'INCOME', 'EXPENSE', 'STOCK_ADJUSTMENT'].map((type) => (
-                      <option key={type} value={type}>{type}</option>
-                    ))}
+                    {(['SALE', 'RETURN', 'PURCHASE', 'INCOME', 'EXPENSE', 'STOCK_ADJUSTMENT'] as const).map((type) => {
+                      const typeLabelMap: Record<string, string> = {
+                        SALE: t('je_type_sale'),
+                        RETURN: t('je_type_return'),
+                        PURCHASE: t('je_type_purchase'),
+                        INCOME: t('je_type_income'),
+                        EXPENSE: t('je_type_expense'),
+                        STOCK_ADJUSTMENT: t('je_type_stock_adjustment'),
+                      };
+                      return <option key={type} value={type}>{typeLabelMap[type] || type}</option>;
+                    })}
                   </select>
                 </div>
                 <div>
@@ -363,15 +371,15 @@ export default function JournalEntriesPage() {
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Payment Method</label>
+                  <label className="text-xs font-medium text-muted-foreground mb-1.5 block">{t('je_payment_method')}</label>
                   <select
                     value={form.paymentMethod}
                     onChange={(e) => setForm((f) => ({ ...f, paymentMethod: e.target.value }))}
                     className="w-full px-4 py-2.5 rounded-xl bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm"
                   >
-                    <option value="cash">Cash</option>
-                    <option value="card">Card</option>
-                    <option value="transfer">Transfer</option>
+                    <option value="cash">{t('je_payment_cash')}</option>
+                    <option value="card">{t('je_payment_card')}</option>
+                    <option value="transfer">{t('je_payment_transfer')}</option>
                   </select>
                 </div>
                 {formError && (

@@ -87,18 +87,18 @@ export default function WHImportTab({
             <table className="w-full text-xs">
               <thead>
                 <tr className="bg-white/5">
-                  <th className="text-left p-2 font-medium whitespace-nowrap">{t('wh_import_sku')}</th>
-                  <th className="text-left p-2 font-medium whitespace-nowrap">{t('wh_import_barcode')}</th>
-                  <th className="text-left p-2 font-medium whitespace-nowrap">{t('wh_import_en_name')}</th>
-                  <th className="text-left p-2 font-medium whitespace-nowrap">{t('wh_import_ar_name')}</th>
-                  <th className="text-left p-2 font-medium whitespace-nowrap">{t('wh_vehicle_model')}</th>
-                  <th className="text-left p-2 font-medium whitespace-nowrap">{t('admin_market_category')}</th>
-                  <th className="text-right p-2 font-medium whitespace-nowrap">{t('admin_market_price')}</th>
-                  <th className="text-right p-2 font-medium whitespace-nowrap">{t('wh_import_cost_price')}</th>
-                  <th className="text-right p-2 font-medium whitespace-nowrap">{t('wh_import_stock')}</th>
-                  <th className="text-left p-2 font-medium whitespace-nowrap">{t('wh_import_unit')}</th>
-                  <th className="text-left p-2 font-medium whitespace-nowrap">{t('wh_import_tax_rate')}</th>
-                  <th className="text-left p-2 font-medium whitespace-nowrap">{t('wh_import_description')}</th>
+                  <th scope="col" className="text-left p-2 font-medium whitespace-nowrap">{t('wh_import_sku')}</th>
+                  <th scope="col" className="text-left p-2 font-medium whitespace-nowrap">{t('wh_import_barcode')}</th>
+                  <th scope="col" className="text-left p-2 font-medium whitespace-nowrap">{t('wh_import_en_name')}</th>
+                  <th scope="col" className="text-left p-2 font-medium whitespace-nowrap">{t('wh_import_ar_name')}</th>
+                  <th scope="col" className="text-left p-2 font-medium whitespace-nowrap">{t('wh_vehicle_model')}</th>
+                  <th scope="col" className="text-left p-2 font-medium whitespace-nowrap">{t('admin_market_category')}</th>
+                  <th scope="col" className="text-right p-2 font-medium whitespace-nowrap">{t('admin_market_price')}</th>
+                  <th scope="col" className="text-right p-2 font-medium whitespace-nowrap">{t('wh_import_cost_price')}</th>
+                  <th scope="col" className="text-right p-2 font-medium whitespace-nowrap">{t('wh_import_stock')}</th>
+                  <th scope="col" className="text-left p-2 font-medium whitespace-nowrap">{t('wh_import_unit')}</th>
+                  <th scope="col" className="text-left p-2 font-medium whitespace-nowrap">{t('wh_import_tax_rate')}</th>
+                  <th scope="col" className="text-left p-2 font-medium whitespace-nowrap">{t('wh_import_description')}</th>
                 </tr>
               </thead>
               <tbody>

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useTranslation } from '@/components/useTranslation';
 import { useToast } from '@/components/ToastContext';
 import BackButton from '@/components/BackButton';
 import { fetchWithRetry } from '@/lib/fetchWithRetry';
@@ -21,6 +22,7 @@ interface Manufacturer {
 export default function ManufacturersPage() {
   const { addToast } = useToast();
   const router = useRouter();
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [manufacturers, setManufacturers] = useState<Manufacturer[]>([]);
@@ -38,11 +40,11 @@ export default function ManufacturersPage() {
       if (data?.success && Array.isArray(data?.data?.manufacturers)) {
         setManufacturers(data.data.manufacturers);
       } else {
-        setError(data?.error || 'Failed to load manufacturers');
+        setError(data?.error || t('mfr_failed_load'));
       }
     } catch (err) {
       if (err instanceof Error && err.name === 'AbortError') return;
-      setError(err instanceof Error ? err.message : 'Failed to load');
+      setError(err instanceof Error ? err.message : t('mfr_failed_load'));
     }
   }, []);
 
@@ -79,7 +81,7 @@ export default function ManufacturersPage() {
     e.preventDefault();
     setFormError('');
     if (!form.name.trim()) {
-      setFormError('Manufacturer name is required');
+      setFormError(t('mfr_name_required'));
       return;
     }
     setSubmitting(true);
@@ -94,31 +96,31 @@ export default function ManufacturersPage() {
       });
       const data = await res.json();
       if (data.success) {
-        addToast('success', editing ? 'Manufacturer updated' : 'Manufacturer added');
+        addToast('success', editing ? t('mfr_updated') : t('mfr_added'));
         setShowModal(false);
         fetchData();
       } else {
-        setFormError(data.error || data.errors?.[0]?.message || 'Failed to save');
+        setFormError(data.error || data.errors?.[0]?.message || t('mfr_failed_save'));
       }
     } catch {
-      setFormError('Network error');
+      setFormError(t('mfr_network_error'));
     } finally {
       setSubmitting(false);
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Remove this manufacturer?')) return;
+    if (!window.confirm(t('mfr_confirm_remove'))) return;
     try {
       const res = await fetch(`/api/v1/manufacturers/${id}/`, { method: 'DELETE', credentials: 'include' });
       if (res.ok) {
-        addToast('success', 'Manufacturer removed');
+        addToast('success', t('mfr_removed'));
         fetchData();
       } else {
-        addToast('error', 'Failed to remove');
+        addToast('error', t('mfr_failed_remove'));
       }
     } catch {
-      addToast('error', 'Network error');
+      addToast('error', t('mfr_network_error'));
     }
   };
 
@@ -135,11 +137,11 @@ export default function ManufacturersPage() {
       <div className="min-h-screen flex items-center justify-center p-6">
         <div className="glass rounded-2xl p-8 text-center max-w-md">
           <AlertCircle className="w-10 h-10 text-red-400 mx-auto mb-3" />
-          <p className="text-red-400 font-medium mb-2">Error</p>
+          <p className="text-red-400 font-medium mb-2">{t('mfr_error')}</p>
           <p className="text-muted-foreground text-sm">{error}</p>
           <button onClick={() => { setError(''); fetchData(); }}
             className="mt-4 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors">
-            Retry
+            {t('mfr_retry')}
           </button>
         </div>
       </div>
@@ -152,16 +154,16 @@ export default function ManufacturersPage() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <BackButton fallback="/admin/dashboard/" />
-            <h2 className="text-2xl font-bold flex items-center gap-2">
-              <Building2 className="w-6 h-6 text-primary" />
-              Manufacturers
-            </h2>
-          </div>
-          <button onClick={openAdd}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors">
-            <Plus className="w-4 h-4" />
-            Add Manufacturer
-          </button>
+              <h2 className="text-2xl font-bold flex items-center gap-2">
+                <Building2 className="w-6 h-6 text-primary" />
+                {t('mfr_title')}
+              </h2>
+            </div>
+            <button onClick={openAdd}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors">
+              <Plus className="w-4 h-4" />
+              {t('mfr_add')}
+            </button>
         </div>
 
         <div className="glass rounded-2xl overflow-hidden">
@@ -169,10 +171,10 @@ export default function ManufacturersPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border text-muted-foreground">
-                  <th scope="col" className="text-left px-5 py-3 font-medium">Name</th>
-                  <th scope="col" className="text-left px-5 py-3 font-medium">Arabic Name</th>
-                  <th scope="col" className="text-left px-5 py-3 font-medium">Status</th>
-                  <th scope="col" className="text-right px-5 py-3 font-medium">Actions</th>
+                  <th scope="col" className="text-left px-5 py-3 font-medium">{t('mfr_name')}</th>
+                  <th scope="col" className="text-left px-5 py-3 font-medium">{t('mfr_name_ar')}</th>
+                  <th scope="col" className="text-left px-5 py-3 font-medium">{t('mfr_status')}</th>
+                  <th scope="col" className="text-right px-5 py-3 font-medium">{t('mfr_actions')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -184,18 +186,18 @@ export default function ManufacturersPage() {
                       <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
                         m.isActive ? 'bg-green-500/10 text-green-400' : 'bg-yellow-500/10 text-yellow-400'
                       }`}>
-                        {m.isActive ? 'Active' : 'Inactive'}
+                        {m.isActive ? t('mfr_active') : t('mfr_inactive')}
                       </span>
                     </td>
                     <td className="px-5 py-4 text-right flex items-center justify-end gap-1">
                       <button onClick={() => openEdit(m)}
                         className="p-1.5 rounded-lg hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors"
-                        title="Edit">
+                        title={t('mfr_edit')}>
                         <Pencil className="w-4 h-4" />
                       </button>
                       <button onClick={() => handleDelete(m.id)}
                         className="p-1.5 rounded-lg hover:bg-red-500/10 text-muted-foreground hover:text-red-400 transition-colors"
-                        title="Delete">
+                        title={t('mfr_delete')}>
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </td>
@@ -204,7 +206,7 @@ export default function ManufacturersPage() {
                 {manufacturers.length === 0 && (
                   <tr>
                     <td colSpan={4} className="px-5 py-8 text-center text-muted-foreground">
-                      No manufacturers found
+                      {t('mfr_no_data')}
                     </td>
                   </tr>
                 )}
@@ -233,20 +235,20 @@ export default function ManufacturersPage() {
               className="glass rounded-2xl p-6 w-full max-w-md border border-border"
             >
               <div className="flex items-center justify-between mb-5">
-                <h3 className="text-lg font-bold">{editing ? 'Edit Manufacturer' : 'Add Manufacturer'}</h3>
+                <h3 className="text-lg font-bold">{editing ? t('mfr_edit_modal') : t('mfr_add_modal')}</h3>
                 <button onClick={() => setShowModal(false)} className="p-1 rounded-lg hover:bg-white/5 text-muted-foreground">
                   <X className="w-4 h-4" />
                 </button>
               </div>
               <form onSubmit={handleSave} className="space-y-4">
                 <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Name (English)</label>
+                  <label className="text-xs font-medium text-muted-foreground mb-1.5 block">{t('mfr_name_en')}</label>
                   <input required value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
                     className="w-full px-4 py-2.5 rounded-xl bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm"
                     placeholder="Bajaj" />
                 </div>
                 <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Name (Arabic)</label>
+                  <label className="text-xs font-medium text-muted-foreground mb-1.5 block">{t('mfr_name_ar_label')}</label>
                   <input value={form.nameAr} onChange={(e) => setForm((f) => ({ ...f, nameAr: e.target.value }))}
                     className="w-full px-4 py-2.5 rounded-xl bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm"
                     placeholder="باجاج" />
@@ -263,7 +265,7 @@ export default function ManufacturersPage() {
                   {submitting ? (
                     <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin mx-auto" />
                   ) : (
-                    editing ? 'Save Changes' : 'Create Manufacturer'
+                    editing ? t('mfr_save_changes') : t('mfr_create')
                   )}
                 </button>
               </form>

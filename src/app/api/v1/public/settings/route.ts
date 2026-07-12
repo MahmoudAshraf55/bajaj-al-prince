@@ -6,6 +6,7 @@ import { withSecurityHeaders } from '@/lib/security';
 const PUBLIC_KEYS = [
   'brand_name',
   'brand_tagline',
+  'brand_logo',
   'location_address',
   'location_map_url',
   'contact_phone1',

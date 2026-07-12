@@ -29,6 +29,7 @@ const createInvoiceSchema = z.object({
   notes: sanitizedString(z.string().max(1000)).optional().nullable(),
   customerId: z.string().uuid().optional().nullable(),
   customerName: sanitizedString(z.string().max(200)).optional().nullable(),
+  workOrderId: z.string().uuid().optional().nullable(),
 });
 
 async function generateInvoiceNumber(): Promise<string> {
@@ -230,6 +231,7 @@ export async function POST(req: NextRequest) {
             notes: data.notes,
             customerId: data.customerId,
             customerName: data.customerName,
+            workOrderId: data.workOrderId || undefined,
             createdById: payload.userId,
             status: 'confirmed',
             tenantId: getTenantId() ?? DEFAULT_TENANT_ID,

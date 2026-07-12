@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { cookies } from 'next/headers';
 import "./globals.css";
 import { LanguageProvider } from "@/components/LanguageContext";
 import { SettingsProvider } from "@/components/SettingsContext";
@@ -26,6 +27,11 @@ export const metadata: Metadata = {
   alternates: {
     canonical: '/',
   },
+  icons: {
+    icon: '/favicon.ico',
+    apple: '/apple-touch-icon.png',
+  },
+  manifest: '/site.webmanifest',
   openGraph: {
     title: "El Prince Bajaj | Trusted Bajaj Motorcycle Service Center",
     description: "Your trusted destination for Bajaj motorcycle sales, maintenance, genuine parts, and diagnostics.",
@@ -33,11 +39,21 @@ export const metadata: Metadata = {
     siteName: "El Prince Bajaj",
     type: "website",
     locale: 'ar_EG',
+    images: [
+      {
+        url: '/Logo.png',
+        width: 256,
+        height: 256,
+        alt: 'El Prince Bajaj Logo',
+        type: 'image/png',
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
     title: "El Prince Bajaj | Trusted Bajaj Motorcycle Service Center",
     description: "Your trusted destination for Bajaj motorcycle sales, maintenance, genuine parts, and diagnostics.",
+    images: ['/Logo.png'],
   },
   robots: {
     index: true,
@@ -66,15 +82,19 @@ const jsonLd = {
   priceRange: '$$',
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const cookieStore = await cookies();
+  const lang = (cookieStore.get('el-prince-lang')?.value === 'ar' ? 'ar' : 'en') as 'en' | 'ar';
+  const dir = lang === 'ar' ? 'rtl' : 'ltr';
+
   return (
     <html
-      lang="en"
-      dir="ltr"
+      lang={lang}
+      dir={dir}
       suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased dark`}
     >

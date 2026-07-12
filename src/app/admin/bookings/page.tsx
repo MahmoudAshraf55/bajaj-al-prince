@@ -77,11 +77,11 @@ export default function BookingsPage() {
         setBookings(json.data.bookings || []);
       }
     } catch {
-      addToast('error', 'Failed to load bookings');
+      addToast('error', t('bookings_failed_load'));
     } finally {
       setLoading(false);
     }
-  }, [addToast]);
+  }, [addToast, t]);
 
   useEffect(() => {
     let cancelled = false;
@@ -108,12 +108,12 @@ export default function BookingsPage() {
       const json = await res.json();
       if (json.success) {
         setBookings((prev) => prev.map((b) => (b.id === id ? { ...b, status } : b)));
-        addToast('success', `Status changed to ${status}`);
+        addToast('success', t('bookings_status_changed').replace('{{status}}', statusLabels[status] || status));
       } else {
-        addToast('error', json.error || 'Failed to update');
+        addToast('error', json.error || t('bookings_failed_update'));
       }
     } catch {
-      addToast('error', 'Network error');
+      addToast('error', t('bookings_network_error'));
     } finally {
       setUpdating(null);
     }
@@ -159,19 +159,19 @@ export default function BookingsPage() {
       {/* Stats Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
         <div className="glass rounded-2xl p-4">
-          <p className="text-xs text-muted-foreground mb-1">Total</p>
+          <p className="text-xs text-muted-foreground mb-1">{t('bookings_total')}</p>
           <p className="text-2xl font-bold">{stats.total}</p>
         </div>
         <div className="glass rounded-2xl p-4 border border-amber-500/20">
-          <p className="text-xs text-muted-foreground mb-1">Pending</p>
+          <p className="text-xs text-muted-foreground mb-1">{t('crm_status_pending')}</p>
           <p className="text-2xl font-bold text-amber-400">{stats.pending}</p>
         </div>
         <div className="glass rounded-2xl p-4 border border-green-500/20">
-          <p className="text-xs text-muted-foreground mb-1">Accepted</p>
+          <p className="text-xs text-muted-foreground mb-1">{t('crm_status_accepted')}</p>
           <p className="text-2xl font-bold text-green-400">{stats.accepted}</p>
         </div>
         <div className="glass rounded-2xl p-4 border border-red-500/20">
-          <p className="text-xs text-muted-foreground mb-1">Rejected</p>
+          <p className="text-xs text-muted-foreground mb-1">{t('crm_status_rejected')}</p>
           <p className="text-2xl font-bold text-red-400">{stats.rejected}</p>
         </div>
       </div>
@@ -195,11 +195,11 @@ export default function BookingsPage() {
             onChange={(e) => setStatusFilter(e.target.value)}
             className="px-4 py-2.5 rounded-xl bg-input border border-border text-sm focus:outline-none focus:ring-2 focus:ring-ring"
           >
-            <option value="all">All Status</option>
-            <option value="pending">Pending</option>
-            <option value="accepted">Accepted</option>
-            <option value="rejected">Rejected</option>
-            <option value="completed">Completed</option>
+            <option value="all">{t('bookings_all_status')}</option>
+            <option value="pending">{t('crm_status_pending')}</option>
+            <option value="accepted">{t('crm_status_accepted')}</option>
+            <option value="rejected">{t('crm_status_rejected')}</option>
+            <option value="completed">{t('crm_status_completed')}</option>
           </select>
         </div>
       </div>
@@ -246,7 +246,7 @@ export default function BookingsPage() {
                       href={`/admin/work-orders/${booking.workOrder.id}`}
                       className="text-xs text-primary hover:underline"
                     >
-                      View Work Order
+                      {t('bookings_view_work_order')}
                     </a>
                   )}
                 </div>
@@ -255,7 +255,7 @@ export default function BookingsPage() {
               <div className="bg-white/5 rounded-lg p-3 mb-3">
                 <div className="flex items-center gap-1 text-xs text-muted-foreground mb-1">
                   <AlertCircle className="w-3 h-3" />
-                  <span>Issue</span>
+                  <span>{t('bookings_issue')}</span>
                 </div>
                 <p className="text-sm">{booking.issue}</p>
               </div>

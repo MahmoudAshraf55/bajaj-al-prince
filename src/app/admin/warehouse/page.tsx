@@ -110,10 +110,10 @@ export default function AdminWarehouse() {
         await loadProducts();
         if (tab === 'movements') await loadMovements();
       } else {
-        addToast('error', d.error || 'Failed');
+        addToast('error', d.error || t('wh_failed'));
       }
     } catch {
-      addToast('error', 'Failed to adjust stock');
+      addToast('error', t('wh_failed_adjust'));
     } finally {
       setAdjusting(false);
     }
@@ -252,10 +252,10 @@ export default function AdminWarehouse() {
         setEditProduct(null);
         await loadProducts();
       } else {
-        addToast('error', d.error || 'Failed');
+        addToast('error', d.error || t('wh_failed'));
       }
     } catch {
-      addToast('error', 'Failed to update product');
+      addToast('error', t('wh_failed_update'));
     } finally {
       setEditSaving(false);
     }
@@ -357,14 +357,14 @@ export default function AdminWarehouse() {
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${importSubTab === 'excel' ? 'bg-primary/20 text-primary' : 'bg-white/5 text-muted-foreground hover:bg-white/10'}`}
             >
               <Upload className="w-3.5 h-3.5" />
-              Excel
+              {t('wh_import_tab_excel')}
             </button>
             <button
               onClick={() => setImportSubTab('pdf')}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${importSubTab === 'pdf' ? 'bg-primary/20 text-primary' : 'bg-white/5 text-muted-foreground hover:bg-white/10'}`}
             >
               <FileText className="w-3.5 h-3.5" />
-              PDF
+              {t('wh_import_tab_pdf')}
             </button>
           </div>
           {importSubTab === 'excel' ? (

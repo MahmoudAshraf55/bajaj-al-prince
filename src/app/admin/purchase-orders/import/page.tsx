@@ -91,7 +91,7 @@ export default function PurchaseOrderImportPage() {
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.type !== 'application/pdf') {
-      addToast('error', 'Please select a PDF file');
+      addToast('error', t('po_select_pdf'));
       return;
     }
     setPdfFile(file);
@@ -267,7 +267,7 @@ export default function PurchaseOrderImportPage() {
           <div className="glass rounded-2xl p-6 border border-border">
             <h3 className="font-bold mb-4 flex items-center gap-2">
               <FileText className="w-4 h-4" />
-              Create Purchase Order
+              {t('po_create_order')}
             </h3>
 
             <form onSubmit={handleSubmit} className="space-y-4">

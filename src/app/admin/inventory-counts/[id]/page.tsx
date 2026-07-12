@@ -81,11 +81,11 @@ export default function InventoryCountDetailPage() {
         });
         setEdits(initial);
       } else {
-        setError(json.error || 'Failed to load count');
-        addToast('error', json.error || 'Failed to load count');
+        setError(json.error || t('ic_failed_load_count'));
+        addToast('error', json.error || t('ic_failed_load_count'));
       }
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Network error';
+      const msg = err instanceof Error ? err.message : t('ic_network_error');
       setError(msg);
       addToast('error', msg);
     } finally {
@@ -110,13 +110,13 @@ export default function InventoryCountDetailPage() {
       });
       const json = await res.json();
       if (json.success) {
-        addToast('success', json.message || 'Count saved');
+        addToast('success', json.message || t('ic_count_saved'));
         await fetchCount();
       } else {
-        addToast('error', json.error || 'Failed to save');
+        addToast('error', json.error || t('ic_failed_save'));
       }
     } catch {
-      addToast('error', 'Network error');
+      addToast('error', t('ic_network_error'));
     } finally {
       setSaving(false);
     }
@@ -133,14 +133,14 @@ export default function InventoryCountDetailPage() {
       });
       const json = await res.json();
       if (json.success) {
-        addToast('success', json.message || 'Count completed');
+        addToast('success', json.message || t('ic_count_completed'));
         await fetchCount();
         setShowConfirm(false);
       } else {
-        addToast('error', json.error || 'Failed to complete');
+        addToast('error', json.error || t('ic_failed_complete'));
       }
     } catch {
-      addToast('error', 'Network error');
+      addToast('error', t('ic_network_error'));
     } finally {
       setCompleting(false);
     }
@@ -177,7 +177,7 @@ export default function InventoryCountDetailPage() {
             onClick={() => { setLoading(true); setError(''); fetchCount(); }}
             className="mt-4 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-medium"
           >
-            Retry
+            {t('ic_retry')}
           </button>
           <div className="mt-2">
             <BackButton fallback="/admin/inventory-counts/" />
@@ -234,12 +234,12 @@ export default function InventoryCountDetailPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border text-muted-foreground">
-                  <th scope="col" className="text-left px-5 py-3 font-medium">Barcode</th>
+                  <th scope="col" className="text-left px-5 py-3 font-medium">{t('ic_barcode')}</th>
                   <th scope="col" className="text-left px-5 py-3 font-medium">{t('ic_title')}</th>
                   <th scope="col" className="text-right px-5 py-3 font-medium">{t('ic_expected')}</th>
                   <th scope="col" className="text-right px-5 py-3 font-medium">{t('ic_actual')}</th>
                   <th scope="col" className="text-right px-5 py-3 font-medium">{t('ic_variance')}</th>
-                  <th scope="col" className="text-left px-5 py-3 font-medium">Unit</th>
+                  <th scope="col" className="text-left px-5 py-3 font-medium">{t('ic_unit')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -275,7 +275,7 @@ export default function InventoryCountDetailPage() {
                 {count.items.length === 0 && (
                   <tr>
                     <td colSpan={6} className="px-5 py-8 text-center text-muted-foreground">
-                      No items in this count
+                      {t('ic_no_items')}
                     </td>
                   </tr>
                 )}
@@ -310,7 +310,7 @@ export default function InventoryCountDetailPage() {
         {count.status === 'completed' && count.completedBy && (
           <div className="glass rounded-2xl p-4 text-sm text-muted-foreground flex items-center gap-2">
             <CheckCircle2 className="w-4 h-4 text-green-400" />
-            Completed by {count.completedBy.username} on {count.completedAt ? formatDate(count.completedAt) : ''}
+            {t('ic_completed_by').replace('{name}', count.completedBy.username).replace('{date}', count.completedAt ? formatDate(count.completedAt) : '')}
           </div>
         )}
       </motion.div>
@@ -341,7 +341,7 @@ export default function InventoryCountDetailPage() {
                 onClick={() => setShowConfirm(false)}
                 className="flex-1 py-2.5 rounded-xl bg-muted text-muted-foreground font-medium text-sm"
               >
-                Cancel
+                {t('ic_cancel')}
               </button>
               <button
                 onClick={handleComplete}

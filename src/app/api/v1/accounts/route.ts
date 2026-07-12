@@ -24,18 +24,24 @@ export async function GET(req: NextRequest) {
       const type = searchParams.get('type');
       const search = searchParams.get('search');
 
-      const where: Prisma.AccountWhereInput = {};
-      if (type) where.type = type as Prisma.EnumAccountTypeFilter;
+      const where: Prisma.AccountWhereInput = { isDeleted: false };
+      if (type) where.type = type.toLowerCase() as Prisma.EnumAccountTypeFilter;
       if (search) {
         where.OR = [
           { name: { contains: search, mode: 'insensitive' } },
+          { nameAr: { contains: search, mode: 'insensitive' } },
           { code: { contains: search, mode: 'insensitive' } },
         ];
       }
 
       const accounts = await prisma.account.findMany({
         where,
-        include: { children: { select: { id: true, name: true, nameAr: true, code: true } } },
+        include: {
+          children: {
+            where: { isDeleted: false },
+            select: { id: true, name: true, nameAr: true, code: true, type: true, isActive: true },
+          },
+        },
         orderBy: { code: 'asc' },
       });
 

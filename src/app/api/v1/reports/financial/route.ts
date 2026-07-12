@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { withRole } from '@/lib/auth';
 import { withSecurityHeaders } from '@/lib/security';
+import { getTenantId, DEFAULT_TENANT_ID } from '@/lib/tenant-context';
+import { AccountingService } from '@/services/AccountingService';
+import { ACCOUNT_CODES } from '@/constants/accounting';
 
 export async function GET(req: NextRequest) {
   try {
@@ -32,48 +35,31 @@ export async function GET(req: NextRequest) {
 }
 
 async function generatePnL(from: Date, to: Date) {
-  const [sales, returns, purchaseInvoices, transactions, saleItems, workOrders] = await Promise.all([
-    prisma.invoice.findMany({
-      where: { type: 'sale', status: 'confirmed', isDeleted: false, createdAt: { gte: from, lte: to } },
-      select: { total: true, discount: true, taxTotal: true },
-    }),
-    prisma.invoice.findMany({
-      where: { type: 'return', status: 'confirmed', isDeleted: false, createdAt: { gte: from, lte: to } },
-      select: { total: true },
-    }),
-    prisma.invoice.findMany({
-      where: { type: 'purchase', status: 'confirmed', isDeleted: false, createdAt: { gte: from, lte: to } },
-      select: { total: true },
-    }),
-    prisma.transaction.findMany({
-      where: { isDeleted: false, createdAt: { gte: from, lte: to } },
-      select: { type: true, amount: true },
-    }),
-    prisma.invoiceItem.findMany({
-      where: { invoice: { type: 'sale', status: 'confirmed', isDeleted: false, createdAt: { gte: from, lte: to } }, isDeleted: false },
-      select: { costPrice: true, quantity: true, total: true },
-    }),
-    prisma.workOrder.findMany({
-      where: { isDeleted: false, cost: { not: null }, createdAt: { gte: from, lte: to } },
-      select: { cost: true },
-    }),
-  ]);
+  const result = await prisma.$transaction(async (tx) => {
+    const incomeStatement = await AccountingService.getIncomeStatement(tx, from, to);
 
-  const revenue = sales.reduce((s, i) => s + Number(i.total), 0);
-  const returnsTotal = returns.reduce((s, i) => s + Number(i.total), 0);
-  const netSales = revenue - returnsTotal;
-  const cogs = saleItems.reduce((s, i) => s + Number(i.costPrice) * i.quantity, 0);
+    const purchaseEntries = await tx.journalEntry.findMany({
+      where: { type: 'PURCHASE', isDeleted: false, date: { gte: from, lte: to } },
+      select: { amount: true },
+    });
+    const incomeEntries = await tx.journalEntry.findMany({
+      where: { type: 'INCOME', isDeleted: false, date: { gte: from, lte: to } },
+      select: { amount: true },
+    });
+
+    return { incomeStatement, purchaseEntries, incomeEntries };
+  });
+
+  const revenue = result.incomeStatement.totalRevenue;
+  const netSales = revenue;
+  const cogs = result.incomeStatement.expenses.find((e) => e.code === '5100')?.balance || 0;
   const grossProfit = netSales - cogs;
   const grossMargin = netSales > 0 ? (grossProfit / netSales) * 100 : 0;
 
-  const discounts = sales.reduce((s, i) => s + Number(i.discount), 0);
-  const taxes = sales.reduce((s, i) => s + Number(i.taxTotal), 0);
-  const purchaseTotal = purchaseInvoices.reduce((s, i) => s + Number(i.total), 0);
-  const manualIncome = transactions.filter((t) => t.type === 'income').reduce((s, t) => s + Number(t.amount), 0);
-  const manualExpenses = transactions.filter((t) => t.type === 'expense').reduce((s, t) => s + Number(t.amount), 0);
-  const woCosts = workOrders.reduce((s, w) => s + Number(w.cost), 0);
-  const totalExpenses = manualExpenses + woCosts;
-  const netProfit = grossProfit + manualIncome - totalExpenses;
+  const purchaseTotal = result.purchaseEntries.reduce((s, e) => s + Number(e.amount), 0);
+  const manualIncome = result.incomeEntries.reduce((s, e) => s + Number(e.amount), 0);
+  const totalExpenses = result.incomeStatement.totalExpenses;
+  const netProfit = result.incomeStatement.netProfit;
   const netMargin = netSales > 0 ? (netProfit / netSales) * 100 : 0;
 
   return withSecurityHeaders(NextResponse.json({
@@ -81,17 +67,17 @@ async function generatePnL(from: Date, to: Date) {
     data: {
       period: { from: from.toISOString(), to: to.toISOString() },
       revenue: Math.round(revenue * 100) / 100,
-      returns: Math.round(returnsTotal * 100) / 100,
+      returns: 0,
       netSales: Math.round(netSales * 100) / 100,
       cogs: Math.round(cogs * 100) / 100,
       grossProfit: Math.round(grossProfit * 100) / 100,
       grossMargin: Math.round(grossMargin * 100) / 100,
-      discounts: Math.round(discounts * 100) / 100,
-      taxes: Math.round(taxes * 100) / 100,
+      discounts: 0,
+      taxes: 0,
       purchases: Math.round(purchaseTotal * 100) / 100,
       otherIncome: Math.round(manualIncome * 100) / 100,
       operatingExpenses: Math.round(totalExpenses * 100) / 100,
-      workOrderCosts: Math.round(woCosts * 100) / 100,
+      workOrderCosts: 0,
       netProfit: Math.round(netProfit * 100) / 100,
       netMargin: Math.round(netMargin * 100) / 100,
     },
@@ -99,39 +85,49 @@ async function generatePnL(from: Date, to: Date) {
 }
 
 async function generateBalanceSheet(from: Date, to: Date) {
-  const [products, saleInvoices, purchaseInvoices, manualTxns] = await Promise.all([
-    prisma.product.findMany({
-      where: { isDeleted: false, available: true },
+  const tenantId = getTenantId() ?? DEFAULT_TENANT_ID;
+
+  const result = await prisma.$transaction(async (tx) => {
+    const balanceSheet = await AccountingService.getBalanceSheet(tx, to);
+
+    const products = await tx.product.findMany({
+      where: { isDeleted: false, available: true, tenantId },
       select: { costPrice: true, stock: true },
-    }),
-    prisma.invoice.findMany({
-      where: { type: 'sale', status: 'confirmed', isDeleted: false, createdAt: { lte: to } },
+    });
+    const saleInvoices = await tx.invoice.findMany({
+      where: { type: 'sale', status: 'confirmed', isDeleted: false, tenantId },
       select: { total: true, paid: true },
-    }),
-    prisma.invoice.findMany({
-      where: { type: 'purchase', status: 'confirmed', isDeleted: false, createdAt: { lte: to } },
+    });
+    const purchaseInvoices = await tx.invoice.findMany({
+      where: { type: 'purchase', status: 'confirmed', isDeleted: false, tenantId },
       select: { total: true, paid: true },
-    }),
-    prisma.transaction.findMany({
-      where: { isDeleted: false, createdAt: { lte: to } },
-      select: { type: true, amount: true },
-    }),
-  ]);
+    });
+    const cashJeLines = await tx.journalEntryLine.findMany({
+      where: {
+        journalEntry: { type: { in: ['SALE', 'INCOME', 'EXPENSE'] }, isDeleted: false, date: { lte: to }, tenantId },
+        account: { code: ACCOUNT_CODES.CASH },
+        isDeleted: false,
+      },
+      select: { debit: true, credit: true },
+    });
 
-  const inventoryValue = products.reduce((s, p) => s + Number(p.costPrice || 0) * p.stock, 0);
-  const totalSales = saleInvoices.reduce((s, i) => s + Number(i.total), 0);
-  const totalPaid = saleInvoices.reduce((s, i) => s + Number(i.paid), 0);
+    return { balanceSheet, products, saleInvoices, purchaseInvoices, cashJeLines };
+  });
+
+  const inventoryValue = result.products.reduce((s, p) => s + Number(p.costPrice || 0) * p.stock, 0);
+  const totalSales = result.saleInvoices.reduce((s, i) => s + Number(i.total), 0);
+  const totalPaid = result.saleInvoices.reduce((s, i) => s + Number(i.paid), 0);
   const accountsReceivable = Math.max(0, totalSales - totalPaid);
-  const totalPurchases = purchaseInvoices.reduce((s, i) => s + Number(i.total), 0);
-  const totalPurchasePaid = purchaseInvoices.reduce((s, i) => s + Number(i.paid), 0);
+  const totalPurchases = result.purchaseInvoices.reduce((s, i) => s + Number(i.total), 0);
+  const totalPurchasePaid = result.purchaseInvoices.reduce((s, i) => s + Number(i.paid), 0);
   const accountsPayable = Math.max(0, totalPurchases - totalPurchasePaid);
-  const cashIncome = manualTxns.filter((t) => t.type === 'income').reduce((s, t) => s + Number(t.amount), 0);
-  const cashExpenses = manualTxns.filter((t) => t.type === 'expense').reduce((s, t) => s + Number(t.amount), 0);
-  const cash = totalPaid + cashIncome - cashExpenses;
+  const cashBalance = result.cashJeLines.reduce((s, l) => s + Number(l.debit) - Number(l.credit), 0);
 
-  const totalAssets = inventoryValue + accountsReceivable + cash;
+  const cash = result.balanceSheet.assets.find((a) => a.code === '1101')?.balance || cashBalance;
+  const totalAssets = (result.balanceSheet.assets.find((a) => a.code === '1101')?.balance || 0) +
+    accountsReceivable + inventoryValue;
   const totalLiabilities = accountsPayable;
-  const equity = totalAssets - totalLiabilities;
+  const equity = result.balanceSheet.equity.reduce((s, e) => s + e.balance, 0);
 
   return withSecurityHeaders(NextResponse.json({
     success: true,
@@ -154,34 +150,40 @@ async function generateBalanceSheet(from: Date, to: Date) {
 }
 
 async function generateCashFlow(from: Date, to: Date) {
-  const [invoices, manualTxns, purchases] = await Promise.all([
-    prisma.invoice.findMany({
-      where: { type: 'sale', status: 'confirmed', isDeleted: false, createdAt: { gte: from, lte: to } },
-      select: { paid: true, paymentMethod: true, createdAt: true },
+  const tenantId = getTenantId() ?? DEFAULT_TENANT_ID;
+
+  const [saleEntries, expenseEntries, incomeEntries, purchaseEntries] = await Promise.all([
+    prisma.journalEntry.findMany({
+      where: { type: 'SALE', isDeleted: false, date: { gte: from, lte: to }, tenantId },
+      select: { amount: true, paymentMethod: true },
     }),
-    prisma.transaction.findMany({
-      where: { isDeleted: false, createdAt: { gte: from, lte: to } },
-      select: { type: true, amount: true, description: true, createdAt: true },
+    prisma.journalEntry.findMany({
+      where: { type: 'EXPENSE', isDeleted: false, date: { gte: from, lte: to }, tenantId },
+      select: { amount: true },
     }),
-    prisma.invoice.findMany({
-      where: { type: 'purchase', status: 'confirmed', isDeleted: false, createdAt: { gte: from, lte: to } },
-      select: { paid: true },
+    prisma.journalEntry.findMany({
+      where: { type: 'INCOME', isDeleted: false, date: { gte: from, lte: to }, tenantId },
+      select: { amount: true },
+    }),
+    prisma.journalEntry.findMany({
+      where: { type: 'PURCHASE', isDeleted: false, date: { gte: from, lte: to }, tenantId },
+      select: { amount: true },
     }),
   ]);
 
-  const cashFromSales = invoices
-    .filter((i) => i.paymentMethod === 'cash' || !i.paymentMethod)
-    .reduce((s, i) => s + Number(i.paid), 0);
-  const cardFromSales = invoices
-    .filter((i) => i.paymentMethod === 'card')
-    .reduce((s, i) => s + Number(i.paid), 0);
-  const transferFromSales = invoices
-    .filter((i) => i.paymentMethod === 'transfer')
-    .reduce((s, i) => s + Number(i.paid), 0);
+  const cashFromSales = saleEntries
+    .filter((e) => e.paymentMethod === 'cash' || !e.paymentMethod)
+    .reduce((s, e) => s + Number(e.amount), 0);
+  const cardFromSales = saleEntries
+    .filter((e) => e.paymentMethod === 'card')
+    .reduce((s, e) => s + Number(e.amount), 0);
+  const transferFromSales = saleEntries
+    .filter((e) => e.paymentMethod === 'transfer')
+    .reduce((s, e) => s + Number(e.amount), 0);
 
-  const cashIncome = manualTxns.filter((t) => t.type === 'income').reduce((s, t) => s + Number(t.amount), 0);
-  const cashExpenses = manualTxns.filter((t) => t.type === 'expense').reduce((s, t) => s + Number(t.amount), 0);
-  const purchasePayments = purchases.reduce((s, p) => s + Number(p.paid), 0);
+  const cashIncome = incomeEntries.reduce((s, e) => s + Number(e.amount), 0);
+  const cashExpenses = expenseEntries.reduce((s, e) => s + Number(e.amount), 0);
+  const purchasePayments = purchaseEntries.reduce((s, e) => s + Number(e.amount), 0);
 
   const operatingCashFlow = cashFromSales + cardFromSales + transferFromSales + cashIncome - cashExpenses - purchasePayments;
 

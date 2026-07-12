@@ -72,30 +72,77 @@ function parseDateStr(row: Record<string, string | number>, ...keys: string[]): 
 }
 
 function parseRow(row: Record<string, string | number>, rowNum: number): PreviewRow {
-  const partsSku = colVal(row, 'Parts', 'SKU', 'sku', 'Part Number', 'part_number');
-  const barcodeVal = colVal(row, 'Barcode', 'باركود', 'barcode') || partsSku;
+  const partsSku = colVal(row,
+    'Parts', 'SKU', 'sku', 'Part Number', 'part_number',
+    'كود', 'الكود', 'رقم القطعة', 'رمز المنتج', 'كود المنتج',
+    'Code', 'code',
+  );
+  const barcodeVal = colVal(row,
+    'Barcode', 'باركود', 'barcode',
+    'الباركود', 'كود الباركود', 'باركود',
+    'Bar Code', 'bar_code',
+  ) || partsSku;
 
   const tax10 = parseNum(row, 'ضريبه 10%', 'tax 10%', 'tax10', 'tax_10');
   const tax12 = parseNum(row, 'ضريبه 12%', 'tax 12%', 'tax12', 'tax_12');
-  const taxRateGeneric = parseNum(row, 'Tax Rate', 'taxRate', 'tax_rate', 'VAT', 'ضريبة', 'الضريبة', 'ضريبه');
+  const taxRateGeneric = parseNum(row,
+    'Tax Rate', 'taxRate', 'tax_rate', 'VAT', 'VAT rate',
+    'ضريبة', 'الضريبة', 'ضريبه',
+    'نسبة الضريبة', 'الضريبة المضافة',
+  );
   const taxRate = tax10 ?? tax12 ?? taxRateGeneric ?? null;
 
   return {
     row: rowNum,
     sku: partsSku || null,
     barcode: barcodeVal || null,
-    name: colVal(row, 'en', 'English Name', 'name', 'Name') || `Product ${rowNum}`,
-    nameAr: colVal(row, 'ar', 'Arabic Name', 'nameAr', 'name_ar') || null,
-    vehicleModel: colVal(row, 'mod', 'Model', 'vehicleModel', 'vehicle_model') || null,
-    category: colVal(row, 'cat', 'Category', 'category') || 'Spare Parts',
-    price: parseNum(row, 'مستهلك بالضريبة', 'price', 'سعر', 'Price', 'Price (EGP)', 'Unit Price', 'السعر', 'unit_price', 'unitPrice'),
-    costPrice: parseNum(row, 'cost', 'Cost', 'Cost Price', 'Unit Cost', 'تكلفة', 'costPrice', 'سعر الشراء', 'سعر التكلفة', 'cost_price'),
-    stock: parseNum(row, 'stock', 'Stock', 'Stock Qty', 'مخزون', 'quantity', 'Qty', 'qty', 'الكمية'),
-    unit: colVal(row, 'unit', 'Unit', 'وحدة', 'UOM', 'الوحدة') || null,
-    description: colVal(row, 'desc', 'Description', 'description', 'وصف', 'Notes', 'ملاحظات', 'الوصف') || null,
+    name: colVal(row,
+      'en', 'English Name', 'name', 'Name',
+      'الاسم', 'اسم المنتج', 'اسم الصنف', 'product name',
+      'Product Name', 'product_name',
+    ) || `Product ${rowNum}`,
+    nameAr: colVal(row,
+      'ar', 'Arabic Name', 'nameAr', 'name_ar',
+      'الاسم العربي', 'اسم عربي',
+    ) || null,
+    vehicleModel: colVal(row,
+      'mod', 'Model', 'vehicleModel', 'vehicle_model',
+      'موديل', 'الموديل', 'طراز',
+    ) || null,
+    category: colVal(row,
+      'cat', 'Category', 'category',
+      'تصنيف', 'الفئة', 'القسم',
+    ) || 'Spare Parts',
+    price: parseNum(row,
+      'مستهلك بالضريبة', 'price', 'سعر', 'Price', 'Price (EGP)', 'Unit Price', 'السعر', 'unit_price', 'unitPrice',
+      'سعر البيع', 'سعر المنتج', 'السعر النهائي', 'سعر الوحدة',
+      'بيع', 'سعر البيع النهائي',
+    ),
+    costPrice: parseNum(row,
+      'cost', 'Cost', 'Cost Price', 'Unit Cost', 'تكلفة', 'costPrice', 'سعر الشراء', 'سعر التكلفة', 'cost_price',
+      'التكلفة', 'المشتريات', 'سعر التكلفة الفعلي',
+    ),
+    stock: parseNum(row,
+      'stock', 'Stock', 'Stock Qty', 'مخزون', 'quantity', 'Qty', 'qty', 'الكمية',
+      'الرصيد', 'الكمية المتاحة', 'المتوفر',
+    ),
+    unit: colVal(row,
+      'unit', 'Unit', 'وحدة', 'UOM', 'الوحدة',
+      'وحدة القياس', 'القياس',
+    ) || null,
+    description: colVal(row,
+      'desc', 'Description', 'description', 'وصف', 'Notes', 'ملاحظات', 'الوصف',
+      'البيان', 'تفاصيل',
+    ) || null,
     taxRate,
-    activeFrom: parseDateStr(row, 'Start Date Active', 'activeFrom', 'date', 'Date'),
-    expiryDate: parseDateStr(row, 'Expiry', 'expiryDate', 'expiry', 'صلاحية'),
+    activeFrom: parseDateStr(row,
+      'Start Date Active', 'activeFrom', 'date', 'Date',
+      'تاريخ البدء', 'تاريخ الفعالية', 'بداية',
+    ),
+    expiryDate: parseDateStr(row,
+      'Expiry', 'expiryDate', 'expiry', 'صلاحية',
+      'تاريخ الانتهاء', 'تاريخ الصلاحية', 'نهاية',
+    ),
   };
 }
 
@@ -170,10 +217,10 @@ export async function POST(req: NextRequest) {
       const buffer = Buffer.from(bytes);
 
       if (action === 'confirm') {
-        const workbook = XLSX.read(buffer, { type: 'buffer' });
+  const workbook = XLSX.read(buffer, { type: 'buffer', cellDates: true });
         const sheetName = workbook.SheetNames[0];
         const sheet = workbook.Sheets[sheetName];
-        const jsonData = XLSX.utils.sheet_to_json<Record<string, string | number>>(sheet, { defval: '' });
+  const jsonData = XLSX.utils.sheet_to_json<Record<string, string | number>>(sheet, { defval: '' });
 
         if (jsonData.length > MAX_ROWS) {
           return withSecurityHeaders(NextResponse.json({ success: false, error: `Excel has ${jsonData.length} rows, max allowed is ${MAX_ROWS}` }, { status: 400 }));

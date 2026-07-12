@@ -5,6 +5,7 @@ import { logAudit, getClientInfo } from '@/lib/audit';
 import { getTenantId, DEFAULT_TENANT_ID } from '@/lib/tenant-context';
 import { createDoubleEntry } from '@/lib/journal';
 import { z } from 'zod';
+import { withSecurityHeaders } from '@/lib/security';
 
 const updateItemSchema = z.object({
   productId: z.string(),
@@ -26,13 +27,13 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
           completedBy: { select: { id: true, username: true } },
         },
       });
-      if (!count) return NextResponse.json({ success: false, error: 'Not found' }, { status: 404 });
-      return NextResponse.json({ success: true, data: { count } });
+      if (!count) return withSecurityHeaders(NextResponse.json({ success: false, error: 'Not found' }, { status: 404 }));
+      return withSecurityHeaders(NextResponse.json({ success: true, data: { count } }));
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Internal server error';
     const status = message === 'Forbidden' ? 403 : message === 'Unauthorized' ? 401 : 500;
-    return NextResponse.json({ success: false, error: status === 500 ? 'Internal server error' : message }, { status });
+    return withSecurityHeaders(NextResponse.json({ success: false, error: status === 500 ? 'Internal server error' : message }, { status }));
   }
 }
 
@@ -44,11 +45,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       const { action, items } = body;
 
       const count = await prisma.inventoryCount.findFirst({ where: { id, isDeleted: false } });
-      if (!count) return NextResponse.json({ success: false, error: 'Not found' }, { status: 404 });
+      if (!count) return withSecurityHeaders(NextResponse.json({ success: false, error: 'Not found' }, { status: 404 }));
 
       if (action === 'update_items') {
         const parsed = updateItemSchema.array().safeParse(items);
-        if (!parsed.success) return NextResponse.json({ success: false, error: parsed.error.errors[0].message }, { status: 400 });
+        if (!parsed.success) return withSecurityHeaders(NextResponse.json({ success: false, error: parsed.error.errors[0].message }, { status: 400 }));
 
         for (const item of parsed.data) {
           const existing = await prisma.inventoryCountItem.findUnique({
@@ -74,7 +75,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         });
         const { ipAddress, userAgent } = getClientInfo(req);
         await logAudit({ userId: payload.userId, action: 'update', entity: 'InventoryCount', entityId: id, newValue: { itemsUpdated: parsed.data.length }, ipAddress, userAgent });
-        return NextResponse.json({ success: true, data: { count: updated } });
+        return withSecurityHeaders(NextResponse.json({ success: true, data: { count: updated } }));
       }
 
       if (action === 'complete') {
@@ -135,15 +136,15 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
             completedBy: { select: { id: true, username: true } },
           },
         });
-        return NextResponse.json({ success: true, data: { count: countResult } });
+        return withSecurityHeaders(NextResponse.json({ success: true, data: { count: countResult } }));
       }
 
-      return NextResponse.json({ success: false, error: 'Invalid action' }, { status: 400 });
+      return withSecurityHeaders(NextResponse.json({ success: false, error: 'Invalid action' }, { status: 400 }));
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Internal server error';
     const status = message === 'Forbidden' ? 403 : message === 'Unauthorized' ? 401 : 500;
-    return NextResponse.json({ success: false, error: status === 500 ? 'Internal server error' : message }, { status });
+    return withSecurityHeaders(NextResponse.json({ success: false, error: status === 500 ? 'Internal server error' : message }, { status }));
   }
 }
 
@@ -155,11 +156,11 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
       await prisma.inventoryCount.update({ where: { id }, data: { isDeleted: true } });
       const { ipAddress, userAgent } = getClientInfo(req);
       await logAudit({ userId: payload.userId, action: 'delete', entity: 'InventoryCount', entityId: id, oldValue: existing ?? undefined, ipAddress, userAgent });
-      return NextResponse.json({ success: true });
+      return withSecurityHeaders(NextResponse.json({ success: true }));
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Internal server error';
     const status = message === 'Forbidden' ? 403 : message === 'Unauthorized' ? 401 : 500;
-    return NextResponse.json({ success: false, error: status === 500 ? 'Internal server error' : message }, { status });
+    return withSecurityHeaders(NextResponse.json({ success: false, error: status === 500 ? 'Internal server error' : message }, { status }));
   }
 }

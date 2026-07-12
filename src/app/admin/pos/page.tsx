@@ -165,7 +165,7 @@ export default function AdminPOS() {
     if (!isValid) return;
     barcodeDebounceRef.current = setTimeout(() => {
       handleBarcodeEnter(manualBarcode);
-    }, 150);
+    }, 400);
     return () => {
       if (barcodeDebounceRef.current) clearTimeout(barcodeDebounceRef.current);
     };
@@ -457,25 +457,7 @@ export default function AdminPOS() {
     loadInvoices();
   }, [loading, activeTab, loadInvoices]);
 
-  const handleCancelInvoice = async (invoice: Invoice) => {
-    if (!confirm(`${t('pos_confirm_return')} ${invoice.number}?`)) return;
-    const res = await fetch(`/api/v1/invoices/${invoice.id}/`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ status: 'cancelled' }),
-    });
-    const d = await res.json();
-    if (d.success) {
-      addToast('success', `${t('pos_cancel_invoice')} ${invoice.number}`);
-      await loadInvoices();
-    } else {
-      addToast('error', d.error || 'Failed');
-    }
-  };
-
   const handleReturnInvoice = async (orig: Invoice) => {
-    if (!confirm(`Create return for ${orig.number}? Refund total: ${Number(orig.total).toFixed(2)} EGP`)) return;
     setSaving(true);
     try {
       const res = await fetch('/api/v1/invoices/', {
@@ -487,20 +469,20 @@ export default function AdminPOS() {
           items: orig.items.filter((item) => item.productId).map((item) => ({ productId: item.productId!, quantity: item.quantity })),
           paid: Number(orig.total),
           paymentMethod: orig.paymentMethod || 'cash',
-          notes: `Return for ${orig.number}`,
+          notes: `${t('pos_return_for')} ${orig.number}`,
           customerName: orig.customerName,
         }),
       });
       const d = await res.json();
       if (d.success) {
-        addToast('success', `Return ${d.data.invoice.number} created`);
+        addToast('success', t('pos_return_created', { number: d.data.invoice.number }));
         setDetailInvoice(null);
         await loadInvoices();
       } else {
-        addToast('error', d.error || 'Return failed');
+        addToast('error', d.error || t('pos_return_failed'));
       }
     } catch {
-      addToast('error', 'Network error');
+      addToast('error', t('pos_network_error'));
     } finally {
       setSaving(false);
     }
@@ -509,21 +491,10 @@ export default function AdminPOS() {
   const loadTreasury = useCallback(async () => {
     setTreasuryLoading(true);
     const today = new Date().toISOString().split('T')[0];
-    const res = await fetch(`/api/v1/invoices/?limit=200&dateFrom=${today}&dateTo=${today}`, { credentials: 'include' });
+    const res = await fetch(`/api/v1/accounting/treasury/?from=${today}&to=${today}`, { credentials: 'include' });
     const d = await res.json();
     if (d.success) {
-      const invoicesData = d.data.invoices as Invoice[];
-      const confirmed = invoicesData.filter((inv) => inv.status === 'confirmed' && inv.type === 'sale');
-      const data = {
-        todaySales: confirmed.reduce((sum, inv) => sum + Number(inv.total), 0),
-        todayCount: confirmed.length,
-        cashTotal: confirmed.filter((inv) => inv.paymentMethod === 'cash').reduce((sum, inv) => sum + Number(inv.total), 0),
-        cardTotal: confirmed.filter((inv) => inv.paymentMethod === 'card').reduce((sum, inv) => sum + Number(inv.total), 0),
-        transferTotal: confirmed.filter((inv) => inv.paymentMethod === 'transfer').reduce((sum, inv) => sum + Number(inv.total), 0),
-        todayDiscount: confirmed.reduce((sum, inv) => sum + Number(inv.discount), 0),
-        todayTax: confirmed.reduce((sum, inv) => sum + Number(inv.taxTotal), 0),
-      };
-      setTreasuryData(data);
+      setTreasuryData(d.data);
     }
     setTreasuryLoading(false);
   }, []);
@@ -641,7 +612,7 @@ export default function AdminPOS() {
               aria-modal="true" className="glass rounded-2xl p-6 w-full max-w-md">
                     <h3 className="text-lg font-bold mb-4">{t('pos_confirm_sale')}</h3>
                     <div className="space-y-2 text-sm mb-4">
-                      <div className="flex justify-between"><span>{t('pos_cart')}</span><span>{cart.length} items</span></div>
+                      <div className="flex justify-between"><span>{t('pos_cart')}</span><span>{cart.length} {t('pos_items')}</span></div>
                       <div className="flex justify-between"><span>{t('pos_subtotal')}</span><span>{subtotal.toFixed(2)} EGP</span></div>
                       <div className="flex justify-between"><span>{t('pos_discount')}</span><span>{discountNum.toFixed(2)} EGP</span></div>
                       <div className="flex justify-between"><span>{t('pos_tax')} ({taxRate}%)</span><span>{taxTotal.toFixed(2)} EGP</span></div>
@@ -706,12 +677,12 @@ export default function AdminPOS() {
                   role="dialog"
                   aria-modal="true" className="glass rounded-2xl p-6 w-full max-w-sm">
                       <div className="flex items-center justify-between mb-4">
-                        <h3 className="font-bold">Link to Work Order</h3>
+                        <h3 className="font-bold">{t('pos_link_work_order')}</h3>
                         <button onClick={() => setShowWorkOrderSelect(false)} className="text-muted-foreground hover:text-foreground"><X className="w-5 h-5" /></button>
                       </div>
                       <div className="max-h-60 overflow-auto space-y-1">
                         <button onClick={() => { setSelectedWorkOrderId(null); setShowWorkOrderSelect(false); }} className="w-full text-left px-3 py-2 rounded-xl text-sm text-muted-foreground hover:bg-white/5 transition-colors">
-                          — No Work Order
+                          — {t('pos_no_work_order').replace(/^-- /, '')}
                         </button>
                         {workOrders.map((wo) => (
                           <button
@@ -719,12 +690,12 @@ export default function AdminPOS() {
                             onClick={() => { setSelectedWorkOrderId(wo.id); setShowWorkOrderSelect(false); }}
                             className={`w-full text-left px-3 py-2 rounded-xl text-sm hover:bg-white/5 transition-colors ${selectedWorkOrderId === wo.id ? 'bg-white/10' : ''}`}
                           >
-                            <span className="font-medium">{wo.vehicle?.model || 'Unknown'}</span>
-                            <span className="text-muted-foreground ml-2">- {wo.description?.substring(0, 30) || 'No description'}</span>
+                            <span className="font-medium">{wo.vehicle?.model || t('pos_unknown')}</span>
+                            <span className="text-muted-foreground ml-2">- {wo.description?.substring(0, 30) || t('pos_no_description')}</span>
                           </button>
                         ))}
                         {workOrders.length === 0 && (
-                          <p className="text-center text-muted-foreground text-sm py-4">No pending work orders</p>
+                          <p className="text-center text-muted-foreground text-sm py-4">{t('pos_no_pending_work_orders')}</p>
                         )}
                       </div>
                     </motion.div>
@@ -748,7 +719,7 @@ export default function AdminPOS() {
             invPage={invPage}
             setInvPage={setInvPage}
             invTotalPages={invTotalPages}
-            handleCancelInvoice={handleCancelInvoice}
+            handleReturnInvoice={handleReturnInvoice}
             setDetailInvoice={setDetailInvoice}
             statusColors={statusColors}
             t={t}
@@ -902,10 +873,6 @@ export default function AdminPOS() {
                     className="flex-1 py-2 rounded-xl bg-orange-500/80 text-white text-sm font-medium hover:bg-orange-500 transition-colors">
                     Return Items
                   </button>
-                  <button onClick={() => { setDetailInvoice(null); handleCancelInvoice(detailInvoice); }}
-                    className="flex-1 py-2 rounded-xl bg-red-500/80 text-white text-sm font-medium hover:bg-red-500 transition-colors">
-                    {t('pos_cancel_invoice')}
-                  </button>
                 </div>
               )}
             </motion.div>
@@ -957,10 +924,10 @@ export default function AdminPOS() {
                     const newProduct = d.data.product;
                     handleSelectProduct({ id: newProduct.id, name: newProduct.name, nameAr: newProduct.nameAr || null, barcode: newProduct.barcode, price: Number(newProduct.price), stock: newProduct.stock, category: newProduct.category || 'Spare Parts', image: newProduct.image || null, available: true });
                   } else {
-                    addToast('error', d.error || 'Failed');
+                    addToast('error', d.error || t('pos_failed'));
                   }
                 } catch {
-                  addToast('error', 'Failed to create product');
+                  addToast('error', t('pos_failed_create_product'));
                 } finally {
                   setQuickCreateSaving(false);
                 }

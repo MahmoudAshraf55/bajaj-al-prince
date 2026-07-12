@@ -1,13 +1,14 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useToast } from '@/components/ToastContext';
 import {
-  LayoutDashboard, Mail, Calendar, ShoppingCart, DollarSign, Package,
+  LayoutDashboard, Mail, Calendar, ShoppingCart, Package,
   Users, Car, List, Wrench, MessageCircle, ScanLine, Settings,
   LogOut, Menu, X, ClipboardList, PanelLeft, PanelRight, Truck, Building2,
+  Landmark, BookOpen, BarChart3, Store,
 } from 'lucide-react';
 import Logo from '@/components/ui/Logo';
 import { useTranslation } from '@/components/useTranslation';
@@ -58,10 +59,10 @@ const sections: SidebarSection[] = [
     labelKey: 'admin_pos_wh',
     links: [
       { href: '/admin/pos', icon: ShoppingCart, labelKey: 'pos_title' },
-      { href: '/admin/accounting', icon: DollarSign, labelKey: 'admin_accounting' },
-      { href: '/admin/accounts', icon: DollarSign, labelKey: 'acct_chart_title' },
-      { href: '/admin/journal-entries', icon: DollarSign, labelKey: 'je_title' },
-      { href: '/admin/reports', icon: DollarSign, labelKey: 'rpt_title' },
+      { href: '/admin/accounting', icon: Landmark, labelKey: 'admin_accounting' },
+      { href: '/admin/accounts', icon: BookOpen, labelKey: 'acct_chart_title' },
+      { href: '/admin/journal-entries', icon: BookOpen, labelKey: 'je_title' },
+      { href: '/admin/reports', icon: BarChart3, labelKey: 'rpt_title' },
       { href: '/admin/warehouse', icon: Package, labelKey: 'wh_title' },
       { href: '/admin/inventory-counts', icon: ClipboardList, labelKey: 'ic_title' },
       { href: '/admin/purchase-orders', icon: Package, labelKey: 'po_title' },
@@ -70,7 +71,7 @@ const sections: SidebarSection[] = [
   {
     labelKey: 'admin_crm',
     links: [
-      { href: '/admin/market', icon: Package, labelKey: 'admin_market' },
+      { href: '/admin/market', icon: Store, labelKey: 'admin_market' },
       { href: '/admin/customers', icon: Users, labelKey: 'admin_customers' },
       { href: '/admin/vehicles', icon: Car, labelKey: 'admin_vehicles' },
       { href: '/admin/vehicle-models', icon: List, labelKey: 'admin_vehicle_models' },
@@ -100,6 +101,49 @@ export default function AdminSidebar() {
   const [open, setOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const sidebarRef = useRef<HTMLDivElement>(null);
+  const hamburgerRef = useRef<HTMLButtonElement>(null);
+
+  // Focus trap for mobile sidebar
+  const handleKeyDown = useCallback((e: KeyboardEvent) => {
+    if (!open || !sidebarRef.current) return;
+    const focusable = sidebarRef.current.querySelectorAll<HTMLElement>(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    );
+    if (focusable.length === 0) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (e.key === 'Tab') {
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    }
+    if (e.key === 'Escape') {
+      setOpen(false);
+      hamburgerRef.current?.focus();
+    }
+  }, [open]);
+
+  useEffect(() => {
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [handleKeyDown]);
+
+  useEffect(() => {
+    if (open) {
+      // Focus close button inside sidebar on open
+      requestAnimationFrame(() => {
+        const closeBtn = sidebarRef.current?.querySelector<HTMLButtonElement>('button[aria-label]');
+        closeBtn?.focus();
+      });
+    } else if (hamburgerRef.current) {
+      hamburgerRef.current.focus();
+    }
+  }, [open]);
 
   useEffect(() => {
     setMounted(true);
@@ -241,6 +285,7 @@ export default function AdminSidebar() {
     <>
       {/* Mobile hamburger */}
       <button
+        ref={hamburgerRef}
         onClick={() => setOpen(true)}
         className="fixed top-4 z-40 md:hidden text-muted-foreground hover:text-foreground p-2 rounded-xl hover:bg-white/5"
         style={{ [isRTL ? 'right' : 'left']: '1rem' }}
@@ -250,12 +295,18 @@ export default function AdminSidebar() {
       </button>
 
       {/* Mobile overlay */}
-      {open && (
-        <div className="fixed inset-0 z-40 bg-black/40 md:hidden" onClick={() => setOpen(false)} />
-      )}
+      <div
+        className={`fixed inset-0 z-40 bg-black/40 md:hidden transition-opacity duration-200 ${open ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
+        onClick={() => setOpen(false)}
+        aria-hidden={!open}
+      />
 
       {/* Sidebar - mobile: fixed overlay, desktop: fixed side */}
       <div
+        ref={sidebarRef}
+        role="dialog"
+        aria-modal={open ? 'true' : undefined}
+        aria-label={isRTL ? 'القائمة الجانبية' : 'Admin navigation'}
         className={cn(
           'fixed inset-y-0 z-50 transform transition-all duration-200 ease-in-out',
           isRTL ? 'right-0 border-l' : 'left-0 border-r',

@@ -119,6 +119,7 @@ model Invoice {
   notes           String?
   customerId      String?
   customerName    String?
+  workOrderId     String?
   createdById     String
   createdAt       DateTime         @default(now()) @db.Timestamp(6)
   updatedAt       DateTime         @updatedAt @db.Timestamp(6)
@@ -138,6 +139,7 @@ model Invoice {
   @@index([status])
   @@index([createdById])
   @@index([customerId])
+  @@index([workOrderId])
   @@index([createdAt])
   @@index([isDeleted])
   @@index([tenantId, status, createdAt])
@@ -298,7 +300,7 @@ model Transaction {
   tenantId    String
   updatedAt   DateTime? @updatedAt @db.Timestamp(6)
   createdById String?
-  createdBy   User?     @relation(fields: [createdById], references: [id])
+  createdBy   User?     @relation(fields: [createdById], references: [id], onDelete: SetNull)
 
   @@unique([id, tenantId])
   @@index([type])
@@ -447,6 +449,7 @@ model WorkOrder {
   status      String            @default("pending")
   cost        Decimal?          @db.Decimal(10, 2)
   vehicleId   String
+  invoiceId   String?
   createdAt   DateTime          @default(now()) @db.Timestamp(6)
   updatedAt   DateTime?         @updatedAt @db.Timestamp(6)
   isDeleted   Boolean           @default(false)
@@ -462,6 +465,7 @@ model WorkOrder {
   @@index([status])
   @@index([vehicleId])
   @@index([bookingId])
+  @@index([invoiceId])
   @@index([tenantId, status, createdAt])
   @@index([isDeleted])
   @@index([tenantId])
@@ -718,7 +722,7 @@ model ReminderLog {
   isDeleted  Boolean   @default(false)
   deletedAt  DateTime? @db.Timestamp(6)
   tenantId   String
-  booking    Booking?  @relation(fields: [bookingId], references: [id])
+  booking    Booking?  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
   customer   Customer  @relation(fields: [customerId], references: [id], onDelete: Cascade)
 
   @@unique([id, tenantId])

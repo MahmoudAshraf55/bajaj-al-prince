@@ -39,10 +39,10 @@ export const generateReceiptHtml = (inv: Invoice, language: string, t: (key: str
         <table>
           <thead>
             <tr>
-              <th>${language === 'ar' ? 'المنتج' : 'Item'}</th>
-              <th class="center">${t('pos_quantity')}</th>
-              <th class="right">${t('admin_market_price')}</th>
-              <th class="right">${t('pos_total')}</th>
+              <th scope="col">${language === 'ar' ? 'المنتج' : 'Item'}</th>
+              <th scope="col" class="center">${t('pos_quantity')}</th>
+              <th scope="col" class="right">${t('admin_market_price')}</th>
+              <th scope="col" class="right">${t('pos_total')}</th>
             </tr>
           </thead>
           <tbody>

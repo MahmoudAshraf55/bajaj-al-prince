@@ -93,7 +93,7 @@ export default function AdminMarket() {
     if (!form.name || !form.price) return;
     const priceNum = parseFloat(form.price);
     if (!priceNum || priceNum <= 0) {
-      addToast('error', t('admin_market_price') + ' must be greater than 0');
+      addToast('error', t('admin_market_price') + ' ' + t('admin_market_price_must_be_positive'));
       return;
     }
     setSaveError('');
@@ -135,7 +135,7 @@ export default function AdminMarket() {
       } else {
         const errMsg = d.errors
           ? d.errors.map((e: { path: string[]; message: string }) => `${e.path.join('.')}: ${e.message}`).join('\n')
-          : d.error || 'Save failed';
+          : d.error || t('admin_market_save_failed');
         setSaveError(errMsg);
       }
     } finally { setSaving(false); }
@@ -148,7 +148,7 @@ export default function AdminMarket() {
       credentials: 'include',
     });
     if (res.ok) await load();
-    else addToast('error', 'Failed to delete product');
+    else addToast('error', t('admin_market_delete_failed'));
   };
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -156,11 +156,11 @@ export default function AdminMarket() {
     if (!file) return;
     const maxSize = 5 * 1024 * 1024;
     if (!file.type.startsWith('image/')) {
-      addToast('error', 'Only image files are allowed');
+      addToast('error', t('admin_market_only_images'));
       return;
     }
     if (file.size > maxSize) {
-      addToast('error', 'Image must be under 5MB');
+      addToast('error', t('admin_market_image_too_large'));
       return;
     }
     const fd = new FormData();
@@ -173,9 +173,9 @@ export default function AdminMarket() {
       });
       const d = await res.json();
       if (d.success) setForm((prev) => ({ ...prev, image: d.data.url }));
-      else addToast('error', d.error || 'Upload failed');
+      else addToast('error', d.error || t('admin_market_upload_failed'));
     } catch {
-      addToast('error', 'Upload failed due to network error');
+      addToast('error', t('admin_market_upload_network_error'));
     }
   };
 
@@ -193,11 +193,11 @@ export default function AdminMarket() {
       if (d.success && d.data?.url) {
         setForm((prev) => ({ ...prev, image: d.data.url }));
       } else {
-        const errMsg = d.error || (d.errors ? d.errors.map((e: { message: string }) => e.message).join('; ') : 'AI feature not available');
+        const errMsg = d.error || (d.errors ? d.errors.map((e: { message: string }) => e.message).join('; ') : t('admin_market_ai_not_available'));
         addToast('error', errMsg);
       }
     } catch {
-      addToast('error', 'Network error. Check server console for details.');
+      addToast('error', t('admin_market_network_error'));
     } finally { setAiBusy(null); }
   };
 
@@ -215,11 +215,11 @@ export default function AdminMarket() {
       if (d.success && d.data?.description) {
         setForm((prev) => ({ ...prev, description: d.data.description }));
       } else {
-        const errMsg = d.error || (d.errors ? d.errors.map((e: { message: string }) => e.message).join('; ') : 'AI feature not available');
+        const errMsg = d.error || (d.errors ? d.errors.map((e: { message: string }) => e.message).join('; ') : t('admin_market_ai_not_available'));
         addToast('error', errMsg);
       }
     } catch {
-      addToast('error', 'Network error. Check server console for details.');
+      addToast('error', t('admin_market_network_error'));
     } finally { setAiBusy(null); }
   };
 
