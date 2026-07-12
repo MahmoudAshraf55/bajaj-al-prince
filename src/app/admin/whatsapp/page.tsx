@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { useTranslation } from '@/components/useTranslation';
 import { useToast } from '@/components/ToastContext';
@@ -68,6 +69,7 @@ function PremiumToggle({ checked, onChange, disabled, label }: { checked: boolea
 export default function WhatsAppAdminPage() {
   const { t } = useTranslation();
   const { addToast } = useToast();
+  const router = useRouter();
   const [state, setState] = useState<WhatsAppState | null>(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
@@ -133,13 +135,20 @@ export default function WhatsAppAdminPage() {
   }, []);
 
   useEffect(() => {
-    fetchStatus();
-    fetchSettings();
-    fetchTemplates();
-    fetchSchedules();
-    const interval = setInterval(fetchStatus, 5000);
-    return () => clearInterval(interval);
-  }, [fetchStatus, fetchSettings, fetchTemplates, fetchSchedules]);
+    let interval: NodeJS.Timeout | undefined;
+    fetch('/api/auth/me/', { credentials: 'include' })
+      .then((r) => r.json())
+      .then((d) => {
+        if (!d.success) { router.push('/admin/'); return; }
+        fetchStatus();
+        fetchSettings();
+        fetchTemplates();
+        fetchSchedules();
+        interval = setInterval(fetchStatus, 5000);
+      })
+      .catch(() => router.push('/admin/'));
+    return () => { if (interval) clearInterval(interval); };
+  }, [router, fetchStatus, fetchSettings, fetchTemplates, fetchSchedules]);
 
   const handleDisconnect = async () => {
     setActionLoading(true);

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { Search, Plus, X, CheckCircle, Clock, Wrench, Edit3, Package, DollarSign, Trash2 } from 'lucide-react';
 import { useTranslation } from '@/components/useTranslation';
 import { useToast } from '@/components/ToastContext';
@@ -74,6 +75,7 @@ const statusIcons: Record<string, typeof Clock> = {
 export default function WorkOrdersPage() {
   const { t, language } = useTranslation();
   const { addToast } = useToast();
+  const router = useRouter();
   const [workOrders, setWorkOrders] = useState<WorkOrderItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -111,7 +113,7 @@ export default function WorkOrdersPage() {
     if (json.success) setWorkOrders(json.data.workOrders);
   }, []);
 
-  const fetchVehicles = async () => {
+  const fetchVehicles = useCallback(async () => {
     const res = await fetch('/api/v1/vehicles/?limit=500', { credentials: 'include' });
     const json = await res.json();
     if (json.success) {
@@ -122,7 +124,7 @@ export default function WorkOrdersPage() {
         }))
       );
     }
-  };
+  }, []);
 
   const fetchProducts = useCallback(async () => {
     const res = await fetch('/api/v1/products/?limit=500', { credentials: 'include' });
@@ -131,8 +133,18 @@ export default function WorkOrdersPage() {
   }, []);
 
   useEffect(() => {
-    Promise.all([fetchWorkOrders(), fetchVehicles(), fetchProducts()]).finally(() => setLoading(false));
-  }, [fetchWorkOrders, fetchProducts]);
+    let cancelled = false;
+    fetch('/api/auth/me/', { credentials: 'include' })
+      .then((r) => r.json())
+      .then((d) => {
+        if (cancelled) return;
+        if (!d.success) { router.push('/admin/'); return; }
+        setLoading(false);
+        Promise.all([fetchWorkOrders(), fetchVehicles(), fetchProducts()]);
+      })
+      .catch(() => { if (!cancelled) router.push('/admin/'); });
+    return () => { cancelled = true; };
+  }, [router, fetchWorkOrders, fetchVehicles, fetchProducts]);
 
   const createWorkOrder = async (e: React.FormEvent) => {
     e.preventDefault();

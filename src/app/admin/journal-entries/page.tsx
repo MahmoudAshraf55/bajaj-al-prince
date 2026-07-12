@@ -70,6 +70,7 @@ export default function JournalEntriesPage() {
       url.searchParams.set('page', String(p));
       url.searchParams.set('limit', '20');
       if (type) url.searchParams.set('type', type);
+      if (q) url.searchParams.set('search', q);
       const res = await fetchWithRetry(url.toString(), { credentials: 'include', signal });
       const data = await res.json();
       if (data?.success && Array.isArray(data?.data?.entries)) {

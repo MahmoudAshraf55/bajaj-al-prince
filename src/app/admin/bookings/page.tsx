@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { Search, Calendar, Clock, User, Phone, Car, CheckCircle, X, AlertCircle, Filter } from 'lucide-react';
 import { useTranslation } from '@/components/useTranslation';
 import { useToast } from '@/components/ToastContext';
@@ -54,6 +55,7 @@ const statusIcons: Record<string, typeof Clock> = {
 export default function BookingsPage() {
   const { t, language } = useTranslation();
   const { addToast } = useToast();
+  const router = useRouter();
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -82,8 +84,17 @@ export default function BookingsPage() {
   }, [addToast]);
 
   useEffect(() => {
-    fetchBookings();
-  }, [fetchBookings]);
+    let cancelled = false;
+    fetch('/api/auth/me/', { credentials: 'include' })
+      .then((r) => r.json())
+      .then((d) => {
+        if (cancelled) return;
+        if (!d.success) { router.push('/admin/'); return; }
+        fetchBookings();
+      })
+      .catch(() => { if (!cancelled) router.push('/admin/'); });
+    return () => { cancelled = true; };
+  }, [router, fetchBookings]);
 
   const updateStatus = async (id: string, status: string) => {
     setUpdating(id);

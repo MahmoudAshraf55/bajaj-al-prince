@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from '@/components/useTranslation';
 import { useToast } from '@/components/ToastContext';
@@ -24,6 +25,7 @@ const tabs: { id: TabId; icon: React.ComponentType<{ className?: string }> }[] =
 export default function SettingsPage() {
   const { t, language, isRTL } = useTranslation();
   const { addToast } = useToast();
+  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState<TabId>('general');
@@ -49,41 +51,40 @@ export default function SettingsPage() {
   const [contactWhatsapp, setContactWhatsapp] = useState('201221370120');
 
   useEffect(() => {
-    fetch('/api/v1/settings/', { credentials: 'include' })
+    let cancelled = false;
+    fetch('/api/auth/me/', { credentials: 'include' })
       .then((r) => r.json())
-      .then((res) => {
-        if (res.success && res.data?.settings) {
-          const s = res.data.settings;
-          setTaxRate(s.tax_rate ?? '14');
-          setLowStockThreshold(s.low_stock_threshold ?? '5');
-          setNotifyOnLowStock(s.notify_on_low_stock !== 'false');
-          setNotifyOnBooking(s.notify_on_booking !== 'false');
-          setBrandName(s.brand_name ?? 'El Prince Bajaj');
-          setBrandTagline(s.brand_tagline ?? '');
-          setLocationAddress(s.location_address ?? '35JH+PC مركز أوسيم');
-          setLocationMapUrl(s.location_map_url ?? 'https://maps.app.goo.gl/fh1AgzDpB6K87iAs5');
-          setContactPhone1(s.contact_phone1 ?? '0122 137 0120');
-          setContactPhone2(s.contact_phone2 ?? '0155 123 3908');
-          setContactEmail(s.contact_email ?? '');
-          setContactFacebook(s.contact_facebook ?? 'https://www.facebook.com/elprince.bajaj');
-          setContactInstagram(s.contact_instagram ?? 'https://www.instagram.com/elprincebajaj');
-          setContactTiktok(s.contact_tiktok ?? 'https://www.tiktok.com/@elprince.bajajj');
-          setContactWhatsapp(s.contact_whatsapp ?? '201221370120');
-        }
+      .then((d) => {
+        if (cancelled) return;
+        if (!d.success) { router.push('/admin/'); return; }
+        fetch('/api/v1/settings/', { credentials: 'include' })
+          .then((r) => r.json())
+          .then((res) => {
+            if (res.success && res.data?.settings) {
+              const s = res.data.settings;
+              setTaxRate(s.tax_rate ?? '14');
+              setLowStockThreshold(s.low_stock_threshold ?? '5');
+              setNotifyOnLowStock(s.notify_on_low_stock !== 'false');
+              setNotifyOnBooking(s.notify_on_booking !== 'false');
+              setBrandName(s.brand_name ?? 'El Prince Bajaj');
+              setBrandTagline(s.brand_tagline ?? '');
+              setLocationAddress(s.location_address ?? '35JH+PC مركز أوسيم');
+              setLocationMapUrl(s.location_map_url ?? 'https://maps.app.goo.gl/fh1AgzDpB6K87iAs5');
+              setContactPhone1(s.contact_phone1 ?? '0122 137 0120');
+              setContactPhone2(s.contact_phone2 ?? '0155 123 3908');
+              setContactEmail(s.contact_email ?? '');
+              setContactFacebook(s.contact_facebook ?? 'https://www.facebook.com/elprince.bajaj');
+              setContactInstagram(s.contact_instagram ?? 'https://www.instagram.com/elprincebajaj');
+              setContactTiktok(s.contact_tiktok ?? 'https://www.tiktok.com/@elprince.bajajj');
+              setContactWhatsapp(s.contact_whatsapp ?? '201221370120');
+            }
+          })
+          .catch(() => {})
+          .finally(() => { if (!cancelled) setLoading(false); });
       })
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, []);
-
-  const saveSetting = useCallback(async (key: string, value: string) => {
-    const res = await fetch('/api/v1/settings/', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ key, value }),
-    });
-    return res.json();
-  }, []);
+      .catch(() => { if (!cancelled) router.push('/admin/'); });
+    return () => { cancelled = true; };
+  }, [router]);
 
   const handleSaveAll = async () => {
     setSaving(true);
@@ -100,27 +101,39 @@ export default function SettingsPage() {
       return;
     }
     try {
-      await Promise.all([
-        saveSetting('tax_rate', taxRate),
-        saveSetting('low_stock_threshold', lowStockThreshold),
-        saveSetting('notify_on_low_stock', notifyOnLowStock ? 'true' : 'false'),
-        saveSetting('notify_on_booking', notifyOnBooking ? 'true' : 'false'),
-        saveSetting('brand_name', brandName),
-        saveSetting('brand_tagline', brandTagline),
-        saveSetting('location_address', locationAddress),
-        saveSetting('location_map_url', locationMapUrl),
-        saveSetting('contact_phone1', contactPhone1),
-        saveSetting('contact_phone2', contactPhone2),
-        saveSetting('contact_email', contactEmail),
-        saveSetting('contact_facebook', contactFacebook),
-        saveSetting('contact_instagram', contactInstagram),
-        saveSetting('contact_tiktok', contactTiktok),
-        saveSetting('contact_whatsapp', contactWhatsapp),
-      ]);
-      addToast('success', language === 'ar' ? 'تم حفظ جميع الإعدادات' : 'All settings saved');
-      setDirty(false);
+      const res = await fetch('/api/v1/settings/batch/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          settings: [
+            { key: 'tax_rate', value: taxRate },
+            { key: 'low_stock_threshold', value: lowStockThreshold },
+            { key: 'notify_on_low_stock', value: notifyOnLowStock ? 'true' : 'false' },
+            { key: 'notify_on_booking', value: notifyOnBooking ? 'true' : 'false' },
+            { key: 'brand_name', value: brandName },
+            { key: 'brand_tagline', value: brandTagline },
+            { key: 'location_address', value: locationAddress },
+            { key: 'location_map_url', value: locationMapUrl },
+            { key: 'contact_phone1', value: contactPhone1 },
+            { key: 'contact_phone2', value: contactPhone2 },
+            { key: 'contact_email', value: contactEmail },
+            { key: 'contact_facebook', value: contactFacebook },
+            { key: 'contact_instagram', value: contactInstagram },
+            { key: 'contact_tiktok', value: contactTiktok },
+            { key: 'contact_whatsapp', value: contactWhatsapp },
+          ],
+        }),
+      });
+      const d = await res.json();
+      if (d.success) {
+        addToast('success', t('admin_settings_saved'));
+        setDirty(false);
+      } else {
+        addToast('error', d.error || t('admin_settings_save_error'));
+      }
     } catch {
-      addToast('error', language === 'ar' ? 'فشل حفظ الإعدادات' : 'Failed to save settings');
+      addToast('error', t('admin_settings_save_error'));
     } finally {
       setSaving(false);
     }

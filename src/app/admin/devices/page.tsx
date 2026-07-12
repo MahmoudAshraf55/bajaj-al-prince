@@ -57,7 +57,9 @@ export default function AdminDevices() {
         setTotal(d.data.meta.total);
         setTotalPages(d.data.meta.totalPages);
       }
-    } catch {}
+    } catch {
+      setLogs([]);
+    }
     setLoadingLogs(false);
   }, [page, searchBarcode, filterSource, filterStatus]);
 

@@ -14,11 +14,18 @@ export default function AdminLogin() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [attempts, setAttempts] = useState(0);
+  const [blockedUntil, setBlockedUntil] = useState(0);
 
   // Always show login form — admins must enter credentials every time
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const now = Date.now();
+    if (now < blockedUntil) {
+      setError(`Too many attempts. Try again in ${Math.ceil((blockedUntil - now) / 1000)}s`);
+      return;
+    }
     setLoading(true);
     setError('');
     try {
@@ -30,8 +37,12 @@ export default function AdminLogin() {
       });
       const data = await res.json();
       if (data.success) {
+        setAttempts(0);
         router.push('/admin/dashboard/');
       } else {
+        const next = attempts + 1;
+        setAttempts(next);
+        if (next >= 3) setBlockedUntil(now + 30000);
         setError(data.error || t('admin_invalid'));
       }
     } catch (err) {

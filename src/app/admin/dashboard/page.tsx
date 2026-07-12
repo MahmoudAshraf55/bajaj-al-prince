@@ -58,6 +58,7 @@ export default function AdminDashboard() {
     recentInvoices: Array<{ id: string; number: string; total: number; paid: number; customerName: string | null; createdAt: string }>;
     recentBookings: Array<{ id: string; name: string; model: string; issue: string; date: string; time: string; status: string; createdAt: string }>;
   } | null>(null);
+  const statsRef = useRef(stats);
 
   const tabParam = searchParams?.get('tab') ?? 'overview';
   const tab = TAB_IDS.includes(tabParam as Tab) ? (tabParam as Tab) : 'overview';
@@ -72,45 +73,56 @@ export default function AdminDashboard() {
       .then((d) => {
         if (!d.success) { router.push('/admin/'); }
         else { setLoading(false); }
-      });
+      })
+      .catch(() => router.push('/admin/'));
   }, [router]);
 
   useEffect(() => {
     if (loading) return;
-    fetch('/api/contact/?limit=1000', { credentials: 'include' }).then((r) => r.json()).then((d) => { if (d.success) setMessages(d.data.messages); });
-    fetch('/api/bookings/?limit=1000', { credentials: 'include' }).then((r) => r.json()).then((d) => { if (d.success) setBookings(d.data.bookings); });
-    fetch('/api/v1/products/?limit=1000&admin=true', { credentials: 'include' }).then((r) => r.json()).then((d) => { if (d.success) setProducts(d.data.products); });
-    fetch('/api/cashier/?limit=1000', { credentials: 'include' }).then((r) => r.json()).then((d) => { if (d.success) setTransactions(d.data.transactions); });
-    fetch('/api/v1/dashboard/stats/', { credentials: 'include' }).then((r) => r.json()).then((d) => { if (d.success) setStats(d.data); });
+    fetch('/api/contact/?limit=1000', { credentials: 'include' }).then((r) => r.json()).then((d) => { if (d.success) setMessages(d.data.messages); }).catch(() => {});
+    fetch('/api/bookings/?limit=1000', { credentials: 'include' }).then((r) => r.json()).then((d) => { if (d.success) setBookings(d.data.bookings); }).catch(() => {});
+    fetch('/api/v1/products/?limit=1000&admin=true', { credentials: 'include' }).then((r) => r.json()).then((d) => { if (d.success) setProducts(d.data.products); }).catch(() => {});
+    fetch('/api/cashier/?limit=1000', { credentials: 'include' }).then((r) => r.json()).then((d) => { if (d.success) setTransactions(d.data.transactions); }).catch(() => {});
+    fetch('/api/v1/dashboard/stats/', { credentials: 'include' }).then((r) => r.json()).then((d) => { if (d.success) setStats(d.data); }).catch(() => {});
   }, [loading]);
 
-  // Auto-refresh stats every 30 seconds
+  // Sync statsRef whenever stats change (used in interval to avoid stale closure)
+  useEffect(() => { statsRef.current = stats; }, [stats]);
+
+  // Auto-refresh stats every 30 seconds (no stale closure, respects tab visibility)
   useEffect(() => {
     if (loading) return;
-    
-    intervalRef.current = setInterval(() => {
+
+    const refresh = () => {
+      if (document.visibilityState === 'hidden') return;
       fetch('/api/v1/dashboard/stats/', { credentials: 'include' })
         .then((r) => r.json())
         .then((d) => {
           if (d.success) {
-            const prevTodayNew = stats?.bookings.todayNew || 0;
+            const prev = statsRef.current;
+            const prevTodayNew = prev?.bookings.todayNew || 0;
             setStats(d.data);
-            
-            // Show notification if new bookings arrived
+
             if (d.data.bookings.todayNew > prevTodayNew) {
               setNewBookingCount(d.data.bookings.todayNew - prevTodayNew);
               setShowNotification(true);
             }
           }
         });
-    }, 30000);
+    };
+
+    intervalRef.current = setInterval(refresh, 30000);
+
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') refresh();
+    };
+    document.addEventListener('visibilitychange', onVisible);
 
     return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-      }
+      if (intervalRef.current) clearInterval(intervalRef.current);
+      document.removeEventListener('visibilitychange', onVisible);
     };
-  }, [loading, stats]);
+  }, [loading]);
 
   const deleteMessage = async (id: string) => {
     const res = await fetch(`/api/contact/${id}/`, { method: 'DELETE', credentials: 'include' });

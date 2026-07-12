@@ -250,7 +250,7 @@ export default function AdminPOS() {
           type: isReturn ? 'return' : 'sale',
           items: cart.map((item) => ({ productId: item.productId, quantity: item.quantity })),
           discount: discountNum,
-          paid: paidNum || total,
+          paid: paidNum >= 0 ? paidNum : total,
           paymentMethod: paymentMethod || undefined,
           payments: splitPayments.length > 0
             ? splitPayments
@@ -484,7 +484,7 @@ export default function AdminPOS() {
         credentials: 'include',
         body: JSON.stringify({
           type: 'return',
-          items: orig.items.map((item) => ({ productId: item.productId || '', quantity: item.quantity })),
+          items: orig.items.filter((item) => item.productId).map((item) => ({ productId: item.productId!, quantity: item.quantity })),
           paid: Number(orig.total),
           paymentMethod: orig.paymentMethod || 'cash',
           notes: `Return for ${orig.number}`,
@@ -509,7 +509,7 @@ export default function AdminPOS() {
   const loadTreasury = useCallback(async () => {
     setTreasuryLoading(true);
     const today = new Date().toISOString().split('T')[0];
-    const res = await fetch(`/api/v1/invoices/?limit=500&dateFrom=${today}&dateTo=${today}`, { credentials: 'include' });
+    const res = await fetch(`/api/v1/invoices/?limit=200&dateFrom=${today}&dateTo=${today}`, { credentials: 'include' });
     const d = await res.json();
     if (d.success) {
       const invoicesData = d.data.invoices as Invoice[];

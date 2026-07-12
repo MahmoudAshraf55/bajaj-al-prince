@@ -71,7 +71,6 @@ export default function VehiclesPage() {
   const handleSearch = (val: string) => {
     setSearch(val);
     setPage(1);
-    fetchVehicles(1, val);
   };
 
   if (loading) {

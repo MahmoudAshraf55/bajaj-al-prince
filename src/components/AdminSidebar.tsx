@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useToast } from '@/components/ToastContext';
 import {
   LayoutDashboard, Mail, Calendar, ShoppingCart, DollarSign, Package,
   Users, Car, List, Wrench, MessageCircle, ScanLine, Settings,
@@ -95,6 +96,7 @@ export default function AdminSidebar() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { t, isRTL } = useTranslation();
+  const { addToast } = useToast();
   const [open, setOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -135,7 +137,7 @@ export default function AdminSidebar() {
     try {
       await fetch('/api/auth/logout/', { method: 'POST', credentials: 'include' });
     } catch {
-      // ignore
+      addToast('error', 'Logout failed, but session cleared');
     }
     router.push('/admin/');
   };

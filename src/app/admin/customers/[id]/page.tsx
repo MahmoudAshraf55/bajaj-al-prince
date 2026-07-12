@@ -77,20 +77,20 @@ export default function CustomerDetailPage() {
       })
       .catch(() => setVehicleModels([]));
 
+    const controller = new AbortController();
     fetch('/api/auth/me/', { credentials: 'include' })
       .then((r) => r.json().catch(() => ({ success: false, error: 'Invalid auth response' })))
       .then((d) => {
         if (!d?.success) router.push('/admin/');
         else {
           setLoading(false);
-          const controller = new AbortController();
           fetchCustomer(controller.signal);
-          return () => controller.abort();
         }
       })
       .catch(() => {
         router.push('/admin/');
       });
+    return () => controller.abort();
   }, [router, customerId, fetchCustomer]);
 
   const openAddModal = () => {

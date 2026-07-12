@@ -47,18 +47,18 @@ export default function ManufacturersPage() {
   }, []);
 
   useEffect(() => {
+    const controller = new AbortController();
     fetch('/api/auth/me/', { credentials: 'include' })
       .then((r) => r.json().catch(() => ({ success: false })))
       .then((d) => {
         if (!d?.success) router.push('/admin/');
         else {
           setLoading(false);
-          const controller = new AbortController();
           fetchData(controller.signal);
-          return () => controller.abort();
         }
       })
       .catch(() => router.push('/admin/'));
+    return () => controller.abort();
   }, [router, fetchData]);
 
   const openAdd = () => {

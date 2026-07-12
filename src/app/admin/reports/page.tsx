@@ -70,7 +70,10 @@ export default function ReportsPage() {
 
   const exportExcel = () => {
     let url = '';
-    if (tab === 'financial') return; // Financial uses JSON only for now
+    if (tab === 'financial') {
+      addToast('error', 'Excel export for financial reports coming soon');
+      return;
+    }
     if (tab === 'inventory') {
       url = `/api/v1/reports/inventory/?type=${invReport}&format=excel`;
     } else {

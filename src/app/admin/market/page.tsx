@@ -1,9 +1,11 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from '@/components/useTranslation';
+import { useToast } from '@/components/ToastContext';
 import {
   Package, Plus, Pencil, Trash2, X, Search, Upload, Sparkles, Loader2,
 } from 'lucide-react';
@@ -24,6 +26,8 @@ const CATEGORIES = ['Motorcycles', 'Spare Parts', 'Accessories'];
 
 export default function AdminMarket() {
   const { t, language } = useTranslation();
+  const { addToast } = useToast();
+  const router = useRouter();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -46,11 +50,11 @@ export default function AdminMarket() {
     fetch('/api/auth/me/', { credentials: 'include' })
       .then((r) => r.json())
       .then((d) => {
-        if (!d.success) window.location.href = '/admin/';
+        if (!d.success) router.push('/admin/');
         else setLoading(false);
       })
-      .catch(() => { window.location.href = '/admin/'; });
-  }, []);
+      .catch(() => { router.push('/admin/'); });
+  }, [router]);
 
   const load = useCallback(async () => {
     try {
@@ -89,7 +93,7 @@ export default function AdminMarket() {
     if (!form.name || !form.price) return;
     const priceNum = parseFloat(form.price);
     if (!priceNum || priceNum <= 0) {
-      alert(t('admin_market_price') + ' must be greater than 0');
+      addToast('error', t('admin_market_price') + ' must be greater than 0');
       return;
     }
     setSaveError('');
@@ -144,11 +148,21 @@ export default function AdminMarket() {
       credentials: 'include',
     });
     if (res.ok) await load();
+    else addToast('error', 'Failed to delete product');
   };
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    const maxSize = 5 * 1024 * 1024;
+    if (!file.type.startsWith('image/')) {
+      addToast('error', 'Only image files are allowed');
+      return;
+    }
+    if (file.size > maxSize) {
+      addToast('error', 'Image must be under 5MB');
+      return;
+    }
     const fd = new FormData();
     fd.append('file', file);
     try {
@@ -159,7 +173,10 @@ export default function AdminMarket() {
       });
       const d = await res.json();
       if (d.success) setForm((prev) => ({ ...prev, image: d.data.url }));
-    } catch {}
+      else addToast('error', d.error || 'Upload failed');
+    } catch {
+      addToast('error', 'Upload failed due to network error');
+    }
   };
 
   const handleAiGenerateImage = async () => {
@@ -177,10 +194,10 @@ export default function AdminMarket() {
         setForm((prev) => ({ ...prev, image: d.data.url }));
       } else {
         const errMsg = d.error || (d.errors ? d.errors.map((e: { message: string }) => e.message).join('; ') : 'AI feature not available');
-        alert(errMsg);
+        addToast('error', errMsg);
       }
     } catch {
-      alert('Network error. Check server console for details.');
+      addToast('error', 'Network error. Check server console for details.');
     } finally { setAiBusy(null); }
   };
 
@@ -199,10 +216,10 @@ export default function AdminMarket() {
         setForm((prev) => ({ ...prev, description: d.data.description }));
       } else {
         const errMsg = d.error || (d.errors ? d.errors.map((e: { message: string }) => e.message).join('; ') : 'AI feature not available');
-        alert(errMsg);
+        addToast('error', errMsg);
       }
     } catch {
-      alert('Network error. Check server console for details.');
+      addToast('error', 'Network error. Check server console for details.');
     } finally { setAiBusy(null); }
   };
 

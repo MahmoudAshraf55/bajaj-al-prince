@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from '@/components/useTranslation';
@@ -39,6 +40,7 @@ const statusLabels: Record<string, string> = {
 export default function InventoryCountsPage() {
   const { t, language } = useTranslation();
   const { addToast } = useToast();
+  const router = useRouter();
 
   const [counts, setCounts] = useState<InventoryCount[]>([]);
   const [loading, setLoading] = useState(true);
@@ -59,7 +61,18 @@ export default function InventoryCountsPage() {
     }
   }, [addToast]);
 
-  useEffect(() => { fetchCounts(); }, [fetchCounts]);
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/auth/me/', { credentials: 'include' })
+      .then((r) => r.json())
+      .then((d) => {
+        if (cancelled) return;
+        if (!d.success) { router.push('/admin/'); return; }
+        fetchCounts();
+      })
+      .catch(() => { if (!cancelled) router.push('/admin/'); });
+    return () => { cancelled = true; };
+  }, [router, fetchCounts]);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();

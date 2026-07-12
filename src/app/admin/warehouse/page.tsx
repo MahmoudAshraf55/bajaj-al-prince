@@ -65,7 +65,7 @@ export default function AdminWarehouse() {
   }, [router]);
 
   const loadProducts = useCallback(async () => {
-    const res = await fetch('/api/v1/products/?limit=10000&admin=true', { credentials: 'include' });
+    const res = await fetch('/api/v1/products/?limit=1000&admin=true', { credentials: 'include' });
     const d = await res.json();
     if (d.success) setProducts(d.data.products);
   }, []);

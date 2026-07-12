@@ -2,6 +2,7 @@
 const isDev = process.env.NODE_ENV !== 'production';
 
 const nextConfig = {
+  poweredByHeader: false,
   images: {
     remotePatterns: [
       { protocol: 'https', hostname: 'raw.githubusercontent.com' },
@@ -33,6 +34,30 @@ const nextConfig = {
       {
         source: '/(.*)',
         headers: [
+          {
+            key: 'Access-Control-Allow-Origin',
+            value: isDev ? '*' : 'https://bajajelprince.vercel.app',
+          },
+          {
+            key: 'Access-Control-Allow-Methods',
+            value: 'GET, POST, PATCH, DELETE, OPTIONS',
+          },
+          {
+            key: 'Access-Control-Allow-Headers',
+            value: 'Content-Type, Authorization',
+          },
+          {
+            key: 'Access-Control-Allow-Credentials',
+            value: 'true',
+          },
+          {
+            key: 'Cross-Origin-Embedder-Policy',
+            value: 'require-corp',
+          },
+          {
+            key: 'Cross-Origin-Opener-Policy',
+            value: 'same-origin',
+          },
           {
             key: 'X-Frame-Options',
             value: 'DENY',

@@ -87,11 +87,11 @@ export default function AccountingPage() {
     fetch('/api/auth/me/', { credentials: 'include' })
       .then((r) => r.json())
       .then((d) => {
-        if (!d.success) router.push('/admin/');
-        else setUser(d.data);
+        if (!d.success) { router.push('/admin/'); return; }
+        setUser(d.data);
+        setLoading(false);
       })
-      .catch(() => router.push('/admin/'))
-      .finally(() => setLoading(false));
+      .catch(() => router.push('/admin/'));
   }, [router]);
 
   const getDateRange = useCallback((period: AccountingPeriod, customF?: string, customT?: string) => {
