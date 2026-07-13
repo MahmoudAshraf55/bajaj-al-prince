@@ -13,7 +13,7 @@ import {
 type Tab = 'financial' | 'inventory' | 'customers';
 type FinancialReport = 'pnl' | 'balance' | 'cashflow';
 type InventoryReport = 'summary' | 'low_stock' | 'stock_value';
-type CustomerReport = 'top' | 'activity';
+type CustomerReport = 'top' | 'activity' | 'smart';
 
 export default function ReportsPage() {
   const { t } = useTranslation();
@@ -48,6 +48,8 @@ export default function ReportsPage() {
         url = `/api/v1/reports/financial/?type=${finReport}`;
       } else if (tab === 'inventory') {
         url = `/api/v1/reports/inventory/?type=${invReport}`;
+      } else if (custReport === 'smart') {
+        url = '/api/v1/reports/customers/smart/';
       } else {
         url = `/api/v1/reports/customers/?type=${custReport}`;
       }
@@ -150,6 +152,7 @@ export default function ReportsPage() {
                 <select value={custReport} onChange={(e) => setCustReport(e.target.value as CustomerReport)} className="px-3 py-2 rounded-xl bg-input border border-border text-sm focus:outline-none focus:ring-2 focus:ring-ring">
                   <option value="top">{t('rpt_top_customers')}</option>
                   <option value="activity">{t('rpt_customer_activity')}</option>
+                  <option value="smart">{t('rpt_smart_analysis') || 'Smart Analysis'}</option>
                 </select>
               </div>
             )}
@@ -202,7 +205,8 @@ export default function ReportsPage() {
             {tab === 'inventory' && invReport === 'summary' && <InventorySummary data={reportData} t={t} />}
             {tab === 'inventory' && invReport === 'low_stock' && <LowStockReport data={reportData} t={t} />}
             {tab === 'inventory' && invReport === 'stock_value' && <StockValueReport data={reportData} t={t} />}
-            {tab === 'customers' && <CustomerReportView data={reportData} t={t} type={custReport} />}
+            {tab === 'customers' && custReport === 'smart' && <SmartCustomerReport data={reportData} t={t} />}
+            {tab === 'customers' && custReport !== 'smart' && <CustomerReportView data={reportData} t={t} type={custReport} />}
           </div>
         )}
 
@@ -424,6 +428,68 @@ function Row({ label, value, bold, highlight, negative, suffix }: { label: strin
       <span className={`${highlight ? (safeValue >= 0 ? 'text-green-400' : 'text-red-400') : ''} ${negative ? 'text-red-400' : ''}`}>
         {Math.round(safeValue * 100) / 100}{suffix || ''}
       </span>
+    </div>
+  );
+}
+
+function SmartCustomerReport({ data, t }: { data: Record<string, unknown>; t: (k: string) => string }) {
+  const d = data as { count?: number; customers?: Array<Record<string, unknown>>; thresholds?: Record<string, unknown> };
+  const count = typeof d.count === 'number' ? d.count : 0;
+  const customers = Array.isArray(d.customers) ? d.customers : [];
+  const thresholds = (d.thresholds as Record<string, { min: number; max?: number; label: string }>) || {};
+
+  const colorMap: Record<string, string> = { green: 'bg-green-500/10 text-green-400 border-green-500/20', blue: 'bg-blue-500/10 text-blue-400 border-blue-500/20', amber: 'bg-amber-500/10 text-amber-400 border-amber-500/20', gray: 'bg-gray-500/10 text-gray-400 border-gray-500/20' };
+
+  return (
+    <div className="space-y-4">
+      <h3 className="text-lg font-bold">{t('rpt_smart_analysis') || 'Smart Customer Analysis'} ({count})</h3>
+      {/* Thresholds info */}
+      <div className="flex flex-wrap gap-3 text-xs">
+        {Object.entries(thresholds).map(([key, th]) => (
+          <div key={key} className="flex items-center gap-1.5 bg-white/5 rounded-lg px-3 py-1.5 border border-border/50">
+            <span className="w-2 h-2 rounded-full bg-green-400" />
+            <span className="font-medium">{th.label}</span>
+            <span className="text-muted-foreground">
+              ≥ {th.min} EGP{th.max ? ` – ${th.max} EGP` : ''}
+            </span>
+          </div>
+        ))}
+      </div>
+      {/* Customers table */}
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-border bg-white/5 text-muted-foreground">
+              <th scope="col" className="text-left py-2.5 px-3 font-medium">{t('rpt_name')}</th>
+              <th scope="col" className="text-center py-2.5 px-3 font-medium">{t('rpt_visits') || 'Visits'}</th>
+              <th scope="col" className="text-right py-2.5 px-3 font-medium">{t('rpt_revenue') || 'Revenue'}</th>
+              <th scope="col" className="text-right py-2.5 px-3 font-medium">{t('rpt_profit') || 'Profit'}</th>
+              <th scope="col" className="text-right py-2.5 px-3 font-medium">{t('rpt_avg_profit') || 'Avg/Visit'}</th>
+              <th scope="col" className="text-left py-2.5 px-3 font-medium">{t('rpt_recommendation') || 'Recommendation'}</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border/50">
+            {customers.map((c, i) => (
+              <tr key={i} className="hover:bg-white/5">
+                <td className="py-2.5 px-3">
+                  <span className="font-medium">{c.name as string}</span>
+                  {typeof c.phone === 'string' && c.phone && <span className="text-xs text-muted-foreground ml-2">{c.phone}</span>}
+                </td>
+                <td className="py-2.5 px-3 text-center font-medium">{c.totalVisits as number}</td>
+                <td className="py-2.5 px-3 text-right tabular-nums">{typeof c.totalRevenue === 'number' ? c.totalRevenue.toFixed(2) : '0.00'}</td>
+                <td className="py-2.5 px-3 text-right tabular-nums font-medium text-green-400">{typeof c.totalProfit === 'number' ? c.totalProfit.toFixed(2) : '0.00'}</td>
+                <td className="py-2.5 px-3 text-right tabular-nums text-muted-foreground">{typeof c.avgProfitPerVisit === 'number' ? c.avgProfitPerVisit.toFixed(2) : '0.00'}</td>
+                <td className="py-2.5 px-3">
+                  <span className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full border ${colorMap[c.recommendationColor as string] || 'bg-gray-500/10 text-gray-400 border-gray-500/20'}`}>
+                    {c.recommendationLabel as string || '—'}
+                  </span>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {customers.length === 0 && <p className="text-center text-muted-foreground py-8">{t('rpt_no_data')}</p>}
     </div>
   );
 }
