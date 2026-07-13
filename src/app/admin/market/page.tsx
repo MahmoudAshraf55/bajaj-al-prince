@@ -300,9 +300,10 @@ export default function AdminMarket() {
         </div>
       </div>
 
-      <AnimatePresence>
+      <AnimatePresence mode="wait">
         {showModal && (
           <motion.div
+            key={`modal-${editing?.id || 'add'}`}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -310,6 +311,7 @@ export default function AdminMarket() {
             onClick={() => setShowModal(false)}
           >
             <motion.div
+              key={`content-${editing?.id || 'add'}`}
               initial={{ opacity: 0, scale: 0.95, y: 10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 10 }}
