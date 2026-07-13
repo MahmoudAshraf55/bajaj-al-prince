@@ -97,17 +97,29 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
              throw new Error(`Purchase order item ${ri.orderItemId} not found for update`);
            }
 
-           await tx.stockMovement.create({
-             data: {
-               productId: orderItem.productId,
-               type: 'in',
-               quantity: ri.quantity,
-               reference: `PO:${order.number} / ${receiptNumber}`,
-               notes: data.notes || `Received from PO ${order.number}`,
-               createdById: payload.userId,
-             tenantId: tenantId ?? DEFAULT_TENANT_ID,
-             },
-           });
+            await tx.stockMovement.create({
+              data: {
+                productId: orderItem.productId,
+                type: 'in',
+                quantity: ri.quantity,
+                reference: `PO:${order.number} / ${receiptNumber}`,
+                notes: data.notes || `Received from PO ${order.number}`,
+                createdById: payload.userId,
+              tenantId: tenantId ?? DEFAULT_TENANT_ID,
+              },
+            });
+
+            // Sync warehouse stock: increment product stock on receipt (skip locked/inventory-exempt items) (Issue 16)
+            const product = await tx.product.findUnique({
+              where: { id: orderItem.productId },
+              select: { lockInventory: true },
+            });
+            if (product && !product.lockInventory) {
+              await tx.product.update({
+                where: { id: orderItem.productId },
+                data: { stock: { increment: ri.quantity } },
+              });
+            }
          }
 
          // Create journal entry for purchase receipt (Debit: Inventory, Credit: Accounts Payable)

@@ -251,14 +251,16 @@
 
 ## سابعاً: Purchase Orders — أوامر الشراء
 
-### 🟠 المشكلة 16: التزامن مع المخازن والحسابات
-**التحليل:**  
-- Purchase orders بتعمل `createDoubleEntry` بـ `type: 'PURCHASE'`  
-- **Debit:** Inventory (1104) — **Credit:** Accounts Payable (2101)  
-- الـ receipt الجزئي مش بيعمل journal entries
+### ✅ المشكلة 16: التزامن مع المخازن والحسابات (FIXED)
+**التحليل والحالة الحالية:**  
+- إنشاء أمر الشراء ينشئ `createDoubleEntry` بـ `PURCHASE` (Debit Inventory / Credit Accounts Payable) ✅
+- **الاستلام الجزئي يُنشئ قيد PURCHASE** (`receive/route.ts:113-125`) ✅ — تم إصلاحه مسبقاً
+- **خلل جوهري تم إصلاحه في هذه الجلسة:** الاستلام كان ينشئ `stockMovement` فقط **دون تحديث `product.stock`** → المخزون غير متزامن مع الاستلام
+- **الإصلاح:** عند الاستلام، يُزاد `product.stock` بـ `+quantity` (مع تخطي `lockInventory` للمنتجات المعفاة من المخزون) — متوافق مع سلوك `invoices/route.ts`
+- النتيجة: المخزن (warehouse) والحسابات (journal) متزامنان الآن عند استلام أمر الشراء
 
-**الموقع:** `src/app/api/v1/purchase-orders/[id]/route.ts`  
-**المطلوب:** فحص sync + إضافة partial receipt accounting
+**الموقع:** `src/app/api/v1/purchase-orders/[id]/receive/route.ts`  
+**الحالة:** ✅ RESOLVED (مزامنة stock + قيد PURCHASE على الاستلام)
 
 ---
 
