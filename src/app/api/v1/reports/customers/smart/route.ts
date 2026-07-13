@@ -17,7 +17,7 @@ interface SmartCustomer {
   recommendationColor: 'green' | 'blue' | 'amber' | 'gray';
 }
 
-function getRecommendation(totalProfit: number, totalVisits: number): Pick<SmartCustomer, 'recommendation' | 'recommendationLabel' | 'recommendationColor'> {
+function getRecommendation(totalProfit: number): Pick<SmartCustomer, 'recommendation' | 'recommendationLabel' | 'recommendationColor'> {
   if (totalProfit >= 3500) {
     return {
       recommendation: 'free_service',
@@ -80,7 +80,7 @@ export async function GET(req: NextRequest) {
 
         const totalProfit = totalRevenue - totalCost;
         const avgProfitPerVisit = visitCount > 0 ? totalProfit / visitCount : 0;
-        const rec = getRecommendation(totalProfit, visitCount);
+        const rec = getRecommendation(totalProfit);
 
         if (visitCount > 0) {
           smart.push({

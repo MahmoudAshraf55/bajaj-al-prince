@@ -100,7 +100,6 @@ export default function WorkOrdersPage() {
   const [taxRate, setTaxRate] = useState(14);
   const [discount, setDiscount] = useState(0);
   const [discountType, setDiscountType] = useState<'amount' | 'percent'>('amount');
-  const [showInvoicePreview, setShowInvoicePreview] = useState(false);
 
   const statusLabels: Record<string, string> = {
     pending: t('wo_status_pending'),
