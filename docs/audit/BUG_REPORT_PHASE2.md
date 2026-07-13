@@ -312,13 +312,14 @@
 
 ## تاسعاً: Manufacturers — الشركات المصنعة
 
-### 🟠 المشكلة 20: BAJAJ مش ظاهر
-**التحليل:**  
-- الـ seed فاضي للـ manufacturers — مفيش بيانات مسبقة  
-- **السبب:** مفيش `seed-vehicles.ts` أو الـ seed مش مهيأ
+### ✅ المشكلة 20: BAJAJ موجود في seed + موديلات (FIXED)
+**التحليل والحالة الحالية:**  
+- `prisma/seed.ts` يحتوي `manufacturer.upsert` لـ Bajaj (AR/EN) ويُنشئ 8 موديلات (Pulsar N160, N250, Dominar 400, Avenger 220, Discover 125, Pulsar 180, NS160, Boxer 150)
+- `scripts/setup.js` يشغّل البذرة بـ `npx tsx prisma/seed.ts`
+- أُضيف تكوين `"prisma": { "seed": "npx tsx prisma/seed.ts" }` في `package.json` ليشتغل `npm run db:seed` مباشرة
 
-**الموقع:** `prisma/seed.ts`  
-**المطلوب:** إضافة Bajaj كـ manufacturer في seed
+**الموقع:** `prisma/seed.ts:53-80`, `package.json`  
+**الحالة:** ✅ RESOLVED (seed موجود + تكوين prisma db seed)
 
 ---
 
