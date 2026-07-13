@@ -152,6 +152,27 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
           },
         });
 
+        // Deduct stock for parts used + create stock movements (Issue: stock movements were empty)
+        for (const part of wo.parts) {
+          if (!part.product?.lockInventory) {
+            await tx.product.update({
+              where: { id: part.productId },
+              data: { stock: { decrement: part.quantity } },
+            });
+          }
+          await tx.stockMovement.create({
+            data: {
+              productId: part.productId,
+              type: 'out',
+              quantity: part.quantity,
+              reference: `WO:${wo.id.slice(0, 8)}/${invoiceNumber}`,
+              notes: `Work order completed —${part.product?.name || 'Part'}`,
+              createdById: payload.userId,
+              tenantId,
+            },
+          });
+        }
+
         try {
           const salesRevenueAccountId = await AccountingService.getAccountId(tx, ACCOUNT_CODES.SALES_REVENUE, tenantId);
           const accountsReceivableAccountId = await AccountingService.getAccountId(tx, ACCOUNT_CODES.ACCOUNTS_RECEIVABLE, tenantId);
