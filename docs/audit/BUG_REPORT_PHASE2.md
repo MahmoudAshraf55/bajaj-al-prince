@@ -92,14 +92,27 @@
 - تأكيد ان كل invoice ليها journal entry  
 - التأكد من الفلترة
 
-### 🔴 المشكلة 9: Trial Balance / Balance Sheet / Income Statement
-**التحليل:**  
-- الـ reports بتستخدم `AccountingService.getTrialBalance()` و `getBalanceSheet()` و `getIncomeStatement()`  
-- بيستخدموا `createdAt` مش `journalEntry.date`  
-- ده كان الـ CRITICAL C1 من التقرير السابق — **لسه موجود**
+### ✅ المشكلة 9: Trial Balance / Balance Sheet / Income Statement (FIXED)
+**الحل المطبق:**  
+- جميع التقارير تستخدم `journalEntry.date` بشكل صحيح (ليس `createdAt`)
+- **getTrialBalance()** (السطر 121):
+  - `where.journalEntry = { date: { lte: asOfDate } }`
+  - يستخدم `journalEntry.date` لـ filtering
+- **getBalanceSheet()** (نفس النمط):
+  - يستخدم `journalEntry.date` للـ period filtering
+- **getIncomeStatement()** (السطر 252-254):
+  - `where.journalEntry = { date: {} }`
+  - `if (fromDate) where.journalEntry.date.gte = fromDate`
+  - `if (toDate) where.journalEntry.date.lte = toDate`
+  - يستخدم `journalEntry.date` للـ range filtering
+- **التطبيق:**
+  - كل التقارير تستخدم `journalEntryLine` مع `journalEntry.date` filter
+  - التاريخ الـ accurate لـ transactions (ليس وقت الـ creation)
+  - يعكس العملية المحاسبية الفعلية
+  - تم إصلاحه في commit `d156051`
 
-**الموقع:** `src/services/AccountingService.ts:118,179,249`  
-**المطلوب:** تغيير `createdAt` → `journalEntry.date` في كل التقارير
+**الموقع:** `src/services/AccountingService.ts:109-305`  
+**الحالة:** ✅ RESOLVED
 
 ### 🟠 المشكلة 10: التصنيف اليومي/شهري/ربع سنوي/سنوي
 **التحليل:**  
