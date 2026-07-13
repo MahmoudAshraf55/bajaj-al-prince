@@ -140,14 +140,16 @@
 **الموقع:** `src/services/AccountingService.ts:109-305`  
 **الحالة:** ✅ RESOLVED
 
-### 🟠 المشكلة 10: التصنيف اليومي/شهري/ربع سنوي/سنوي
-**التحليل:**  
-- الـ frontend بيبعت `from` و `to` dates  
-- الـ period بيتم تحديده حسب عدد الأيام (<28 = day, 28-89 = month, إلخ)  
-- **لكن الـ filtering بيستخدم `createdAt`** على Invoice/Transaction level مش journalEntry.date
+### ✅ المشكلة 10: التصنيف اليومي/شهري/ربع سنوي/سنوي (FIXED)
+**التحليل والحالة الحالية:**  
+- `periodType` يُحسب من طول النطاق (`diffDays`): `<28=day, 28-89=month, 90-364=quarter, >=365=year` — صحيح
+- الفلترة الرئيسية في `summary` و `income-statement` و `transactions` تستخدم **`journalEntry.date`** (موحّد، لا `createdAt`)
+- نطاق التاريخ يُوسَّع لبداية/نهاية اليوم المحلي عبر `parseRangeDate` (إصلاح Issue 8) → التصنيف الزمني دقيق
+- `createdAt` المتبقي فقط في استعلام `invoiceItems` المكمل (discounts/taxes/byCategory) — ولا يوجد حقل `date` في `Invoice`، و`createdAt` ≈ `journalEntry.date` عند الإنشاء
+- التصنيف (يومي/شهري/ربع سنوي/سنوي) يعمل عبر `getDateRange()` في الصفحة + APIs
 
-**الموقع:** `src/app/api/v1/accounting/summary/route.ts:95-99`  
-**المطلوب:** استخدام `journalEntry.date` بدل `createdAt` + توحيد الفلترة
+**الموقع:** `summary/route.ts:110-114`, `accounting/page.tsx:97-114`  
+**الحالة:** ✅ RESOLVED (موحّد على journalEntry.date + parseRangeDate)
 
 ---
 
