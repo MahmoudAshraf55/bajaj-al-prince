@@ -16,8 +16,13 @@ interface ExtractedRow {
   sku: string | null;
   barcode: string | null;
   name: string;
+  nameAr: string | null;
   price: number | null;
+  costPrice: number | null;
   stock: number | null;
+  unit: string | null;
+  description: string | null;
+  taxRate: number | null;
 }
 
 function extractTableLines(text: string): string[] {
@@ -30,31 +35,121 @@ function guessPrice(val: string): number | null {
   return isNaN(n) ? null : n;
 }
 
+function isArabicText(text: string): boolean {
+  return /[\u0600-\u06FF]/.test(text);
+}
+
 function extractRows(text: string): ExtractedRow[] {
   const lines = extractTableLines(text);
   const rows: ExtractedRow[] = [];
   let rowIdx = 1;
+
+  // Common unit abbreviations
+  const units = ['pcs', 'unit', 'box', 'bag', 'set', 'kit', 'piece', 'pieces', 'qty', 'وحدة', 'عبوة', 'طقم'];
 
   for (const line of lines) {
     if (line.length < 5) continue;
     const tokens = line.split(/\s{2,}|\t|,|;/).map((t) => t.trim()).filter(Boolean);
     if (tokens.length < 2) continue;
 
-    const name = tokens[0];
-    const lastToken = tokens[tokens.length - 1];
-    const secondLast = tokens.length > 2 ? tokens[tokens.length - 2] : null;
+    // Find name (first non-numeric token that looks like a product name)
+    let name = tokens[0];
+    let nameAr: string | null = null;
 
-    const price = guessPrice(lastToken) ?? guessPrice(secondLast ?? '') ?? null;
-    const stock = null;
+    // If first token is too short or numeric, find a better name
+    if (name.length < 3 || /^\d+$/.test(name)) {
+      for (let i = 0; i < tokens.length; i++) {
+        if (tokens[i].length >= 3 && !/^\d/.test(tokens[i])) {
+          name = tokens[i];
+          break;
+        }
+      }
+    }
 
+    // Check for Arabic name (usually follows English name)
+    if (isArabicText(line)) {
+      for (let i = 0; i < tokens.length; i++) {
+        if (isArabicText(tokens[i]) && tokens[i].length >= 2) {
+          nameAr = tokens[i];
+          break;
+        }
+      }
+    }
+
+    // Extract price (try to find numeric values)
+    let price: number | null = null;
+    let costPrice: number | null = null;
+    let priceTokenIdx = -1;
+
+    // Try to find two numeric values (price and costPrice)
+    const numericTokens: Array<{ idx: number; val: number }> = [];
+    for (let i = 0; i < tokens.length; i++) {
+      const val = guessPrice(tokens[i]);
+      if (val !== null && val > 0) {
+        numericTokens.push({ idx: i, val });
+      }
+    }
+
+    if (numericTokens.length >= 2) {
+      // Last two numeric values: costPrice then price
+      costPrice = numericTokens[numericTokens.length - 2].val;
+      price = numericTokens[numericTokens.length - 1].val;
+      priceTokenIdx = numericTokens[numericTokens.length - 1].idx;
+    } else if (numericTokens.length === 1) {
+      price = numericTokens[0].val;
+      priceTokenIdx = numericTokens[0].idx;
+    }
+
+    // Extract stock (usually a smallish integer, often near the price)
+    let stock: number | null = null;
+    for (let i = Math.max(0, priceTokenIdx - 2); i < tokens.length; i++) {
+      const val = parseFloat(tokens[i]);
+      if (!isNaN(val) && val > 0 && val < 10000 && Number.isInteger(val)) {
+        // Check if this looks like a stock quantity
+        if (!numericTokens.some((nt) => nt.idx === i)) {
+          stock = val;
+          break;
+        }
+      }
+    }
+
+    // Extract SKU (alphanumeric code)
     let sku: string | null = null;
-    let barcode: string | null = null;
     for (const token of tokens) {
       if (/^[A-Z0-9]{3,20}$/i.test(token) && token !== name && !sku) {
         sku = token;
       }
+    }
+
+    // Extract barcode (8-14 digits)
+    let barcode: string | null = null;
+    for (const token of tokens) {
       if (/^\d{8,14}$/.test(token) && !barcode) {
         barcode = token;
+      }
+    }
+
+    // Extract unit (look for common abbreviations)
+    let unit: string | null = null;
+    for (const token of tokens) {
+      if (units.includes(token.toLowerCase())) {
+        unit = token;
+        break;
+      }
+    }
+
+    // Description from line if long enough
+    const description = line.length > 100 ? line.substring(0, 200) : null;
+
+    // Try to extract tax rate (look for percentages)
+    let taxRate: number | null = null;
+    for (const token of tokens) {
+      if (token.endsWith('%')) {
+        const val = parseFloat(token);
+        if (!isNaN(val) && val > 0 && val < 100) {
+          taxRate = val;
+          break;
+        }
       }
     }
 
@@ -63,8 +158,13 @@ function extractRows(text: string): ExtractedRow[] {
       sku,
       barcode,
       name,
+      nameAr,
       price,
+      costPrice,
       stock,
+      unit,
+      description,
+      taxRate,
     });
   }
 
@@ -136,28 +236,33 @@ export async function POST(req: NextRequest) {
       const toCreate: Prisma.ProductCreateManyInput[] = [];
       const toUpdate: { id: string; data: Prisma.ProductUpdateInput }[] = [];
 
-      for (const row of extractedRows) {
-        const match = (row.barcode && existingByBarcode.get(row.barcode))
-          || (row.sku && existingBySku.get(row.sku))
-          || null;
+       for (const row of extractedRows) {
+         const match = (row.barcode && existingByBarcode.get(row.barcode))
+           || (row.sku && existingBySku.get(row.sku))
+           || null;
 
-        const data: Prisma.ProductCreateManyInput = {
-          name: row.name,
-          sku: row.sku,
-          barcode: row.barcode,
-          category: 'Spare Parts',
-          price: row.price ?? 0,
-          stock: row.stock ?? 1,
-          tenantId: getTenantId() ?? DEFAULT_TENANT_ID,
-        };
+         const data: Prisma.ProductCreateManyInput = {
+           name: row.name,
+           nameAr: row.nameAr,
+           sku: row.sku,
+           barcode: row.barcode,
+           category: 'Spare Parts',
+           price: row.price ?? 0,
+           costPrice: row.costPrice ?? undefined,
+           stock: row.stock ?? 1,
+           unit: row.unit ?? undefined,
+           description: row.description ?? undefined,
+           taxRate: row.taxRate ?? undefined,
+           tenantId: getTenantId() ?? DEFAULT_TENANT_ID,
+         };
 
-        if (match) {
-          if (match.isDeleted) (data as Record<string, unknown>).isDeleted = false;
-          toUpdate.push({ id: match.id, data });
-        } else {
-          toCreate.push(data);
-        }
-      }
+         if (match) {
+           if (match.isDeleted) (data as Record<string, unknown>).isDeleted = false;
+           toUpdate.push({ id: match.id, data });
+         } else {
+           toCreate.push(data);
+         }
+       }
 
       let created = 0;
       let updated = 0;
