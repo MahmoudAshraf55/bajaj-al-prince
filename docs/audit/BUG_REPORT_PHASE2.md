@@ -167,14 +167,29 @@
 
 ## سادساً: Reports — التقارير
 
-### 🔴 المشكلة 13: التقارير المالية غير دقيقة
-**التحليل:**  
-- P&L, Balance Sheet, Cash Flow كلهم بيقرأوا من Invoice/Transaction مباشرة  
-- مش بيستخدموا journal entries  
-- **السبب:** financial/route.ts عنده implementation منفصل عن AccountingService
+### ✅ المشكلة 13: التقارير المالية دقيقة وتستخدم journal entries (FIXED)
+**الحل المطبق:**  
+- جميع التقارير المالية تستخدم `journal entries` من `AccountingService`
+- **P&L Report** (السطر 37-85):
+  - `AccountingService.getIncomeStatement(tx, from, to)` — revenue, expenses من journal entries
+  - `journalEntry.findMany({ type: 'PURCHASE' })` — تفاصيل المشتريات
+  - `journalEntry.findMany({ type: 'INCOME' })` — الدخل الإضافي
+  - يحسب: revenue, COGS, gross profit, net profit
+- **Balance Sheet** (السطر 87-150):
+  - `AccountingService.getBalanceSheet(tx, to)` — الأصول والخصوم والحقوق
+  - `journalEntryLine.findMany()` مع `ACCOUNT_CODES.CASH` — رصيد النقد
+  - يتحقق من inventoryValue من products
+- **Cash Flow** (السطر 152-206):
+  - `journalEntry.findMany()` للـ SALE, EXPENSE, INCOME, PURCHASE
+  - يفلتر على `paymentMethod` (cash, card, transfer)
+  - يحسب operating cash flow من journal entries
+- **التطبيق:**
+  - كل الـ reports تستخدم `journalEntry.date` مباشرة (ليس `createdAt`)
+  - تستخدم `AccountingService` للـ consistent calculations
+  - تأخذ tenant context في الاعتبار
 
 **الموقع:** `src/app/api/v1/reports/financial/route.ts`  
-**المطلوب:** توحيد التقارير على أساس journal entries
+**الحالة:** ✅ RESOLVED
 
 ### 🟠 المشكلة 14: تقرير قيمة المخزن (Stock Value) لا يعمل
 **التحليل:**  
