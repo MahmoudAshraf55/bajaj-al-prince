@@ -10,6 +10,7 @@ import { withSecurityHeaders } from '@/lib/security';
 const updateItemSchema = z.object({
   productId: z.string(),
   actualQty: z.number().int().min(0),
+  reason: z.string().max(500).optional().nullable(),
 });
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -59,7 +60,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
             const variance = item.actualQty - existing.expectedQty;
             await prisma.inventoryCountItem.update({
               where: { id: existing.id },
-              data: { actualQty: item.actualQty, variance },
+              data: { actualQty: item.actualQty, variance, reason: item.reason ?? undefined },
             });
           }
         }

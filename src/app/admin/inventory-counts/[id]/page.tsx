@@ -25,6 +25,7 @@ interface InventoryCountItem {
   variance: number;
   unit: string;
   notes?: string | null;
+  reason?: string | null;
 }
 
 interface InventoryCount {
@@ -66,6 +67,7 @@ export default function InventoryCountDetailPage() {
   const [completing, setCompleting] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [edits, setEdits] = useState<Record<string, number>>({});
+  const [reasons, setReasons] = useState<Record<string, string>>({});
 
   const fetchCount = useCallback(async () => {
     setError('');
@@ -80,6 +82,11 @@ export default function InventoryCountDetailPage() {
           initial[item.id] = item.actualQty;
         });
         setEdits(initial);
+        const initReasons: Record<string, string> = {};
+        (data.items ?? []).forEach((item: InventoryCountItem) => {
+          initReasons[item.id] = item.reason || '';
+        });
+        setReasons(initReasons);
       } else {
         setError(json.error || t('ic_failed_load_count'));
         addToast('error', json.error || t('ic_failed_load_count'));
@@ -98,7 +105,8 @@ export default function InventoryCountDetailPage() {
   const handleSave = async () => {
     const items = Object.entries(edits).map(([itemId, actualQty]) => {
       const item = count?.items.find((i) => i.id === itemId);
-      return { productId: item?.productId, actualQty };
+      const reason = reasons[itemId] || null;
+      return { productId: item?.productId as string, actualQty: Number(actualQty), reason };
     });
     setSaving(true);
     try {
@@ -239,6 +247,7 @@ export default function InventoryCountDetailPage() {
                   <th scope="col" className="text-right px-5 py-3 font-medium">{t('ic_expected')}</th>
                   <th scope="col" className="text-right px-5 py-3 font-medium">{t('ic_actual')}</th>
                   <th scope="col" className="text-right px-5 py-3 font-medium">{t('ic_variance')}</th>
+                  <th scope="col" className="text-left px-5 py-3 font-medium">{t('ic_reason') || 'السبب'}</th>
                   <th scope="col" className="text-left px-5 py-3 font-medium">{t('ic_unit')}</th>
                 </tr>
               </thead>
@@ -268,13 +277,26 @@ export default function InventoryCountDetailPage() {
                       <td className={`px-5 py-4 text-right font-medium ${variance !== 0 ? 'text-red-400' : 'text-green-400'}`}>
                         {variance > 0 ? '+' : ''}{variance}
                       </td>
+                      <td className="px-5 py-2">
+                        {isEditable ? (
+                          <input
+                            type="text"
+                            value={reasons[item.id] ?? ''}
+                            onChange={(e) => setReasons({ ...reasons, [item.id]: e.target.value })}
+                            placeholder={variance !== 0 ? t('ic_reason_placeholder') || 'سبب الفرق...' : ''}
+                            className={`w-full px-2 py-1 rounded-lg bg-input border text-xs focus:outline-none focus:ring-1 focus:ring-ring ${variance !== 0 ? 'border-red-500/50' : 'border-border'}`}
+                          />
+                        ) : (
+                          <span className="text-xs text-muted-foreground">{item.reason || '—'}</span>
+                        )}
+                      </td>
                       <td className="px-5 py-4 text-muted-foreground">{item.unit}</td>
                     </tr>
                   );
                 })}
                 {count.items.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="px-5 py-8 text-center text-muted-foreground">
+                    <td colSpan={7} className="px-5 py-8 text-center text-muted-foreground">
                       {t('ic_no_items')}
                     </td>
                   </tr>
