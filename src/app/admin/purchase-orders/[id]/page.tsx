@@ -313,33 +313,33 @@ export default function PurchaseOrderDetailPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-border text-muted-foreground">
-                  <th scope="col" className="text-left pb-3 font-medium">{t('po_select_product')}</th>
-                  <th scope="col" className="text-center pb-3 font-medium">{t('po_qty')}</th>
-                  <th scope="col" className="text-center pb-3 font-medium">{t('po_received')}</th>
-                  <th scope="col" className="text-right pb-3 font-medium">{t('po_unit_price')}</th>
-                  <th scope="col" className="text-right pb-3 font-medium">{t('po_line_total')}</th>
+                <tr className="border-b border-border bg-white/5 text-muted-foreground">
+                  <th scope="col" className="text-left py-2.5 px-3 font-medium rounded-tl-lg">{t('po_product') || 'Product'}</th>
+                  <th scope="col" className="text-center py-2.5 px-3 font-medium w-16">{t('po_qty')}</th>
+                  <th scope="col" className="text-center py-2.5 px-3 font-medium w-20">{t('po_received')}</th>
+                  <th scope="col" className="text-right py-2.5 px-3 font-medium w-28">{t('po_unit_price')}</th>
+                  <th scope="col" className="text-right py-2.5 px-3 font-medium rounded-tr-lg w-28">{t('po_line_total')}</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border">
+              <tbody className="divide-y divide-border/50">
                 {order.items.map((item) => (
-                  <tr key={item.id}>
-                    <td className="py-3 pr-4">{item.product.name}</td>
-                    <td className="py-3 text-center">{item.quantity}</td>
-                    <td className="py-3 text-center">
-                      <span className={item.receivedQty >= item.quantity ? 'text-green-400' : 'text-yellow-400'}>
+                  <tr key={item.id} className="hover:bg-white/5 transition-colors">
+                    <td className="py-3 px-3 font-medium">{item.product.name}</td>
+                    <td className="py-3 px-3 text-center tabular-nums">{item.quantity}</td>
+                    <td className="py-3 px-3 text-center tabular-nums">
+                      <span className={`inline-flex items-center justify-center min-w-[2rem] px-1.5 py-0.5 rounded text-xs font-bold ${item.receivedQty >= item.quantity ? 'bg-green-500/10 text-green-400' : 'bg-yellow-500/10 text-yellow-400'}`}>
                         {item.receivedQty}
                       </span>
                     </td>
-                    <td className="py-3 text-right">{Number(item.unitPrice).toFixed(2)}</td>
-                    <td className="py-3 text-right font-medium">{Number(item.total).toFixed(2)}</td>
+                    <td className="py-3 px-3 text-right tabular-nums font-mono text-xs">{Number(item.unitPrice).toFixed(2)}</td>
+                    <td className="py-3 px-3 text-right tabular-nums font-bold">{Number(item.total).toFixed(2)}</td>
                   </tr>
                 ))}
               </tbody>
               <tfoot>
-                <tr className="border-t border-border">
-                  <td colSpan={4} className="pt-3 text-right font-medium">{t('po_grand_total')}</td>
-                  <td className="pt-3 text-right font-bold">{Number(order.total).toFixed(2)}</td>
+                <tr className="border-t-2 border-border bg-white/5">
+                  <td colSpan={4} className="py-3 px-3 text-right font-medium text-muted-foreground">{t('po_grand_total')}</td>
+                  <td className="py-3 px-3 text-right font-bold text-base">{Number(order.total).toFixed(2)} EGP</td>
                 </tr>
               </tfoot>
             </table>
