@@ -6,14 +6,16 @@
 
 ## أولاً: الـ Warehouse — استيراد Excel/PDF
 
-### 🔴 المشكلة 1: استيراد Excel لا يظهر معاينة ولا يستخرج البيانات
-**التحليل:**  
-- الكود بيستخدم `xlsx` لقراءة الملف وإخراج أول 10 صفوف preview  
-- الـ column mapping يدعم الأسماء العربية: `'السعر'`, `'سعر التكلفة'`, `'المخزون'`, `'الوحدة'`, `'الضريبة'`, `'الوصف'`  
-- **السبب المحتمل:** لو الـ Excel فيه header names مختلفة أو الـ `sheet_to_json` مش بيعرف يقرا الصيغة
+### ✅ المشكلة 1: استيراد Excel يعرض معاينة ويستخرج البيانات (FIXED)
+**التحليل والحالة الحالية:**  
+- الـ API route `src/app/api/v1/products/import-excel/route.ts` يدعم `action: 'preview'` و `action: 'confirm'`
+- `parseExcelSheet()` يقرأ الملف بـ `XLSX.read` ويُرجع `headers`, `preview` (أول 10 صفوف), `totalRows`, `fileName`
+- `parseRow()` يدعم الأسماء العربية والإنجليزية: SKU, Barcode, English/Arabic Name, Category, Unit Price, Cost, Stock, Unit, Description, Tax Rate, Active/Expiry dates
+- `WHImportTab.tsx` يعرض جدول المعاينة (10 صفوف) مع أزرار Confirm/Cancel
+- **التحقق العملي:** تم إنشاء ملف Excel تجريبي واختبار الاستخراج — النتيجة: 2 صفوف مُستخرجة بنجاح مع headers وبيانات عربية سليمة
 
-**الموقع:** `src/app/api/v1/products/import-excel/route.ts:74-100` (parseRow) و `WHImportTab.tsx:86-127` (preview table)  
-**المطلوب:** تصحيح `parseRow()` لدعم كل الصيغ المصرية + تصحيح preview لعرض 10 صفوف
+**الموقع:** `src/app/api/v1/products/import-excel/route.ts` + `WHImportTab.tsx` + `warehouse/page.tsx`  
+**الحالة:** ✅ RESOLVED (تم التحقق فعلياً)
 
 ### 🟠 المشكلة 2: استيراد PDF لا يستخرج البيانات كاملة
 **التحليل:**  
