@@ -473,13 +473,13 @@ export default function AdminPOS() {
   const handleReturnInvoice = async (orig: Invoice) => {
     // Validation: Only allow returns from sale invoices
     if (orig.type !== 'sale') {
-      addToast('error', 'Returns can only be created for sale invoices');
+      addToast('error', t('pos_return_sale_only'));
       return;
     }
 
     // Validation: Check if invoice is confirmed
     if (orig.status !== 'confirmed') {
-      addToast('error', `Cannot return ${orig.status} invoice`);
+      addToast('error', t('pos_return_confirmed_only', { status: orig.status }));
       return;
     }
 
@@ -502,14 +502,14 @@ export default function AdminPOS() {
       });
       const d = await res.json();
       if (d.success) {
-        addToast('success', `Return created: ${d.data.invoice.number}`);
+        addToast('success', t('pos_return_created', { number: d.data.invoice.number }));
         setDetailInvoice(null);
         await loadInvoices();
       } else {
-        addToast('error', d.error || 'Failed to create return');
+        addToast('error', d.error || t('pos_return_failed'));
       }
     } catch {
-      addToast('error', 'Network error: unable to process return');
+      addToast('error', t('pos_network_error'));
     } finally {
       setSaving(false);
     }
@@ -894,14 +894,14 @@ export default function AdminPOS() {
                 <div className="flex justify-between"><span>{t('pos_paid')}</span><span>{Number(detailInvoice.paid).toFixed(2)} EGP</span></div>
                 {Number(detailInvoice.change) > 0 && <div className="flex justify-between text-green-400"><span>{t('pos_change')}</span><span>{Number(detailInvoice.change).toFixed(2)} EGP</span></div>}
               </div>
-              {detailInvoice.type === 'sale' && detailInvoice.status === 'confirmed' && (
-                <div className="flex gap-2 mt-4">
-                  <button onClick={() => { handleReturnInvoice(detailInvoice); }}
-                    className="flex-1 py-2 rounded-xl bg-orange-500/80 text-white text-sm font-medium hover:bg-orange-500 transition-colors">
-                    Return Items
-                  </button>
-                </div>
-              )}
+               {detailInvoice.type === 'sale' && detailInvoice.status === 'confirmed' && (
+                 <div className="flex gap-2 mt-4">
+                   <button onClick={() => { handleReturnInvoice(detailInvoice); }}
+                     className="flex-1 py-2 rounded-xl bg-orange-500/80 text-white text-sm font-medium hover:bg-orange-500 transition-colors">
+                     {t('pos_return_items')}
+                   </button>
+                 </div>
+               )}
             </motion.div>
           </motion.div>
         )}
