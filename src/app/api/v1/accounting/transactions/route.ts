@@ -23,7 +23,7 @@ export async function GET(req: NextRequest) {
 
     try {
       const journalEntries = await prisma.journalEntry.findMany({
-        where: { date: { gte: fromDate, lte: toDate } },
+        where: { date: { gte: fromDate, lte: toDate }, isDeleted: false },
         select: {
           id: true,
           type: true,
@@ -38,6 +38,13 @@ export async function GET(req: NextRequest) {
           createdById: true,
         },
         orderBy: { date: 'desc' },
+        take: limit,
+        skip,
+      });
+
+      // Get total count for pagination
+      const total = await prisma.journalEntry.count({
+        where: { date: { gte: fromDate, lte: toDate }, isDeleted: false },
       });
 
       const transactions = journalEntries.map((je) => ({
@@ -57,12 +64,9 @@ export async function GET(req: NextRequest) {
         tax: 0,
       }));
 
-      const total = transactions.length;
-      const paged = transactions.slice(skip, skip + limit);
-
       return withSecurityHeaders(NextResponse.json({
         success: true,
-        data: paged,
+        data: transactions,
         meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
       }));
     } catch (err) {
