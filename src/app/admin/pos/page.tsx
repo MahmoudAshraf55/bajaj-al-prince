@@ -471,6 +471,18 @@ export default function AdminPOS() {
   }, [loading, activeTab, loadInvoices]);
 
   const handleReturnInvoice = async (orig: Invoice) => {
+    // Validation: Only allow returns from sale invoices
+    if (orig.type !== 'sale') {
+      addToast('error', 'Returns can only be created for sale invoices');
+      return;
+    }
+
+    // Validation: Check if invoice is confirmed
+    if (orig.status !== 'confirmed') {
+      addToast('error', `Cannot return ${orig.status} invoice`);
+      return;
+    }
+
     setSaving(true);
     try {
       const res = await fetch('/api/v1/invoices/', {
@@ -479,23 +491,25 @@ export default function AdminPOS() {
         credentials: 'include',
         body: JSON.stringify({
           type: 'return',
-          items: orig.items.filter((item) => item.productId).map((item) => ({ productId: item.productId!, quantity: item.quantity })),
+          items: orig.items
+            .filter((item) => item.productId)
+            .map((item) => ({ productId: item.productId!, quantity: item.quantity })),
           paid: Number(orig.total),
           paymentMethod: orig.paymentMethod || 'cash',
-          notes: `${t('pos_return_for')} ${orig.number}`,
+          notes: `Return for ${orig.number}`,
           customerName: orig.customerName,
         }),
       });
       const d = await res.json();
       if (d.success) {
-        addToast('success', t('pos_return_created', { number: d.data.invoice.number }));
+        addToast('success', `Return created: ${d.data.invoice.number}`);
         setDetailInvoice(null);
         await loadInvoices();
       } else {
-        addToast('error', d.error || t('pos_return_failed'));
+        addToast('error', d.error || 'Failed to create return');
       }
     } catch {
-      addToast('error', t('pos_network_error'));
+      addToast('error', 'Network error: unable to process return');
     } finally {
       setSaving(false);
     }
