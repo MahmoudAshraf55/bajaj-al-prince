@@ -342,13 +342,15 @@
 **الموقع:** Multiple files — see commits above  
 **الحالة:** ✅ RESOLVED — 5 commits pushed
 
-### 🔴 المشكلة 22: لا يوجد ربط بين فاتورة الـ POS وفاتورة الخدمة
-**التحليل:**  
-- POS بيحط `workOrderId` في request بس الـ Zod schema مش بتقبله  
-- **السبب:** `createInvoiceSchema` مش متضمن `workOrderId`
+### ✅ المشكلة 22: ربط فاتورة POS وفاتورة الخدمة موجود (FIXED)
+**التحليل والحالة الحالية:**  
+- `createInvoiceSchema` يشمل `workOrderId` (خط 32) + `returnInvoiceId` (خط 33)
+- إنشاء الفاتورة يضبط `workOrderId: data.workOrderId` (خط 259)
+- صفحة الـ POS ترسل `workOrderId: selectedWorkOrderId` (خط 281) عند إتمام البيع
+- POSCart يعرض زر "Link Work Order" لاختيار أمر الخدمة المرتبط
 
-**الموقع:** `src/app/api/v1/invoices/route.ts:18-32`  
-**المطلوب:** إضافة `workOrderId` للـ schema وربطه
+**الموقع:** `src/app/api/v1/invoices/route.ts`, `src/app/admin/pos/page.tsx`  
+**الحالة:** ✅ RESOLVED (workOrderId في schema + POS linkage)
 
 ### ✅ المشكلة 23: تعديل وإلغاء مش موجودين — نستخدم "مرتجع" (FIXED)
 **الحل المطبق:**  
