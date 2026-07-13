@@ -89,15 +89,21 @@
 
 ## ثالثاً: الـ Accounting — المحاسبة
 
-### 🔴 المشكلة 7: acc_summary مش متزامن مع السيستم
-**التحليل:**  
-- الـ Summary API بيقرا من Invoice/Transaction/WorkOrder مباشرة  
-- الـ Trial Balance/Balance Sheet/Income Statement بيقرا من JournalEntry/JournalEntryLine  
-- **نظامين منفصلين** — الأرقام ممكن تختلف  
-- `createdAt` بدل `journalEntry.date` (المشكلة C1 من التقرير السابق)
+### ✅ المشكلة 7: acc_summary متزامن مع النظام (FIXED)
+**التحليل والحالة الحالية:**  
+- الـ commit `7eecb8b` صحّح حسابات الـ summary لتقرأ من **Journal Entries** (موحّد المصدر مع TB/BS/IS)
+- **المصدر الحالي (`summary/route.ts`):**
+  - `revenue` من `journalEntry` type SALE (بـ `date` صحيح) ✅
+  - `returns` من RETURN entries ✅
+  - `purchases` من PURCHASE entries ✅
+  - `expenses` = purchase + manual EXPENSE entries ✅
+  - `income` من INCOME entries ✅
+  - `cogs` من `journalEntryLine` account `5100` (SALE) ✅ — نفس منطق `getIncomeStatement`
+- **مكملات من invoiceItems** (لا توجد كقيود منفصلة): `discounts`, `taxes`, `byCategory` — تُحسب من `invoiceItem` (تصفية بـ `invoice.createdAt` وهو طابع الفاتورة المتزامن مع `journalEntry.date`)
+- الأرقام الرئيسية (revenue, cogs, netProfit) متطابقة مع Trial Balance / Balance Sheet / Income Statement
 
-**الموقع:** `src/app/api/v1/accounting/summary/route.ts:49-67`  
-**المطلوب:** توحيد المصدر — الـ Summary لازم يقرأ من JournalEntries
+**الموقع:** `src/app/api/v1/accounting/summary/route.ts`  
+**الحالة:** ✅ RESOLVED (commit 7eecb8b — مصدر موحّد من Journal Entries)
 
 ### 🔴 المشكلة 8: المعاملات فاضية (Transactions empty)
 **التحليل:**  
