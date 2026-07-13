@@ -76,14 +76,16 @@
 **الموقع:** `src/app/api/v1/invoices/route.ts`, `src/app/admin/pos/page.tsx`, `prisma/schema.prisma`  
 **الحالة:** ✅ RESOLVED (تم الإصلاح + migration مطبّق + build ناجح)
 
-### 🔵 المشكلة 6: الخزينة مش متزامنة مع السيستم
-**التحليل:**  
-- الـ Treasury بيعمل fetch على `/api/v1/invoices/?limit=200`  
-- بيحسب totals من invoice records مش من journal entries  
-- الـ returns مش بتتنقص من total
+### ✅ المشكلة 6: الخزينة متزامنة مع النظام المحاسبي (FIXED)
+**التحليل والحالة الحالية:**  
+- الـ Treasury API يقرأ من **Journal Entries** (`SALE` و `RETURN`), ليس من invoices مباشرة ✅
+- المرتجعات تُخصم من الإجمالي (`mult = SALE ? 1 : -1` خط 64) ✅
+- الـ totals تُجمَّع حسب paymentMethod (cash/card/transfer) ✅
+- الـ tax/discount تُستخرج من الفواتير المرتبطة (خط 76-83)
+- **إصلاح إضافي:** نطاق التاريخ يُوسَّع لبداية/نهاية اليوم المحلي (`parseRangeDate`) — نفس Issue 8
 
-**الموقع:** `src/app/admin/pos/page.tsx:509-529` (loadTreasury)  
-**المطلوب:** ربط Treasury مع الـ accounting system (journal entries)
+**الموقع:** `src/app/api/v1/accounting/treasury/route.ts`  
+**الحالة:** ✅ RESOLVED (Journal Entries source + parseRangeDate)
 
 ---
 
