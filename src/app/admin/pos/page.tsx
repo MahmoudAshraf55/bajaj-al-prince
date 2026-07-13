@@ -85,6 +85,19 @@ export default function AdminPOS() {
   const [detailInvoice, setDetailInvoice] = useState<Invoice | null>(null);
 
   const [treasuryLoading, setTreasuryLoading] = useState(false);
+  
+  // Handler to safely open invoice with guard against rapid state changes
+  const handleOpenInvoice = useCallback((inv: Invoice | null) => {
+    if (inv === null) {
+      setDetailInvoice(null); // Close
+      return;
+    }
+    // Prevent rapid switching between invoices by closing first
+    if (detailInvoice?.id === inv.id) return; // Already open, ignore
+    setDetailInvoice(null); // Close current
+    // Use microtask to ensure clean animation transition
+    setTimeout(() => setDetailInvoice(inv), 0);
+  }, [detailInvoice]);
   const [treasuryData, setTreasuryData] = useState<{
     todaySales: number;
     todayCount: number;
@@ -720,7 +733,7 @@ export default function AdminPOS() {
             setInvPage={setInvPage}
             invTotalPages={invTotalPages}
             handleReturnInvoice={handleReturnInvoice}
-            setDetailInvoice={setDetailInvoice}
+            setDetailInvoice={handleOpenInvoice}
             statusColors={statusColors}
             t={t}
           />
@@ -820,9 +833,9 @@ export default function AdminPOS() {
         </motion.div>
       )}
 
-      <AnimatePresence>
+      <AnimatePresence mode="wait">
         {detailInvoice && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-40 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setDetailInvoice(null)}>
+          <motion.div key={detailInvoice.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-40 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setDetailInvoice(null)}>
             <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} exit={{ scale: 0.95 }} onClick={(e) => e.stopPropagation()}
               role="dialog"
               aria-modal="true" className="glass rounded-2xl p-6 w-full max-w-lg max-h-[80vh] overflow-auto">
