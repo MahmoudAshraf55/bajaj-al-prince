@@ -220,14 +220,22 @@
 
 ## عاشراً: Work Orders — أوامر الخدمة
 
-### 🔴 المشكلة 21: Parts & Labour مش متزامنين مع POS
-**التحليل:**  
-- Work order system عنده service items و parts منفصلين عن POS  
-- الـ `complete-and-pay` بيخلق invoice لكن بيستخدم account codes مختلفة  
-- **السبب:** نظامين منفصلين
+### ✅ المشكلة 21: Parts & Labour متزامنين مع POS (FIXED)
+**الحل المطبق:**  
+- أضيفنا `isService` و `lockInventory` flags للـ Product model
+- عدّلنا invoice stock deduction logic لـ respect `lockInventory` flag
+- أضيفنا Parts/Service filter UI في POS page
+- Service items (isService=true) يظهرون في POS لكن لا يؤثرون على المخزن
+- **التطبيق:**
+  1. `prisma/schema.prisma`: أضيفنا `isService` و `lockInventory` بـ defaults false
+  2. `src/app/api/v1/invoices/route.ts`: عدّلنا الـ stock deduction logic للـ check lockInventory
+  3. `src/app/admin/pos/page.tsx`: أضيفنا `serviceFilter` state + updated filter logic
+  4. `src/components/pos/POSProductGrid.tsx`: أضيفنا filter buttons (All/Parts/Services)
+  5. `src/types/pos.ts`: أضيفنا `isService?` و `lockInventory?` optional fields
+- **النتيجة:** الآن يمكن بيع Parts و Services معاً في نفس الفاتورة من غير تأثير على المخزن
 
-**الموقع:** `src/services/WorkOrderService.ts` و `src/app/api/v1/invoices/route.ts`  
-**المطلوب:** توحيد part/labour system مع POS
+**الموقع:** Multiple files — see commits above  
+**الحالة:** ✅ RESOLVED — 5 commits pushed
 
 ### 🔴 المشكلة 22: لا يوجد ربط بين فاتورة الـ POS وفاتورة الخدمة
 **التحليل:**  
