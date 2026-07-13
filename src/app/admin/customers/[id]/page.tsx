@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 
 export default function CustomerDetailPage() {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   const { addToast } = useToast();
   const router = useRouter();
   const params = useParams();
@@ -44,6 +44,7 @@ export default function CustomerDetailPage() {
 
   // Work Order modal state
   const [showWorkOrderModal, setShowWorkOrderModal] = useState(false);
+  const [invoiceDetail, setInvoiceDetail] = useState<Record<string, unknown> | null>(null);
   const [workOrderForm, setWorkOrderForm] = useState({ vehicleId: '', description: '' });
   const [workOrderSubmitting, setWorkOrderSubmitting] = useState(false);
 
@@ -545,13 +546,13 @@ export default function CustomerDetailPage() {
                         </span>
                       </div>
                     </div>
-                    <Link
-                      href={`/admin/invoices/${inv.id}`}
+                    <button
+                      onClick={() => setInvoiceDetail(inv as unknown as Record<string, unknown>)}
                       className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
                     >
                       {t('crm_view_details')}
                       <ArrowRight className="w-3 h-3" />
-                    </Link>
+                    </button>
                   </motion.div>
                 ))}
               </div>
@@ -974,6 +975,32 @@ export default function CustomerDetailPage() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {invoiceDetail && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setInvoiceDetail(null)}>
+          <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} onClick={(e) => e.stopPropagation()}
+            role="dialog" aria-modal="true" className="glass rounded-2xl p-6 w-full max-w-sm">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold text-lg">{t('crm_invoice_detail') || 'Invoice Detail'}</h3>
+              <button onClick={() => setInvoiceDetail(null)} className="p-1 text-muted-foreground hover:text-foreground"><X className="w-5 h-5" /></button>
+            </div>
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between"><span className="text-muted-foreground">{t('pos_invoice_number')}</span><span className="font-mono">{invoiceDetail.number as string}</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">{t('crm_invoice_type') || 'Type'}</span><span>{(invoiceDetail.type as string) || '—'}</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">{t('crm_status') || 'Status'}</span><span>{(invoiceDetail.status as string) || '—'}</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">{t('pos_subtotal')}</span><span>{Number(invoiceDetail.subtotal || 0).toFixed(2)} EGP</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">{t('pos_tax')}</span><span>{Number(invoiceDetail.taxTotal || 0).toFixed(2)} EGP</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">{t('pos_discount')}</span><span>{Number(invoiceDetail.discount || 0).toFixed(2)} EGP</span></div>
+              <hr className="border-border" />
+              <div className="flex justify-between font-bold"><span>{t('pos_total')}</span><span>{Number(invoiceDetail.total || 0).toFixed(2)} EGP</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">{t('pos_paid')}</span><span>{Number(invoiceDetail.paid || 0).toFixed(2)} EGP</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">{t('pos_payment_method') || 'Method'}</span><span>{(invoiceDetail.paymentMethod as string) || '—'}</span></div>
+              {typeof invoiceDetail.notes === 'string' && invoiceDetail.notes && <div className="flex justify-between"><span className="text-muted-foreground">{t('pos_notes')}</span><span className="text-xs max-w-[200px] truncate">{invoiceDetail.notes}</span></div>}
+              <div className="flex justify-between"><span className="text-muted-foreground">{t('crm_date') || 'Date'}</span><span>{invoiceDetail.createdAt ? new Date(invoiceDetail.createdAt as string).toLocaleDateString(language === 'ar' ? 'ar-EG' : 'en-US') : '—'}</span></div>
+            </div>
+          </motion.div>
+        </div>
+      )}
     </div>
   );
 }
