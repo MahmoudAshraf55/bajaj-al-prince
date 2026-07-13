@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from '@/components/useTranslation';
@@ -9,7 +9,7 @@ import BackButton from '@/components/BackButton';
 import { fetchWithRetry } from '@/lib/fetchWithRetry';
 import {
   Package, Truck, FileText, AlertCircle, Clock,
-  CheckCircle2, XCircle, Send, Ban, Plus, X, Download,
+  CheckCircle2, XCircle, Send, Ban, Plus, X, Download, Upload, Loader2,
 } from 'lucide-react';
 
 
@@ -72,6 +72,13 @@ export default function PurchaseOrderDetailPage() {
   const [receiveNotes, setReceiveNotes] = useState('');
   const [receiving, setReceiving] = useState(false);
   const [receiveError, setReceiveError] = useState('');
+  const [showPdfImport, setShowPdfImport] = useState(false);
+  const [pdfItems, setPdfItems] = useState<Array<Record<string, unknown>>>([]);
+  const [pdfTextSample, setPdfTextSample] = useState('');
+  const [pdfImporting, setPdfImporting] = useState(false);
+  const [pdfError, setPdfError] = useState('');
+  const [pdfAdding, setPdfAdding] = useState(false);
+  const pdfInputRef = useRef<HTMLInputElement>(null);
 
   const openReceiveModal = () => {
     if (!order) return;
@@ -244,6 +251,40 @@ export default function PurchaseOrderDetailPage() {
                 <Download className="w-4 h-4" />
                 {t('po_pdf')}
               </a>
+              {['ordered', 'partially_received'].includes(order.status) && (
+                <>
+                  <button onClick={() => pdfInputRef.current?.click()}
+                    className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium bg-white/5 text-muted-foreground hover:bg-white/10 transition-colors">
+                    <Upload className="w-4 h-4" />
+                    {t('po_import_pdf') || 'Import PDF'}
+                  </button>
+                  <input ref={pdfInputRef} type="file" accept=".pdf" className="hidden"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      setShowPdfImport(true);
+                      setPdfImporting(true);
+                      setPdfError('');
+                      try {
+                        const fd = new FormData();
+                        fd.append('file', file);
+                        const res = await fetch(`/api/v1/purchase-orders/${order.id}/import-pdf/`, { method: 'POST', credentials: 'include', body: fd });
+                        const d = await res.json();
+                        if (d.success) {
+                          setPdfItems(d.data.items || []);
+                          setPdfTextSample(d.data.textSample || '');
+                        } else {
+                          setPdfError(d.error || 'Failed to parse PDF');
+                        }
+                      } catch {
+                        setPdfError('Network error');
+                      } finally {
+                        setPdfImporting(false);
+                      }
+                    }}
+                  />
+                </>
+              )}
               {['ordered', 'partially_received'].includes(order.status) && (
                 <button
                   onClick={openReceiveModal}
@@ -465,6 +506,104 @@ export default function PurchaseOrderDetailPage() {
               </form>
             </motion.div>
           </motion.div>
+        )}
+
+        {/* PDF Import Modal */}
+        {showPdfImport && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => { setShowPdfImport(false); setPdfItems([]); }}>
+            <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} onClick={(e) => e.stopPropagation()}
+              role="dialog" aria-modal="true" className="glass rounded-2xl p-6 w-full max-w-lg max-h-[85vh] overflow-auto">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-bold text-lg">{t('po_import_pdf') || 'Import PDF'}</h3>
+                <button onClick={() => { setShowPdfImport(false); setPdfItems([]); }} className="p-1 text-muted-foreground hover:text-foreground"><X className="w-5 h-5" /></button>
+              </div>
+              {pdfImporting && (
+                <div className="flex items-center justify-center py-8"><div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>
+              )}
+              {pdfError && <p className="text-red-400 text-sm mb-3">{pdfError}</p>}
+              {!pdfImporting && pdfItems.length > 0 && (
+                <>
+                  <p className="text-sm text-muted-foreground mb-3">{pdfItems.length} {t('po_items_found') || 'items found'}</p>
+                  <div className="overflow-x-auto mb-4">
+                    <table className="w-full text-xs">
+                      <thead><tr className="border-b border-border bg-white/5 text-muted-foreground">
+                        <th className="text-left py-2 px-2">{t('po_barcode') || 'Barcode'}</th>
+                        <th className="text-left py-2 px-2">{t('po_product') || 'Product'}</th>
+                        <th className="text-center py-2 px-2">{t('po_qty')}</th>
+                        <th className="text-right py-2 px-2">{t('po_unit_price')}</th>
+                        <th className="text-right py-2 px-2">{t('po_line_total')}</th>
+                      </tr></thead>
+                      <tbody className="divide-y divide-border/50">
+                        {pdfItems.map((item, i) => {
+                          const mp = item.matchedProduct as Record<string, unknown> | null;
+                          return (
+                            <tr key={i}>
+                              <td className="py-2 px-2 font-mono text-[10px]">{item.barcode as string || '—'}</td>
+                              <td className="py-2 px-2">
+                                {mp ? <span className="text-green-400">{mp.name as string}</span> : <span className="text-yellow-400">{item.productName as string || '—'}</span>}
+                              </td>
+                              <td className="py-2 px-2 text-center">{item.quantity as number}</td>
+                              <td className="py-2 px-2 text-right">{typeof item.unitPrice === 'number' ? item.unitPrice.toFixed(2) : '—'}</td>
+                              <td className="py-2 px-2 text-right font-medium">{typeof item.total === 'number' ? item.total.toFixed(2) : '—'}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                  <div className="flex gap-3">
+                    <button onClick={() => { setShowPdfImport(false); setPdfItems([]); }}
+                      className="flex-1 py-2.5 rounded-xl bg-white/5 text-sm font-medium hover:bg-white/10">{t('wo_cancel')}</button>
+                    <button onClick={async () => {
+                      setPdfAdding(true);
+                      try {
+                        const res = await fetch(`/api/v1/purchase-orders/${order.id}/items/`, {
+                          method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+                          body: JSON.stringify({ items: pdfItems }),
+                        });
+                        const d = await res.json();
+                        if (d.success) {
+                          setShowPdfImport(false);
+                          setPdfItems([]);
+                          fetchOrder();
+                          addToast('success', `${pdfItems.length} items added`);
+                        } else {
+                          addToast('error', d.error || 'Failed');
+                        }
+                      } catch { addToast('error', 'Network error'); }
+                      finally { setPdfAdding(false); }
+                    }} disabled={pdfAdding}
+                      className="flex-1 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-medium disabled:opacity-50 flex items-center justify-center gap-2">
+                      {pdfAdding ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                      {t('po_add_items') || 'Add to Order'}
+                    </button>
+                  </div>
+                </>
+              )}
+              {!pdfImporting && pdfItems.length === 0 && !pdfError && (
+                <div className="text-center py-8 text-muted-foreground">
+                  <label className="flex flex-col items-center gap-3 cursor-pointer">
+                    <Upload className="w-10 h-10 opacity-30" />
+                    <span>{t('po_select_pdf') || 'Select a PDF file'}</span>
+                    <input type="file" accept=".pdf" className="hidden"
+                      onChange={async (e) => {
+                        const f = e.target.files?.[0];
+                        if (!f) return;
+                        setPdfImporting(true); setPdfError('');
+                        try {
+                          const fd = new FormData(); fd.append('file', f);
+                          const res = await fetch(`/api/v1/purchase-orders/${order.id}/import-pdf/`, { method: 'POST', credentials: 'include', body: fd });
+                          const d = await res.json();
+                          if (d.success) { setPdfItems(d.data.items || []); setPdfTextSample(d.data.textSample || ''); }
+                          else setPdfError(d.error || 'Failed');
+                        } catch { setPdfError('Network error'); }
+                        finally { setPdfImporting(false); }
+                      }} />
+                  </label>
+                </div>
+              )}
+            </motion.div>
+          </div>
         )}
       </AnimatePresence>
     </div>
