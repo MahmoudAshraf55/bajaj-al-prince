@@ -49,15 +49,16 @@
 **الموقع:** `src/store/posStore.ts`, `src/components/pos/POSCart.tsx`, `src/app/admin/pos/page.tsx`, `src/components/translations.ts`  
 **الحالة:** ✅ RESOLVED (تم التنفيذ في هذه الجلسة)
 
-### 🟠 المشكلة 4: الباركود اليدوي سريع جداً — الـ 150ms debounce مش مناسب للكتابة اليدوية
-**التحليل:**  
-- فيه debounce 150ms بيشتغل تلقائياً للباركود  
-- **السبب:** الـ code رقم `barcodeDebounceRef` بيشتغل على أي تغيير في `manualBarcode` — لو المستخدم بيكتب ببطء، الـ debounce يشتغل قبل ما يخلص كتابة  
-- **للـ scanner hardware:** 150ms مناسب  
-- **للـ manual typing:** محتاج ≥ 500ms
+### ✅ المشكلة 4: الباركود اليدوي — debounce محسّن (FIXED)
+**التحليل والحالة الحالية:**  
+- الـ commit `098715e` زاد الـ debounce من 400ms إلى 500ms
+- **تحسين إضافي في هذه الجلسة:** الـ debounce التلقائي يُطلق الآن **فقط للباركود الرقمي كامل الطول** (`^\d{8}$|^\d{12}$|^\d{13}$|^\d{14}$`) — وهو النمط الذي يصدره الماسح الضوئي
+- الكتابة اليدوية (أرقام جزئية أو رموز alphanumeric) **لا تُطلق التلقائي** — تتطلب Enter صريح
+- هذا يمنع الإطلاق المبكر أثناء الكتابة اليدوية البطيئة، ويحافظ على عمل الماسح (الذي يرسل Enter أو يكمل باركود رقمي كامل)
+- `handleBarcodeEnter` يمسح `manualBarcode` عند النجاح → لا تكرار مزدوج
 
-**الموقع:** `src/app/admin/pos/page.tsx:161-173`  
-**المطلوب:** تمييز بين scanner vs manual typing أو زيادة debounce للمدخل اليدوي
+**الموقع:** `src/app/admin/pos/page.tsx:176-189` (useEffect) + `POSProductGrid.tsx` (Enter handler)  
+**الحالة:** ✅ RESOLVED (debounce 500ms + تمييز scanner/manual)
 
 ### 🔴 المشكلة 5: مرتجع الفاتورة مش شغال صح
 **التحليل:**  

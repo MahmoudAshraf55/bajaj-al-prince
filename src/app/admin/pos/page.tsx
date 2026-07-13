@@ -178,6 +178,11 @@ export default function AdminPOS() {
     if (!manualBarcode) return;
     const { isValid } = parseBarcodeFormat(manualBarcode);
     if (!isValid) return;
+    // Only auto-submit complete fixed-length digit barcodes (scanner style).
+    // Alphanumeric or partial entries require explicit Enter to avoid premature
+    // firing while a user is still typing manually (Issue 4).
+    const isCompleteDigitBarcode = /^\d{8}$|^\d{12}$|^\d{13}$|^\d{14}$/.test(manualBarcode.trim());
+    if (!isCompleteDigitBarcode) return;
     barcodeDebounceRef.current = setTimeout(() => {
       handleBarcodeEnter(manualBarcode);
     }, 500); // Increased from 400ms to 500ms for manual barcode entry (Issue 4)
