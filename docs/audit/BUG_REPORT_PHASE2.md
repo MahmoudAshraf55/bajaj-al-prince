@@ -245,15 +245,24 @@
 **الموقع:** `src/app/api/v1/invoices/route.ts:18-32`  
 **المطلوب:** إضافة `workOrderId` للـ schema وربطه
 
-### 🔴 المشكلة 23: تعديل وإلغاء مش موجودين — نستخدم "مرتجع"
-**التحليل:**  
-- زبون عايز يمسح "تعديل" و "إلغاء" من واجهة المستخدم ويحط "مرتجع"  
-- المرتجع المفروض يرجع المخزن ويحدث الحسابات
+### ✅ المشكلة 23: تعديل وإلغاء مش موجودين — نستخدم "مرتجع" (FIXED)
+**الحل المطبق:**  
+- لا توجد edit أو cancel buttons في واجهة Work Orders (كما هو مطلوب)
+- Return button موجود ويعمل بشكل صحيح للـ completed work orders فقط
+- Return يقوم بـ:
+  1. تغيير status إلى `returned`
+  2. إعادة الأجزاء للمخزن (increment stock)
+  3. إنشاء stock movement records لـ audit trail
+  4. إنشاء return invoice برقم مسلسل (RET-YYYYMMDD-####)
+  5. عكس كل journal entries الأصلية (reversal entries)
+  6. تسجيل العملية في audit log
+- **الملفات:**
+  - `src/app/admin/work-orders/page.tsx`: Return button في السطر 468-471
+  - `src/app/api/v1/work-orders/[id]/return/route.ts`: تطبيق كامل للـ return logic
+  - `src/components/translations.ts`: `wo_return` و `wo_return_confirm` keys موجودة
 
-**الموقع:** `src/app/admin/work-orders/page.tsx`  
-**المطلوب:**  
-- إزالة edit و cancel buttons  
-- إضافة return button يعمل reverse للفاتورة + تحديث المخزن + عكس journal entry
+**الموقع:** `src/app/admin/work-orders/page.tsx` و `src/app/api/v1/work-orders/[id]/return/route.ts`  
+**الحالة:** ✅ RESOLVED
 
 ---
 
