@@ -3,7 +3,6 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { cookies } from 'next/headers';
 import "./globals.css";
 import { SettingsProvider } from "@/components/SettingsContext";
-import ChatBot from "@/components/ChatBot";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Analytics } from "@vercel/analytics/next";
 
@@ -104,7 +103,6 @@ export default async function RootLayout({
         </a>
         <SettingsProvider>
             {children}
-            <ChatBot />
           </SettingsProvider>
         <SpeedInsights />
         <Analytics />
