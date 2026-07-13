@@ -28,7 +28,10 @@ export async function GET(req: NextRequest) {
       const skip = (page - 1) * limit;
 
       const where: Record<string, unknown> = {};
-      if (status) where.status = status;
+      if (status) {
+        const statuses = status.split(',').filter(Boolean);
+        where.status = statuses.length > 1 ? { in: statuses } : statuses[0];
+      }
       if (vehicleId) where.vehicleId = vehicleId;
 
       const [workOrders, total] = await Promise.all([

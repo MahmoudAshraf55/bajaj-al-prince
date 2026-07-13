@@ -200,7 +200,7 @@ export default function POSCart({
             onClick={() => setShowWorkOrderSelect(true)}
             className={`flex-1 px-3 py-2 rounded-xl transition-colors text-sm font-medium flex items-center justify-center gap-2 ${selectedWorkOrderId ? 'bg-primary/20 text-primary' : 'bg-white/5 hover:bg-white/10'}`}
           >
-            {selectedWorkOrderId ? 'Work Order Linked' : 'Link Work Order'}
+            {selectedWorkOrderId ? (t('pos_work_order_linked') || 'Work Order Linked') : (t('pos_link_work_order') || 'Link Work Order')}
           </button>
         </div>
 

@@ -72,7 +72,7 @@ export default function AdminPOS() {
 
   // Fetch work orders
   useEffect(() => {
-    fetch('/api/v1/work-orders?status=pending', { credentials: 'include' })
+    fetch('/api/v1/work-orders?status=pending,in_progress', { credentials: 'include' })
       .then((r) => r.json())
       .then((d) => {
         if (d.success) setWorkOrders(d.data.workOrders || []);
