@@ -50,7 +50,7 @@ export async function GET(req: NextRequest) {
         }),
         prisma.invoiceItem.findMany({
           where: {
-            invoice: { type: 'sale', status: 'confirmed', isDeleted: false },
+            invoice: { type: 'sale', status: 'confirmed', isDeleted: false, createdAt: { gte: fromDate, lte: toDate } },
             isDeleted: false,
           },
           select: { costPrice: true, quantity: true, total: true, productId: true, invoice: { select: { discount: true, taxTotal: true, paymentMethod: true } }, product: { select: { category: true } } },
@@ -71,8 +71,8 @@ export async function GET(req: NextRequest) {
       const manualIncome = incomeEntries.reduce((sum, e) => sum + Number(e.amount), 0);
       const expenses = purchaseTotal + manualExpenses;
 
-      const discounts = invoiceItems.reduce((sum, item) => sum + Number(item.invoice.discount || 0), 0) / (invoiceItems.length || 1);
-      const taxes = invoiceItems.reduce((sum, item) => sum + Number(item.invoice.taxTotal || 0), 0) / (invoiceItems.length || 1);
+      const discounts = invoiceItems.reduce((sum, item) => sum + Number(item.invoice.discount || 0), 0);
+      const taxes = invoiceItems.reduce((sum, item) => sum + Number(item.invoice.taxTotal || 0), 0);
 
       const netProfit = grossProfit + manualIncome - expenses - discounts;
       const netMargin = netSales > 0 ? (netProfit / netSales) * 100 : 0;
@@ -86,6 +86,10 @@ export async function GET(req: NextRequest) {
         pmMap.set(method, data);
       }
       const byPaymentMethod = Array.from(pmMap.entries()).map(([method, data]) => ({ method, ...data }));
+
+      // Count unique invoices (each journal entry has one referenceId for sale type)
+      const uniqueInvoiceIds = new Set(saleEntries.map((e) => e.referenceId).filter(Boolean));
+      const invoiceCount = uniqueInvoiceIds.size;
 
       const productCat = new Map(products.map((p) => [p.id, p.category]));
       const catMap = new Map<string, { revenue: number; cogs: number }>();
@@ -126,7 +130,7 @@ export async function GET(req: NextRequest) {
           netMargin: Math.round(netMargin * 100) / 100,
           byPaymentMethod,
           byCategory,
-          invoiceCount: saleEntries.length,
+          invoiceCount,
         },
       }));
     } catch (err) {
