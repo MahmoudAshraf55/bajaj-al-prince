@@ -5,6 +5,7 @@ import { checkRateLimit } from '@/lib/rate-limit';
 import { sanitizedString } from '@/lib/sanitize';
 import { logAudit, getClientInfo } from '@/lib/audit';
 import { withSecurityHeaders } from '@/lib/security';
+import { createDoubleEntry } from '@/lib/journal';
 import { z } from 'zod';
 import { getTenantId, DEFAULT_TENANT_ID } from '@/lib/tenant-context';
 
@@ -56,83 +57,101 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       const receiptNumber = `RCP-${purchaseOrderId.slice(0, 8)}-${Date.now().toString(36).toUpperCase()}`;
       const tenantId = getTenantId();
 
-      const result = await prisma.$transaction(async (tx) => {
-        // Create receipt
-        const receipt = await tx.purchaseReceipt.create({
-          data: {
-            purchaseOrderId,
-            receiptNumber,
-            notes: data.notes,
-            receivedById: payload.userId,
-            tenantId: tenantId ?? DEFAULT_TENANT_ID,
-          },
-        });
+       const result = await prisma.$transaction(async (tx) => {
+         // Create receipt
+         const receipt = await tx.purchaseReceipt.create({
+           data: {
+             purchaseOrderId,
+             receiptNumber,
+             notes: data.notes,
+             receivedById: payload.userId,
+             tenantId: tenantId ?? DEFAULT_TENANT_ID,
+           },
+         });
 
-        // Create receipt items + update order item receivedQty + create stock movements
-        for (const ri of data.items) {
-          const orderItem = order.items.find((oi) => oi.id === ri.orderItemId)!;
+         let totalAmount = 0;
 
-          await tx.purchaseReceiptItem.create({
-            data: {
-              receiptId: receipt.id,
-              orderItemId: ri.orderItemId,
-              productId: orderItem.productId,
-              quantity: ri.quantity,
-              unitPrice: orderItem.unitPrice,
-              total: orderItem.unitPrice.mul(ri.quantity),
-              tenantId: tenantId ?? DEFAULT_TENANT_ID,
-            },
-          });
+         // Create receipt items + update order item receivedQty + create stock movements
+         for (const ri of data.items) {
+           const orderItem = order.items.find((oi) => oi.id === ri.orderItemId)!;
+           const itemTotal = Number(orderItem.unitPrice) * ri.quantity;
+           totalAmount += itemTotal;
 
-          const updatedCount = await tx.purchaseOrderItem.updateMany({
-            where: { id: ri.orderItemId },
-            data: { receivedQty: { increment: ri.quantity } },
-          });
-          if (updatedCount.count === 0) {
-            throw new Error(`Purchase order item ${ri.orderItemId} not found for update`);
-          }
+           await tx.purchaseReceiptItem.create({
+             data: {
+               receiptId: receipt.id,
+               orderItemId: ri.orderItemId,
+               productId: orderItem.productId,
+               quantity: ri.quantity,
+               unitPrice: orderItem.unitPrice,
+               total: orderItem.unitPrice.mul(ri.quantity),
+               tenantId: tenantId ?? DEFAULT_TENANT_ID,
+             },
+           });
 
-          await tx.stockMovement.create({
-            data: {
-              productId: orderItem.productId,
-              type: 'in',
-              quantity: ri.quantity,
-              reference: `PO:${order.number} / ${receiptNumber}`,
-              notes: data.notes || `Received from PO ${order.number}`,
-              createdById: payload.userId,
-            tenantId: tenantId ?? DEFAULT_TENANT_ID,
-            },
-          });
-        }
+           const updatedCount = await tx.purchaseOrderItem.updateMany({
+             where: { id: ri.orderItemId },
+             data: { receivedQty: { increment: ri.quantity } },
+           });
+           if (updatedCount.count === 0) {
+             throw new Error(`Purchase order item ${ri.orderItemId} not found for update`);
+           }
 
-        // Check if all items fully received
-        const updatedItems = await tx.purchaseOrderItem.findMany({
-          where: { purchaseOrderId },
-        });
-        const allReceived = updatedItems.every((item) => item.receivedQty >= item.quantity);
-        const someReceived = updatedItems.some((item) => item.receivedQty > 0);
+           await tx.stockMovement.create({
+             data: {
+               productId: orderItem.productId,
+               type: 'in',
+               quantity: ri.quantity,
+               reference: `PO:${order.number} / ${receiptNumber}`,
+               notes: data.notes || `Received from PO ${order.number}`,
+               createdById: payload.userId,
+             tenantId: tenantId ?? DEFAULT_TENANT_ID,
+             },
+           });
+         }
 
-        let newStatus = order.status;
-        if (allReceived) newStatus = 'received';
-        else if (someReceived) newStatus = 'partially_received';
+         // Create journal entry for purchase receipt (Debit: Inventory, Credit: Accounts Payable)
+         if (totalAmount > 0) {
+           await createDoubleEntry(tx, {
+             type: 'PURCHASE',
+             amount: totalAmount,
+             description: `Purchase Receipt: ${receiptNumber}`,
+             referenceType: 'PurchaseReceipt',
+             referenceId: receipt.id,
+             referenceNumber: receiptNumber,
+             tenantId: tenantId ?? DEFAULT_TENANT_ID,
+             createdById: payload.userId,
+           });
+         }
 
-        if (newStatus !== order.status) {
-          await tx.purchaseOrder.update({
-            where: { id: purchaseOrderId },
-            data: { status: newStatus },
-          });
-        }
+         // Check if all items fully received
+         const updatedItems = await tx.purchaseOrderItem.findMany({
+           where: { purchaseOrderId },
+         });
+         const allReceived = updatedItems.every((item) => item.receivedQty >= item.quantity);
+         const someReceived = updatedItems.some((item) => item.receivedQty > 0);
 
-        // Return full receipt with items
-        return tx.purchaseReceipt.findUnique({
-          where: { id: receipt.id },
-          include: {
-            items: {
-              include: { product: { select: { id: true, name: true } } },
-            },
-          },
-        });
-      });
+         let newStatus = order.status;
+         if (allReceived) newStatus = 'received';
+         else if (someReceived) newStatus = 'partially_received';
+
+         if (newStatus !== order.status) {
+           await tx.purchaseOrder.update({
+             where: { id: purchaseOrderId },
+             data: { status: newStatus },
+           });
+         }
+
+         // Return full receipt with items
+         return tx.purchaseReceipt.findUnique({
+           where: { id: receipt.id },
+           include: {
+             items: {
+               include: { product: { select: { id: true, name: true } } },
+             },
+           },
+         });
+       });
 
       const { ipAddress, userAgent } = getClientInfo(req);
       await logAudit({
