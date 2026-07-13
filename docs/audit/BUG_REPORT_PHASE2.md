@@ -280,13 +280,29 @@
 
 ## ثاني عشر: Settings — الإعدادات
 
-### 🟠 المشكلة 25: الشعار النصي — لازم يكون في رفع لوجو
-**التحليل:**  
-- الـ "الشعار النصي" ده text name مش logo image  
-- **السبب:** مفيش upload field للـ logo image
+### ✅ المشكلة 25: الشعار النصي — لازم يكون في رفع لوجو (FIXED)
+**الحل المطبق:**  
+- Logo upload functionality بالفعل موجودة وتعمل بشكل كامل
+- **في Branding tab:**
+  - Input field للـ site name
+  - Input field للـ tagline
+  - Logo upload field مع:
+    - Preview للـ logo الحالي
+    - Upload button يفتح file picker
+    - Remove button لحذف الـ logo
+    - Loading indicator أثناء الـ upload
+  - الـ logo يتم حفظه في الـ settings ويظهر في:
+    - Settings page
+    - Header/Navigation bars
+    - Reports و documents
+- **التطبيق:**
+  - `src/app/admin/settings/page.tsx:321-378`: Logo upload UI
+  - `src/app/api/v1/upload/route.ts`: Upload API endpoint
+  - `src/components/translations.ts`: `settings_logo` و `settings_logo_upload` keys
+  - `brand_logo` field محفوظ في settings database
 
 **الموقع:** `src/app/admin/settings/page.tsx`  
-**المطلوب:** إضافة logo image upload + تغيير الـ logo في كل الموقع
+**الحالة:** ✅ RESOLVED
 
 ---
 
