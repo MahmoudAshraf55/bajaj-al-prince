@@ -1,11 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth';
-import { writeFile, mkdir } from 'fs/promises';
-import path from 'path';
 import { withSecurityHeaders } from '@/lib/security';
 
 const ALLOWED_MIME = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
-const MAX_SIZE = 5 * 1024 * 1024; // 5MB
+const MAX_SIZE = 5 * 1024 * 1024;
 
 export async function POST(req: NextRequest) {
   try {
@@ -13,7 +11,6 @@ export async function POST(req: NextRequest) {
 
       const formData = await req.formData();
       const file = formData.get('file') as File | null;
-      const prefix = (formData.get('prefix') as string) || 'product';
       if (!file) {
         return withSecurityHeaders(NextResponse.json({ success: false, error: 'No file provided' }, { status: 400 }));
       }
@@ -27,23 +24,10 @@ export async function POST(req: NextRequest) {
       }
 
       const bytes = await file.arrayBuffer();
-      const buffer = Buffer.from(bytes);
+      const base64 = Buffer.from(bytes).toString('base64');
+      const dataUrl = `data:${file.type};base64,${base64}`;
 
-      const rawExt = (file.name.split('.').pop() || 'png').replace(/[^a-zA-Z0-9]/g, '').slice(0, 10);
-      const ext = ['jpg', 'jpeg', 'png', 'webp', 'gif'].includes(rawExt.toLowerCase()) ? rawExt : 'png';
-      const filename = `${prefix}_${Date.now()}_${Math.random().toString(36).substring(2, 8)}.${ext}`;
-      const uploadDir = path.join(process.cwd(), 'public', 'uploads');
-      await mkdir(uploadDir, { recursive: true });
-      const filepath = path.join(uploadDir, filename);
-
-      if (!filepath.startsWith(uploadDir)) {
-        return withSecurityHeaders(NextResponse.json({ success: false, error: 'Invalid file path' }, { status: 400 }));
-      }
-
-      await writeFile(filepath, buffer);
-
-      const url = `/uploads/${filename}`;
-      return withSecurityHeaders(NextResponse.json({ success: true, data: { url } }));
+      return withSecurityHeaders(NextResponse.json({ success: true, data: { url: dataUrl } }, { status: 200 }));
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Upload failed';

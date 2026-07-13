@@ -2,8 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { withRole } from '@/lib/auth';
 import { checkRateLimit } from '@/lib/rate-limit';
 import { withSecurityHeaders } from '@/lib/security';
-import { writeFile, mkdir } from 'fs/promises';
-import path from 'path';
 import { z } from 'zod';
 
 const generateSchema = z.object({
@@ -33,15 +31,10 @@ export async function POST(req: NextRequest) {
       }
 
       const buffer = Buffer.from(await res.arrayBuffer());
+      const base64 = buffer.toString('base64');
+      const dataUrl = `data:image/png;base64,${base64}`;
 
-      const filename = `poll_${Date.now()}_${Math.random().toString(36).substring(2, 8)}.png`;
-      const uploadDir = path.join(process.cwd(), 'public', 'uploads');
-      await mkdir(uploadDir, { recursive: true });
-      const filepath = path.join(uploadDir, filename);
-      await writeFile(filepath, buffer);
-
-      const url_ = `/uploads/${filename}`;
-      return withSecurityHeaders(NextResponse.json({ success: true, data: { url: url_ } }));
+      return withSecurityHeaders(NextResponse.json({ success: true, data: { url: dataUrl } }));
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
