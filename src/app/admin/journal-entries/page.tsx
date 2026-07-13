@@ -213,6 +213,17 @@ export default function JournalEntriesPage() {
           ))}
         </div>
 
+        {/* Empty type explanation */}
+        {!loading && typeFilter && entries.length === 0 && (
+          <div className="p-4 bg-white/5 rounded-xl text-sm text-muted-foreground space-y-2">
+            <p className="font-medium text-foreground">{t('je_empty_type_title') || 'No entries for this type'}</p>
+            {typeFilter === 'PURCHASE' && <p>{t('je_empty_purchase') || 'Purchase entries are created when you receive a Purchase Order or create a purchase invoice. To see entries: go to Purchase Orders → Receive items.'}</p>}
+            {typeFilter === 'INCOME' && <p>{t('je_empty_income') || 'Income entries are created when you add manual income via the "New Entry" button, or via the Cashier module.'}</p>}
+            {typeFilter === 'EXPENSE' && <p>{t('je_empty_expense') || 'Expense entries are created when you add manual expenses via the "New Entry" button, or via the Cashier module.'}</p>}
+            {typeFilter === 'STOCK_ADJUSTMENT' && <p>{t('je_empty_adjustment') || 'Stock Adjustment entries are created when you complete an Inventory Count with variances. Debit/Credit: Inventory (1104) vs Adjustment account. These track stock discrepancies found during physical counts.'}</p>}
+          </div>
+        )}
+
         {/* Entries list */}
         <div className="space-y-4">
           {entries.map((entry) => (
