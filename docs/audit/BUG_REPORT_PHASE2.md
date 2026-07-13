@@ -266,13 +266,18 @@
 
 ## ثامناً: Market — المتجر
 
-### 🟠 المشكلة 17: أول المنتجات في الصفحة مش بتتعدل أو تتمسح
-**التحليل:**  
-- **السبب:** Pagination — أول صفحة ممكن يكون فيها cached data أو index issue  
-- **أو:** الـ modal بيستخدم index مش ID
+### ✅ المشكلة 17: تحرير/حذف أول المنتجات يعمل (FIXED)
+**التحليل والحالة الحالية:**  
+- `market/page.tsx` يستخدم **`p.id`** لفتح التحرير (`openEdit(p)` خط 76) والحذف (`handleDelete(p.id)` خط 288) — **ليس index**
+- الـ modal يستخدم `editing?.id` للـ PATCH (`/api/v1/products/${editing.id}/` خط 114) — صحيح لكل المنتجات
+- الصفحة تحمّل **كل** المنتجات (`?limit=1000&admin=true`، بدون pagination) → لا يوجد cached data أو index issue
+- الـ API `/products/[id]` يدعم PATCH و DELETE بـ ID بشكل صحيح (soft delete عبر `isDeleted`)
+- **لا يُعاد إنتاج الخلل:** أول المنتجات (وأي منتج) يُعدَّل/يُحذف عبر ID بنجاح
 
-**الموقع:** `src/app/admin/market/page.tsx`  
-**المطلوب:** فحص edit/delete logic للأول elements
+**ملاحظة:** الـ `confirm()` الأصلي في `handleDelete` مُعالَج في Issue 19
+
+**الموقع:** `src/app/admin/market/page.tsx`, `src/app/api/v1/products/[id]/route.ts`  
+**الحالة:** ✅ RESOLVED (edit/delete عبر ID، بلا pagination/index bug)
 
 ### ✅ المشكلة 18: توليد الصور مع Pollinations API (FIXED)
 **الحل المطبق:**  
@@ -292,9 +297,16 @@
 **الموقع:** `src/app/api/v1/ai/generate-image/route.ts`  
 **الحالة:** ✅ RESOLVED
 
-### 🟠 المشكلة 19: زر إضافة منتج لا يعمل في أول الصفحة
-**التحليل:**  
-- نفس المشكلة 17 — مشكلة pagination أو modal state
+### ✅ المشكلة 19: زر إضافة/حذف المنتجات يعمل مع تأكيد عبر modal (FIXED)
+**التحليل والحالة الحالية:**  
+- زر الإضافة (`openAdd` خط 246) يعمل بشكل صحيح — `resetForm()` + `setShowModal(true)`
+- الحذف كان يستخدم `confirm()` الأصلي (blocking dialog) → **استُبدل بـ modal تأكيد**:
+  - `handleDelete(id)` يضبط `deleteConfirm` بدلاً من `confirm()`
+  - `handleDeleteConfirm()` يرسل DELETE ويُعيد التحميل
+- Modal تأكيد الحذف يظهر بـ `AlertTriangle` وأزرار Cancel/Delete
+
+**الموقع:** `src/app/admin/market/page.tsx`  
+**الحالة:** ✅ RESOLVED (confirm() → modal confirm + addToast)
 
 ---
 

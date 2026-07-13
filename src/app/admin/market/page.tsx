@@ -6,9 +6,7 @@ import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from '@/components/useTranslation';
 import { useToast } from '@/components/ToastContext';
-import {
-  Package, Plus, Pencil, Trash2, X, Search, Upload, Sparkles, Loader2,
-} from 'lucide-react';
+import { Package, Plus, Pencil, Trash2, X, Search, Upload, Sparkles, Loader2, AlertTriangle } from 'lucide-react';
 
 interface Product {
   id: string;
@@ -35,6 +33,7 @@ export default function AdminMarket() {
   const [editing, setEditing] = useState<Product | null>(null);
   const [saving, setSaving] = useState(false);
   const [aiBusy, setAiBusy] = useState<'image' | 'describe' | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
   const [form, setForm] = useState({
     name: '',
@@ -142,13 +141,23 @@ export default function AdminMarket() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm(t('admin_market_delete_confirm'))) return;
-    const res = await fetch(`/api/v1/products/${id}/`, {
-      method: 'DELETE',
-      credentials: 'include',
-    });
-    if (res.ok) await load();
-    else addToast('error', t('admin_market_delete_failed'));
+    setDeleteConfirm(id);
+  };
+    const handleDeleteConfirm = async () => {
+    if (!deleteConfirm) return;
+    const id = deleteConfirm;
+    setDeleteConfirm(null);
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/v1/products/${id}/`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+      if (res.ok) await load();
+      else addToast('error', t('admin_market_delete_failed'));
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -466,6 +475,32 @@ export default function AdminMarket() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {deleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setDeleteConfirm(null)}>
+          <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} onClick={(e) => e.stopPropagation()}
+            role="dialog" aria-modal="true" className="glass rounded-2xl p-6 w-full max-w-sm">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-red-500/20 flex items-center justify-center">
+                <AlertTriangle className="w-5 h-5 text-red-400" />
+              </div>
+              <div>
+                <h3 className="font-bold">{t('admin_market_delete_title') || 'Delete Product'}</h3>
+                <p className="text-sm text-muted-foreground">{t('admin_market_delete_confirm')}</p>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <button onClick={() => setDeleteConfirm(null)} className="flex-1 px-4 py-2.5 rounded-xl bg-white/5 text-sm font-medium hover:bg-white/10 transition-colors">
+                {t('admin_market_cancel')}
+              </button>
+              <button onClick={handleDeleteConfirm} disabled={saving} className="flex-1 px-4 py-2.5 rounded-xl bg-red-500 text-white text-sm font-medium hover:bg-red-600 transition-colors flex items-center justify-center gap-2">
+                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                {t('admin_market_delete') || 'Delete'}
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
     </div>
   );
 }
