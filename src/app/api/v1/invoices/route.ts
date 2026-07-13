@@ -30,6 +30,7 @@ const createInvoiceSchema = z.object({
   customerId: z.string().uuid().optional().nullable(),
   customerName: sanitizedString(z.string().max(200)).optional().nullable(),
   workOrderId: z.string().uuid().optional().nullable(),
+  returnInvoiceId: z.string().uuid().optional().nullable(),
 });
 
 async function generateInvoiceNumber(): Promise<string> {
@@ -126,6 +127,22 @@ export async function POST(req: NextRequest) {
       const body = await req.json();
       const data = createInvoiceSchema.parse(body);
 
+      // Guard against duplicate returns: a sale invoice may only be returned once (Issue 5).
+      if (data.type === 'return' && data.returnInvoiceId) {
+        const existing = await prisma.invoice.findFirst({
+          where: {
+            type: 'return',
+            returnInvoiceId: data.returnInvoiceId,
+            isDeleted: false,
+            tenantId: getTenantId() ?? DEFAULT_TENANT_ID,
+          },
+          select: { id: true, number: true },
+        });
+        if (existing) {
+          throw new Error(`Invoice already returned by return ${existing.number}`);
+        }
+      }
+
       const result = await prisma.$transaction(async (tx) => {
         const productIds = data.items.map((i) => i.productId);
         const products = await tx.product.findMany({
@@ -148,7 +165,9 @@ export async function POST(req: NextRequest) {
           if (!product) {
             throw new Error(`Product not found: ${item.productId}`);
           }
-          if (product.stock < item.quantity && data.type !== 'purchase') {
+          // Only enforce stock availability when deducting (sale). Purchases and
+          // returns (which restock) must never fail the insufficient-stock check (Issue 5).
+          if (data.type === 'sale' && product.stock < item.quantity) {
             throw new Error(`Insufficient stock for ${product.name}: available ${product.stock}, requested ${item.quantity}`);
           }
 
@@ -238,6 +257,7 @@ export async function POST(req: NextRequest) {
             customerId: data.customerId,
             customerName: data.customerName,
             workOrderId: data.workOrderId || undefined,
+            returnInvoiceId: data.returnInvoiceId || undefined,
             createdById: payload.userId,
             status: 'confirmed',
             tenantId: getTenantId() ?? DEFAULT_TENANT_ID,
@@ -314,7 +334,7 @@ export async function POST(req: NextRequest) {
       return withSecurityHeaders(NextResponse.json({ success: false, errors: error.issues }, { status: 400 }));
     }
     const message = error instanceof Error ? error.message : 'Internal server error';
-    const status = message === 'Unauthorized' || message === 'Invalid token' ? 401 : message === 'Forbidden' ? 403 : message.startsWith('Insufficient') || message.startsWith('Product not found') ? 400 : 500;
+    const status = message === 'Unauthorized' || message === 'Invalid token' ? 401 : message === 'Forbidden' ? 403 : message.startsWith('Insufficient') || message.startsWith('Product not found') || message.startsWith('Invoice already returned') ? 400 : 500;
     return withSecurityHeaders(NextResponse.json({ success: false, error: status === 500 ? 'Internal server error' : message }, { status }));
   }
 }

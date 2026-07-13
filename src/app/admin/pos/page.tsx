@@ -509,6 +509,7 @@ export default function AdminPOS() {
           paymentMethod: orig.paymentMethod || 'cash',
           notes: `Return for ${orig.number}`,
           customerName: orig.customerName,
+          returnInvoiceId: orig.id,
         }),
       });
       const d = await res.json();

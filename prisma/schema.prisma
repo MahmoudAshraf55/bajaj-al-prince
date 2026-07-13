@@ -123,6 +123,7 @@ model Invoice {
   customerId      String?
   customerName    String?
   workOrderId     String?
+  returnInvoiceId String?        @map("return_invoice_id")
   createdById     String
   createdAt       DateTime         @default(now()) @db.Timestamp(6)
   updatedAt       DateTime         @updatedAt @db.Timestamp(6)
@@ -143,6 +144,7 @@ model Invoice {
   @@index([createdById])
   @@index([customerId])
   @@index([workOrderId])
+  @@index([returnInvoiceId])
   @@index([createdAt])
   @@index([isDeleted])
   @@index([tenantId, status, createdAt])

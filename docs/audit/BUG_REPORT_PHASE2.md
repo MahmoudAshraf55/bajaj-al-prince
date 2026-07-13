@@ -60,17 +60,21 @@
 **الموقع:** `src/app/admin/pos/page.tsx:176-189` (useEffect) + `POSProductGrid.tsx` (Enter handler)  
 **الحالة:** ✅ RESOLVED (debounce 500ms + تمييز scanner/manual)
 
-### 🔴 المشكلة 5: مرتجع الفاتورة مش شغال صح
-**التحليل:**  
-- `handleReturnInvoice()` بيستخدم `confirm()` + بياخد كل items الفاتورة الأصلية  
-- return اللي بيتعمل بيحط `type: 'return'` بس مش بيعمل reverse للـ original  
-- **السبب:** الـ return بيعمل invoice جديدة مش cancellation للقديمة
+### ✅ المشكلة 5: مرتجع الفاتورة يعمل بشكل صحيح (FIXED)
+**التحليل والحالة الحالية:**  
+- الـ commit `bd6a0f3` أضاف validation + استبدل `confirm()` بـ `addToast`
+- **خلل جوهري تم إصلاحه في هذه الجلسة** (`src/app/api/v1/invoices/route.ts`):
+  - فحص `Insufficient stock` كان يُطبَّق على الإرجاع → يمنع إرجاع صنف والـ stock منخفض/صفر
+  - **الإصلاح:** الفحص يُطبَّق الآن **فقط على `type === 'sale'`**؛ الإرجاع يزيد المخزون ولا يفشل أبداً
+- **ربط المرتجع بالأصل:**
+  - أُضيف عمود `returnInvoiceId` للـ `Invoice` model (Prisma migration `20260713090046_add_return_invoice_id` مُطبَّق على DB)
+  - الـ frontend يمرر `returnInvoiceId: orig.id` عند الإرجاع
+  - الـ API يضبط الحقل على الفاتورة الجديدة
+- **حارس الإرجاع المكرر:** الـ API يرفض إنشاء return ثانٍ لنفس الفاتورة الأصلية (خطأ 400 "Invoice already returned")
+- الإرجاع يعمل محاسبياً صح: يرجع المخزون (+quantity) + ينشئ قيد `RETURN` مزدوج + stock movement
 
-**الموقع:** `src/app/admin/pos/page.tsx:477-507`  
-**المطلوب:**  
-- إزالة `confirm()` واستخدام addToast  
-- ربط return بالفاتورة الأصلية  
-- إلغاء `handleCancelInvoice` من واجهة المستخدم (خلينا مرتجع بس)
+**الموقع:** `src/app/api/v1/invoices/route.ts`, `src/app/admin/pos/page.tsx`, `prisma/schema.prisma`  
+**الحالة:** ✅ RESOLVED (تم الإصلاح + migration مطبّق + build ناجح)
 
 ### 🔵 المشكلة 6: الخزينة مش متزامنة مع السيستم
 **التحليل:**  
