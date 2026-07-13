@@ -178,7 +178,7 @@ export default function AdminPOS() {
     if (!isValid) return;
     barcodeDebounceRef.current = setTimeout(() => {
       handleBarcodeEnter(manualBarcode);
-    }, 400);
+    }, 500); // Increased from 400ms to 500ms for manual barcode entry (Issue 4)
     return () => {
       if (barcodeDebounceRef.current) clearTimeout(barcodeDebounceRef.current);
     };
