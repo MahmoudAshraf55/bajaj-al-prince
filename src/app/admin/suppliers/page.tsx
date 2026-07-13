@@ -9,7 +9,7 @@ import { useToast } from '@/components/ToastContext';
 import BackButton from '@/components/BackButton';
 import { fetchWithRetry } from '@/lib/fetchWithRetry';
 import {
-  Search, Plus, ChevronLeft, ChevronRight, Truck,
+  Search, Plus, ChevronLeft, ChevronRight, Truck, Package,
   AlertCircle, X,
 } from 'lucide-react';
 
@@ -24,6 +24,7 @@ interface Supplier {
   notes?: string | null;
   isActive: boolean;
   createdAt: string;
+  purchaseOrderCount?: number;
 }
 
 export default function SuppliersPage() {
@@ -194,6 +195,7 @@ export default function SuppliersPage() {
                   <th scope="col" className="text-left px-5 py-3 font-medium">{t('sup_phone')}</th>
                   <th scope="col" className="text-left px-5 py-3 font-medium">{t('sup_email')}</th>
                   <th scope="col" className="text-left px-5 py-3 font-medium">{t('sup_status')}</th>
+                  <th scope="col" className="text-center px-5 py-3 font-medium">{t('sup_orders') || 'Orders'}</th>
                   <th scope="col" className="text-right px-5 py-3 font-medium">{t('crm_customer_actions')}</th>
                 </tr>
               </thead>
@@ -217,6 +219,12 @@ export default function SuppliersPage() {
                         {s.isActive ? t('sup_active') : t('sup_inactive')}
                       </span>
                     </td>
+                    <td className="px-5 py-4 text-center">
+                      <Link href={`/admin/suppliers/${s.id}/`} className="inline-flex items-center gap-1 text-sm font-medium text-muted-foreground hover:text-foreground">
+                        <Package className="w-3.5 h-3.5" />
+                        {s.purchaseOrderCount || 0}
+                      </Link>
+                    </td>
                     <td className="px-5 py-4 text-right">
                       <Link
                         href={`/admin/suppliers/${s.id}/`}
@@ -229,7 +237,7 @@ export default function SuppliersPage() {
                 ))}
                 {(!suppliers || suppliers.length === 0) && (
                   <tr>
-                    <td colSpan={5} className="px-5 py-8 text-center text-muted-foreground">
+                    <td colSpan={6} className="px-5 py-8 text-center text-muted-foreground">
                       {t('sup_no_suppliers')}
                     </td>
                   </tr>

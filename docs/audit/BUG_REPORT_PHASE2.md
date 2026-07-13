@@ -375,13 +375,16 @@
 
 ## حادي عشر: Suppliers — الموردين
 
-### 🟠 المشكلة 24: التزامن مع أوامر الشراء
-**التحليل:**  
-- Suppliers page بيجيب suppliers بس من غير بيانات أوامر الشراء  
-- **السبب:** مفيش join مع purchase orders
+### ✅ المشكلة 24: التزامن مع أوامر الشراء (FIXED)
+**التحليل والحالة الحالية:**  
+- الـ API (`suppliers/route.ts:55-65`) بالفعل ينفذ `purchaseOrder.groupBy` ويُرجع `purchaseOrderCount` لكل مورد ✅
+- **تحسين في هذه الجلسة:** أُضيف عرض `purchaseOrderCount` في جدول الموردين (`suppliers/page.tsx`):
+  - عمود جديد "الطلبات / Orders" مع أيقونة Package
+  - القيمة مربوطة برابط صفحة المورد للتفاصيل
+- أُضيفت ترجمة `sup_orders` (EN/AR)
 
-**الموقع:** `src/app/admin/suppliers/page.tsx`  
-**المطلوب:** إضافة show purchase orders per supplier
+**الموقع:** `src/app/api/v1/suppliers/route.ts`, `src/app/admin/suppliers/page.tsx`  
+**الحالة:** ✅ RESOLVED (PO count in API + frontend display)
 
 ---
 
