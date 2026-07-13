@@ -152,37 +152,43 @@ export async function POST(req: NextRequest) {
             throw new Error(`Insufficient stock for ${product.name}: available ${product.stock}, requested ${item.quantity}`);
           }
 
-          const unitPrice = new Prisma.Decimal(Number(product.price));
-          const costPrice = new Prisma.Decimal(Number(product.costPrice || 0));
-          const total = unitPrice.times(item.quantity);
+           const unitPrice = new Prisma.Decimal(Number(product.price));
+           const costPrice = new Prisma.Decimal(Number(product.costPrice || 0));
+           const total = unitPrice.times(item.quantity);
 
-          itemsData.push({
-            productId: product.id,
-            barcode: product.barcode,
-            productName: product.name,
-            unitPrice,
-            costPrice,
-            quantity: item.quantity,
-            total,
-          });
+           itemsData.push({
+             productId: product.id,
+             barcode: product.barcode,
+             productName: product.name,
+             unitPrice,
+             costPrice,
+             quantity: item.quantity,
+             total,
+           });
 
-          const stockChange = (data.type === 'purchase' || data.type === 'return') ? item.quantity : -item.quantity;
-          await tx.product.update({
-            where: { id: product.id },
-            data: { stock: { increment: stockChange } },
-          });
+           // Only deduct stock if product is not locked and not a purchase/return
+           const shouldDeductStock = !product.lockInventory && data.type !== 'purchase' && data.type !== 'return';
+           const stockChange = (data.type === 'purchase' || data.type === 'return') ? item.quantity : (shouldDeductStock ? -item.quantity : 0);
+           
+           if (stockChange !== 0) {
+             await tx.product.update({
+               where: { id: product.id },
+               data: { stock: { increment: stockChange } },
+             });
+           }
 
-          await tx.stockMovement.create({
-            data: {
-              productId: product.id,
-              type: data.type === 'purchase' ? 'in' : 'out' as 'in' | 'out',
-              quantity: item.quantity,
-              reference: 'invoice',
-              notes: `Invoice ${data.type === 'purchase' ? 'purchase' : 'sale'}`,
-              createdById: payload.userId,
-              tenantId: getTenantId() ?? DEFAULT_TENANT_ID,
-            },
-          });
+           // Always create stock movement record for audit purposes
+           await tx.stockMovement.create({
+             data: {
+               productId: product.id,
+               type: data.type === 'purchase' ? 'in' : 'out' as 'in' | 'out',
+               quantity: item.quantity,
+               reference: 'invoice',
+               notes: `Invoice ${data.type === 'purchase' ? 'purchase' : product.lockInventory ? 'service' : 'sale'}`,
+               createdById: payload.userId,
+               tenantId: getTenantId() ?? DEFAULT_TENANT_ID,
+             },
+           });
         }
 
         const subtotal = itemsData.reduce((sum, item) => sum.plus(item.total), new Prisma.Decimal(0));
