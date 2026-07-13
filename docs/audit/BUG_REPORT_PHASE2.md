@@ -127,18 +127,28 @@
 
 ## رابعاً: الـ Accounts — الحسابات
 
-### 🟠 المشكلة 11: الشجرة (Tree) مش متزامنة
-**التحليل:**  
-- Account model عنده `parentId` — شجرة  
-- الـ API بيجيب كل الحسابات و الـ frontend بيبني الشجرة  
-- **السبب 1:** مفيش `isDeleted: false` فلتر في الـ API  
-- **السبب 2:** الـ seed-accounts.ts شغال لكن الـ tree hierarchy مش صحيح
+### ✅ المشكلة 11: الشجرة (Tree) متزامنة بشكل صحيح (FIXED)
+**الحل المطبق:**  
+- `isDeleted: false` فلتر موجود في API (السطر 27 و 41)
+- Tree hierarchy صحيحة مع `parentId`
+- **في API** (`src/app/api/v1/accounts/route.ts`):
+  - السطر 27: `where: { isDeleted: false }`
+  - السطر 41: `where: { isDeleted: false }` للـ children
+  - يستخدم Prisma `include` مع `children` relation
+  - يرجع كل الـ non-deleted accounts مع أطفالهم
+- **في Seed** (`prisma/seed-accounts.ts`):
+  - Chart of Accounts كامل مع 5 مجموعات رئيسية (Assets, Liabilities, Equity, Revenue, Expenses)
+  - كل مجموعة لها sub-accounts متسلسلة
+  - المسميات العربية موجودة للجميع
+  - Upsert logic يربط الأطفال بالوالد عبر `parentId`
+  - Hierarchy صحيحة ومعايير محاسبية صحيحة
+- **النتيجة:**
+  - الشجرة تظهر صحيحة في الـ frontend
+  - الحسابات المحذوفة لا تظهر
+  - Relationships صحيحة
 
-**الموقع:** `src/app/api/v1/accounts/route.ts:36-40`  
-**المطلوب:**  
-- إضافة `isDeleted: false` في query  
-- فحص الـ hierarchy  
-- التأكد من المسميات العربية/الإنجليزية
+**الموقع:** `src/app/api/v1/accounts/route.ts` و `prisma/seed-accounts.ts`  
+**الحالة:** ✅ RESOLVED
 
 ---
 
