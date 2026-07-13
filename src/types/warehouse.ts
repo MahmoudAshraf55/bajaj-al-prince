@@ -35,6 +35,8 @@ export interface ImportPreview {
   headers: string[];
   preview: Array<Record<string, unknown>>;
   totalRows: number;
+  sheetCategories?: string[];
+  missingDataCount?: number;
 }
 
 export interface ImportResult {

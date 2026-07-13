@@ -83,6 +83,24 @@ export default function WHImportTab({
               </div>
             </div>
           )}
+          {/* Category & Missing Data Warnings */}
+          {(importPreview.sheetCategories && importPreview.sheetCategories.length > 0) || (typeof (importPreview as unknown as Record<string, unknown>).missingDataCount === 'number' && (importPreview as unknown as Record<string, unknown>).missingDataCount as number > 0) ? (
+            <div className="mb-4 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs space-y-1.5">
+              {importPreview.sheetCategories && importPreview.sheetCategories.length > 0 && (
+                <div>
+                  <span className="font-medium text-amber-400">{t('wh_categories_found') || 'Categories found:'}</span>{' '}
+                  {(importPreview.sheetCategories as string[]).join(', ')}
+                  <p className="text-muted-foreground mt-0.5">{t('wh_categories_new_warning') || 'New categories will be created automatically'}</p>
+                </div>
+              )}
+              {typeof (importPreview as unknown as Record<string, unknown>).missingDataCount === 'number' && (importPreview as unknown as Record<string, unknown>).missingDataCount as number > 0 && (
+                <div>
+                  <span className="font-medium text-amber-400">{t('wh_missing_data') || 'Missing data:'}</span>{' '}
+                  {(importPreview as unknown as Record<string, unknown>).missingDataCount as number} {t('wh_products_missing') || 'products missing price/stock'}
+                </div>
+              )}
+            </div>
+          ) : null}
           <div className="overflow-auto max-h-80 border border-border rounded-xl">
             <table className="w-full text-xs">
               <thead>

@@ -22,7 +22,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (!limit.allowed) return withSecurityHeaders(limit.response!);
 
   try {
-    return await withRole(req, ['admin', 'staff'], async (payload) => {
+    return await withRole(req, ['admin', 'staff'], async () => {
       const { id } = await params;
       const body = await req.json();
       const data = addItemsSchema.parse(body);
@@ -36,7 +36,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
       await prisma.$transaction(async (tx) => {
         for (const item of data.items) {
-          let productId: string | null = item.matchedProduct?.id || null;
+          const productId: string | null = item.matchedProduct?.id || null;
           const unitPrice = item.unitPrice ?? (item.total ? (item.total / item.quantity) : 0);
 
           if (!productId) continue;

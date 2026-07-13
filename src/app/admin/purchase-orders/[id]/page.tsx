@@ -74,7 +74,6 @@ export default function PurchaseOrderDetailPage() {
   const [receiveError, setReceiveError] = useState('');
   const [showPdfImport, setShowPdfImport] = useState(false);
   const [pdfItems, setPdfItems] = useState<Array<Record<string, unknown>>>([]);
-  const [pdfTextSample, setPdfTextSample] = useState('');
   const [pdfImporting, setPdfImporting] = useState(false);
   const [pdfError, setPdfError] = useState('');
   const [pdfAdding, setPdfAdding] = useState(false);
@@ -272,7 +271,6 @@ export default function PurchaseOrderDetailPage() {
                         const d = await res.json();
                         if (d.success) {
                           setPdfItems(d.data.items || []);
-                          setPdfTextSample(d.data.textSample || '');
                         } else {
                           setPdfError(d.error || 'Failed to parse PDF');
                         }
@@ -594,7 +592,7 @@ export default function PurchaseOrderDetailPage() {
                           const fd = new FormData(); fd.append('file', f);
                           const res = await fetch(`/api/v1/purchase-orders/${order.id}/import-pdf/`, { method: 'POST', credentials: 'include', body: fd });
                           const d = await res.json();
-                          if (d.success) { setPdfItems(d.data.items || []); setPdfTextSample(d.data.textSample || ''); }
+                          if (d.success) { setPdfItems(d.data.items || []); }
                           else setPdfError(d.error || 'Failed');
                         } catch { setPdfError('Network error'); }
                         finally { setPdfImporting(false); }

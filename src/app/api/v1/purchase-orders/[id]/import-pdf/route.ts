@@ -3,7 +3,6 @@ import { prisma } from '@/lib/prisma';
 import { withRole } from '@/lib/auth';
 import { checkRateLimit } from '@/lib/rate-limit';
 import { withSecurityHeaders } from '@/lib/security';
-import { z } from 'zod';
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 
@@ -100,7 +99,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   try {
     return await withRole(req, ['admin', 'staff'], async () => {
-      const { id } = await params;
+      await params;
       const formData = await req.formData();
       const file = formData.get('file') as File | null;
 
