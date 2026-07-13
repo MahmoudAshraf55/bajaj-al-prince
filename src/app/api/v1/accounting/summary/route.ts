@@ -3,6 +3,15 @@ import { prisma } from '@/lib/prisma';
 import { withAuth } from '@/lib/auth';
 import { withSecurityHeaders } from '@/lib/security';
 
+// Expand a date-only string (YYYY-MM-DD) to the start/end of the local day so
+// that range queries capture the full day instead of a zero-width window.
+function parseRangeDate(val: string, endOfDay: boolean): Date {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(val)) {
+    return endOfDay ? new Date(`${val}T23:59:59.999`) : new Date(`${val}T00:00:00`);
+  }
+  return new Date(val);
+}
+
 export async function GET(req: NextRequest) {
   return withAuth(req, async (user) => {
     if (!user) return withSecurityHeaders(NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 }));
@@ -11,8 +20,8 @@ export async function GET(req: NextRequest) {
     const from = url.searchParams.get('from');
     const to = url.searchParams.get('to');
 
-    const fromDate = from ? new Date(from) : new Date(new Date().setHours(0, 0, 0, 0));
-    const toDate = to ? new Date(to) : new Date(new Date().setHours(23, 59, 59, 999));
+    const fromDate = from ? parseRangeDate(from, false) : new Date(new Date().setHours(0, 0, 0, 0));
+    const toDate = to ? parseRangeDate(to, true) : new Date(new Date().setHours(23, 59, 59, 999));
 
     if (isNaN(fromDate.getTime()) || isNaN(toDate.getTime())) {
       return withSecurityHeaders(NextResponse.json({ success: false, error: 'Invalid date range' }, { status: 400 }));

@@ -105,16 +105,18 @@
 **الموقع:** `src/app/api/v1/accounting/summary/route.ts`  
 **الحالة:** ✅ RESOLVED (commit 7eecb8b — مصدر موحّد من Journal Entries)
 
-### 🔴 المشكلة 8: المعاملات فاضية (Transactions empty)
-**التحليل:**  
-- Transactions API (`/api/v1/accounting/transactions/`) بيجمع Invoices + manual Transactions + Work Orders  
-- **السبب:** لو مفيش data في الفترة المحددة، بيرجع array فاضي  
-- **أو:** لو الـ invoices ملهاش journal entries، مش بتظهر في الـ transactions tab
+### ✅ المشكلة 8: المعاملات فاضية — تم إصلاح نطاق التاريخ (FIXED)
+**التحليل والحالة الحالية:**  
+- الـ Transactions API يقرأ من `journalEntry` (موحّد المصدر، ليس Invoices/WorkOrders كما في التقرير القديم)
+- **السبب الجذري المكتشف:** الصفحة ترسل التاريخ بصيغة `YYYY-MM-DD` (تاريخ فقط)، والـ API كان يفسره كـ `new Date("2026-07-13")` = **منتصف الليل UTC** لكل من `from` و `to` → نافذة زمنية صفرية → لا تظهر أي قيد له وقت فعلي
+- **الإصلاح (هذه الجلسة):** دالة `parseRangeDate()` توسّع التاريخ:
+  - `from` → بداية اليوم **المحلي** (`YYYY-MM-DDTHH:MM:SS` = 00:00:00)
+  - `to` → نهاية اليوم **المحلي** (`23:59:59.999`)
+- نفس الإصلاح طُبّق على `summary` و `income-statement` (متأثرين بنفس الخلل) لضمان التزامن
+- **تم التحقق:** قيد عند 10:30 وآخر عند 23:00 بالتوقيت المحلي كلاهما يُطابَق الآن ضمن نطاق اليوم
 
-**الموقع:** `src/app/api/v1/accounting/transactions/route.ts:24-45`  
-**المطلوب:**  
-- تأكيد ان كل invoice ليها journal entry  
-- التأكد من الفلترة
+**الموقع:** `transactions/route.ts`, `summary/route.ts`, `income-statement/route.ts`  
+**الحالة:** ✅ RESOLVED (إصلاح نطاق التاريخ + توسيع لبداية/نهاية اليوم)
 
 ### ✅ المشكلة 9: Trial Balance / Balance Sheet / Income Statement (FIXED)
 **الحل المطبق:**  
