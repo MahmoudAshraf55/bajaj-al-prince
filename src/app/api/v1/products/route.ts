@@ -26,6 +26,8 @@ const productSchema = z.object({
   taxRate: z.number().min(0).max(100).optional().nullable(),
   image: z.string().max(500).optional().nullable(),
   available: z.boolean().optional(),
+  isService: z.boolean().optional(),
+  lockInventory: z.boolean().optional(),
 });
 
 export async function GET(req: NextRequest) {
