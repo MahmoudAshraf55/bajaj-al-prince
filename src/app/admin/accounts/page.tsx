@@ -8,7 +8,7 @@ import { useToast } from '@/components/ToastContext';
 import BackButton from '@/components/BackButton';
 import { fetchWithRetry } from '@/lib/fetchWithRetry';
 import {
-  Search, Plus, ChevronDown, ChevronRight, AlertCircle, X, Pencil,
+  Search, Plus, ChevronDown, ChevronRight, AlertCircle, X, Pencil, HelpCircle,
 } from 'lucide-react';
 
 interface Account {
@@ -43,6 +43,7 @@ export default function AccountsPage() {
   const [typeFilter, setTypeFilter] = useState('');
 
   const [showModal, setShowModal] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
   const [editingAccount, setEditingAccount] = useState<Account | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState({
@@ -223,6 +224,9 @@ export default function AccountsPage() {
           <div className="flex items-center gap-4">
             <BackButton fallback="/admin/dashboard/" />
             <h2 className="text-2xl font-bold">{t('acct_chart_title')}</h2>
+            <button onClick={() => setShowHelp(true)} className="p-2 rounded-lg hover:bg-white/10 text-muted-foreground hover:text-foreground transition-colors" aria-label="Help">
+              <HelpCircle className="w-5 h-5" />
+            </button>
           </div>
           <div className="flex items-center gap-3">
             <div className="relative">
@@ -384,6 +388,49 @@ export default function AccountsPage() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {showHelp && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setShowHelp(false)}>
+          <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} onClick={(e) => e.stopPropagation()}
+            role="dialog" aria-modal="true" className="glass rounded-2xl p-6 w-full max-w-lg max-h-[80vh] overflow-auto">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold text-lg">{t('acct_help_title') || 'Chart of Accounts Guide'}</h3>
+              <button onClick={() => setShowHelp(false)} className="p-1 text-muted-foreground hover:text-foreground"><X className="w-5 h-5" /></button>
+            </div>
+            <div className="space-y-4 text-sm">
+              <div>
+                <h4 className="font-bold text-blue-400">{t('acct_type_asset')}</h4>
+                <p className="text-muted-foreground">{t('acct_help_asset') || 'Assets: what the business owns (cash, inventory, equipment). Debit increases, credit decreases. Examples: Cash (1101), Bank (1102), Inventory (1104).'}</p>
+              </div>
+              <div>
+                <h4 className="font-bold text-orange-400">{t('acct_type_liability')}</h4>
+                <p className="text-muted-foreground">{t('acct_help_liability') || 'Liabilities: what the business owes (loans, payables). Credit increases, debit decreases. Examples: Accounts Payable (2101).'}</p>
+              </div>
+              <div>
+                <h4 className="font-bold text-purple-400">{t('acct_type_equity')}</h4>
+                <p className="text-muted-foreground">{t('acct_help_equity') || "Equity: owner's claim on assets. Credit increases. Examples: Capital (3101), Retained Earnings (3102)."}</p>
+              </div>
+              <div>
+                <h4 className="font-bold text-green-400">{t('acct_type_revenue')}</h4>
+                <p className="text-muted-foreground">{t('acct_help_revenue') || 'Revenue: income from sales/services. Credit increases. Examples: Sales Revenue (4101), Parts Sales (4102), Service Revenue (4103), Other Revenue (4104).'}</p>
+              </div>
+              <div>
+                <h4 className="font-bold text-red-400">{t('acct_type_expense')}</h4>
+                <p className="text-muted-foreground">{t('acct_help_expense') || 'Expenses: costs of running the business. Debit increases. Examples: COGS (5101), Operating Expenses (5102).'}</p>
+              </div>
+              <hr className="border-border" />
+              <div>
+                <h4 className="font-bold">{t('acct_help_codes_title') || 'Account Codes'}</h4>
+                <p className="text-muted-foreground">{t('acct_help_codes') || '1xxx = Assets, 2xxx = Liabilities, 3xxx = Equity, 4xxx = Revenue, 5xxx = Expenses. Use Parent Account to create hierarchy (e.g., Current Assets under Assets).'}</p>
+              </div>
+              <div>
+                <h4 className="font-bold">{t('acct_help_integration_title') || 'System Integration'}</h4>
+                <p className="text-muted-foreground">{t('acct_help_integration') || 'When you create a Sale, the system auto-generates: Debit Cash/Bank (1101/1102), Credit Sales Revenue (4101). Returns reverse. Purchases: Debit Inventory (1104), Credit Accounts Payable (2101). Stock Adjustments affect Inventory directly.'}</p>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      )}
     </div>
   );
 }
