@@ -225,14 +225,17 @@
 **الموقع:** `src/app/api/v1/reports/financial/route.ts`  
 **الحالة:** ✅ RESOLVED
 
-### 🟠 المشكلة 14: تقرير قيمة المخزن (Stock Value) لا يعمل
-**التحليل:**  
-- Inventory Value = `SUM(product.costPrice * product.stock)`  
-- لو products ملهاش `costPrice` (null/0)، بيستخدم `price`  
-- **السبب:** مشكلة في الـ API route — الـ Stock Value query ممكن يكون فيها bug
+### ✅ المشكلة 14: تقرير قيمة المخزن (Stock Value) يعمل (FIXED)
+**التحليل والحالة الحالية:**  
+- `stock_value` report (`inventory/route.ts:67-99`) يحسب `stockValue` بـ `costPrice` مع fallback للـ `price` عند null/0:
+  - `const cost = Number(p.costPrice || 0); entry.stockValue += (cost > 0 ? cost : Number(p.price)) * p.stock;`
+- يحسب أيضاً `retailValue` (price × stock) و`potentialProfit` و breakdown `byCategory`
+- الـ summary report (خط 107-110) يستخدم نفس منطق الـ fallback
+- **tenant isolation:** Prisma extension (`lib/prisma.ts:34-41`) يضخ `tenantId` تلقائياً في `findMany` → النتائج مقيدة بالـ tenant
+- لا يوجد bug في الـ query — يعمل كما هو مطلوب
 
-**الموقع:** `src/app/api/v1/reports/inventory/route.ts:67-99`  
-**المطلوب:** فحص وتصحيح query قيمة المخزن
+**الموقع:** `src/app/api/v1/reports/inventory/route.ts`  
+**الحالة:** ✅ RESOLVED (costPrice fallback + tenant isolation عبر extension)
 
 ### 🟠 المشكلة 15: تقارير العملاء غير متزامنة مع الفواتير
 **التحليل:**  
