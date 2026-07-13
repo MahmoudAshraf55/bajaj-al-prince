@@ -182,14 +182,20 @@
 
 ## خامساً: Journal Entries — قيود اليومية
 
-### 🟠 المشكلة 12: SALE / RETURN / PURCHASE / INCOME / EXPENSE / STOCK_ADJUSTMENT
-**التحليل:**  
-- الفلاتر شغالة في الـ API (`where: { type }`)  
-- **لكن:** لو journal entries مش موجودة للأنواع دي، الفلتر يرجع فاضي  
-- **السبب:** `createDoubleEntry()` بيستخدم type mapping مختلف عن الفلاتر
+### ✅ المشكلة 12: أنواع المعاملات متطابقة ومكتملة (FIXED)
+**التحليل والحالة الحالية:**  
+- `JournalEntryType` enum = `SALE, RETURN, PURCHASE, EXPENSE, INCOME, STOCK_ADJUSTMENT` (schema خط 1050)
+- فلتر `journal-entries/route.ts` يستخدم نفس الـ enum تماماً (`z.enum([...])` خط 12) → `where.type` يتطابق
+- `createDoubleEntry()` input type مماثل (`journal.ts:21`)
+- **كل الأنواع الستة تُنشأ فعلياً:**
+  - `SALE/RETURN/PURCHASE` ← `invoices/route.ts`
+  - `PURCHASE` ← `purchase-orders/[id]/receive`
+  - `EXPENSE/INCOME` ← `cashier/route.ts` + `journal-entries/route.ts` (يدوي)
+  - `STOCK_ADJUSTMENT` ← `inventory-counts/[id]` + `stock-movements/route.ts`
+- لا يوجد تعارض في type mapping — الفلاتر ترجع بيانات لكل نوع له قيود
 
-**الموقع:** `src/app/api/v1/journal-entries/route.ts:23-56`  
-**المطلوب:** التأكد من تطابق types بين الـ creation والـ filter
+**الموقع:** `journal-entries/route.ts`, `lib/journal.ts`, `prisma/schema.prisma`  
+**الحالة:** ✅ RESOLVED (الأنواع متطابقة عبر schema/filter/creation)
 
 ---
 
