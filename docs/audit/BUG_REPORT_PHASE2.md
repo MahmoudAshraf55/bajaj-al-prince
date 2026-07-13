@@ -17,13 +17,16 @@
 **الموقع:** `src/app/api/v1/products/import-excel/route.ts` + `WHImportTab.tsx` + `warehouse/page.tsx`  
 **الحالة:** ✅ RESOLVED (تم التحقق فعلياً)
 
-### 🟠 المشكلة 2: استيراد PDF لا يستخرج البيانات كاملة
-**التحليل:**  
-- الـ PDF parser بيستخرج بس: name, price, sku, barcode  
-- بيفتقد: nameAr, costPrice, stock, unit, description, taxRate  
+### ✅ المشكلة 2: استيراد PDF يستخرج كل البيانات (FIXED)
+**التحليل والحالة الحالية:**  
+- الـ commit `a3d40c3` وسّع `extractRows()` لاستخراج كل الحقول العشرة
+- `ExtractedRow` يشمل: sku, barcode, name, nameAr, price, costPrice, stock, unit, description, taxRate
+- `extractRows()` يستخدم heuristics لاستخراج: الاسم (أول token غير رقمي)، الاسم العربي (من فحص Unicode range)، السعر والتكلفة (آخر قيمتين رقميتين)، المخزون (عدد صحيح قريب من السعر)، SKU (كود alphanumeric)، الباركود (8-14 رقم)، الوحدة (اختصارات معروفة)، الوصف (نص طويل)، الضريبة (نسبة مئوية)
+- الـ PDF parsing يستخدم `pdf-parse` v2.4.5: `new PDFParse({ data: buffer })` + `getText()`
+- **ملاحظة:** الاستخراج heuristic-based ويعمل بشكل جيد مع PDFs منظمة (جداول نصية). PDFs المبنية على صور تحتاج OCR (خارج النطاق)
 
-**الموقع:** `src/app/api/v1/products/import-pdf/route.ts:33-71`  
-**المطلوب:** تحسين `extractRows()` لاستخراج الحقول الناقصة
+**الموقع:** `src/app/api/v1/products/import-pdf/route.ts`  
+**الحالة:** ✅ RESOLVED (commit a3d40c3)
 
 ---
 
