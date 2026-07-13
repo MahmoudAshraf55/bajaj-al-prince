@@ -38,6 +38,8 @@ interface ParsedData {
   preview: PreviewRow[];
   totalRows: number;
   fileName: string;
+  sheetCategories: string[];
+  missingDataCount: number;
 }
 
 function isValidDateStr(val: string): boolean {
@@ -115,24 +117,26 @@ function parseRow(row: Record<string, string | number>, rowNum: number): Preview
     ) || 'Spare Parts',
     price: parseNum(row,
       'مستهلك بالضريبة', 'price', 'سعر', 'Price', 'Price (EGP)', 'Unit Price', 'السعر', 'unit_price', 'unitPrice',
-      'سعر البيع', 'سعر المنتج', 'السعر النهائي', 'سعر الوحدة',
-      'بيع', 'سعر البيع النهائي',
+      'سعر البيع', 'سعر المنتج', 'السعر النهائي', 'سعر الوحدة', 'السعر بالضريبة', 'مستهلك', 'سعر مستهلك',
+      'بيع', 'سعر البيع النهائي', 'سعر عام', 'السعر العام', 'Retail Price', 'القيمة',
     ),
     costPrice: parseNum(row,
       'cost', 'Cost', 'Cost Price', 'Unit Cost', 'تكلفة', 'costPrice', 'سعر الشراء', 'سعر التكلفة', 'cost_price',
-      'التكلفة', 'المشتريات', 'سعر التكلفة الفعلي',
+      'التكلفة', 'المشتريات', 'سعر التكلفة الفعلي', 'سعر الجملة', 'سعر جملة', 'تكلفة الشراء', 'شراء',
+      'Wholesale', 'wholesale', 'Purchase Price', 'سعر الشراء جملة',
     ),
     stock: parseNum(row,
       'stock', 'Stock', 'Stock Qty', 'مخزون', 'quantity', 'Qty', 'qty', 'الكمية',
-      'الرصيد', 'الكمية المتاحة', 'المتوفر',
+      'الرصيد', 'الكمية المتاحة', 'المتوفر', 'مخزون حالي', 'العدد', 'عدد', 'كمية', 'المخزون الحالي',
+      'On Hand', 'Available', 'Balance', 'الكميه', 'stock quantity',
     ),
     unit: colVal(row,
       'unit', 'Unit', 'وحدة', 'UOM', 'الوحدة',
-      'وحدة القياس', 'القياس',
+      'وحدة القياس', 'القياس', 'الوحده', 'قطعة', 'حبة',
     ) || null,
     description: colVal(row,
       'desc', 'Description', 'description', 'وصف', 'Notes', 'ملاحظات', 'الوصف',
-      'البيان', 'تفاصيل',
+      'البيان', 'تفاصيل', 'بيان', 'شرح', 'مواصفات', 'ملاحظه',
     ) || null,
     taxRate,
     activeFrom: parseDateStr(row,
@@ -162,11 +166,18 @@ function parseExcelSheet(buffer: Buffer, fileName: string): ParsedData {
     allPreview.push(parseRow(jsonData[i], i + 2));
   }
 
+  // Collect unique categories from the sheet for review
+  const sheetCategories = [...new Set(allPreview.map((r) => r.category).filter((c): c is string => !!c))];
+  // Flag rows with missing critical data (price <= 0 or stock null)
+  const missingDataCount = allPreview.filter((r) => (r.price === null || r.price <= 0) && r.stock === null).length;
+
   return {
     headers,
     preview: allPreview.slice(0, 10),
     totalRows: allPreview.length,
     fileName,
+    sheetCategories,
+    missingDataCount,
   };
 }
 
