@@ -84,6 +84,8 @@ model Product {
   unit                 String                @default("piece")
   vehicleModel         String?
   taxRate              Decimal?              @db.Decimal(3, 1)
+  isService            Boolean               @default(false)
+  lockInventory        Boolean               @default(false)
   barcodeScanLogs      BarcodeScanLog[]
   inventoryCountItems  InventoryCountItem[]
   invoiceItems         InvoiceItem[]
@@ -100,6 +102,7 @@ model Product {
   @@index([available])
   @@index([createdAt])
   @@index([isDeleted])
+  @@index([isService])
   @@index([tenantId, category, available])
   @@index([tenantId])
 }
