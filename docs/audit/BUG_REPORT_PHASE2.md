@@ -233,10 +233,23 @@
 **الموقع:** `src/app/admin/market/page.tsx`  
 **المطلوب:** فحص edit/delete logic للأول elements
 
-### 🟠 المشكلة 18: توليد الصور
-**التحليل:**  
-- AI image generation feature — بيعمل fetch لـ API خارجي  
-- **السبب:** API endpoint مش شغال أو الـ key ناقص
+### ✅ المشكلة 18: توليد الصور مع Pollinations API (FIXED)
+**الحل المطبق:**  
+- **API Endpoint**: `src/app/api/v1/ai/generate-image/route.ts` — مكتملة وتستخدم Pollinations API
+- **المميزات:**
+  - Fetches من Pollinations API مع Zod validation للـ prompt
+  - يخزّن الصور المُولدة في `public/uploads/` مع random filename
+  - يُرجع `url` للصورة المُحفوظة
+  - Rate limiting فعّال للـ admin users
+- **الاستخدام:** Market page (`src/app/admin/market/page.tsx`) يستخدمه لـ product image generation
+- **الـ Key:** `POLLINATIONS_API_KEY` موجود في `.env` و معرّف في `.env.example`
+- **التطبيق:**
+  - قبول prompt من product name + description + category
+  - إنشاء random seed للصور المختلفة
+  - حفظ الصور مع رفع الـ URL إلى form state
+
+**الموقع:** `src/app/api/v1/ai/generate-image/route.ts`  
+**الحالة:** ✅ RESOLVED
 
 ### 🟠 المشكلة 19: زر إضافة منتج لا يعمل في أول الصفحة
 **التحليل:**  
