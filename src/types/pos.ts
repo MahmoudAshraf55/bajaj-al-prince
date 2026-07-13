@@ -8,6 +8,8 @@ export interface Product {
   category: string;
   image: string | null;
   available: boolean;
+  isService?: boolean;
+  lockInventory?: boolean;
 }
 
 export interface CartItem {

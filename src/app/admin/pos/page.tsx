@@ -59,6 +59,7 @@ export default function AdminPOS() {
   const [manualBarcode, setManualBarcode] = useState('');
   const barcodeInputRef = useRef<HTMLInputElement>(null);
   const barcodeDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [serviceFilter, setServiceFilter] = useState<'all' | 'parts' | 'service'>('all');
 
   // Work Order linking
   const [selectedWorkOrderId, setSelectedWorkOrderId] = useState<string | null>(null);
@@ -185,13 +186,17 @@ export default function AdminPOS() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [manualBarcode]);
 
-  const filtered = products.filter((p) => {
-    if (!p.available) return false;
-    const q = search.toLowerCase();
-    return p.name.toLowerCase().includes(q) ||
-      (p.barcode && p.barcode.toLowerCase().includes(q)) ||
-      (p.nameAr && p.nameAr.toLowerCase().includes(q));
-  });
+   const filtered = products.filter((p) => {
+     if (!p.available) return false;
+     // Filter by service type
+     if (serviceFilter === 'parts' && p.isService) return false;
+     if (serviceFilter === 'service' && !p.isService) return false;
+     // Search filter
+     const q = search.toLowerCase();
+     return p.name.toLowerCase().includes(q) ||
+       (p.barcode && p.barcode.toLowerCase().includes(q)) ||
+       (p.nameAr && p.nameAr.toLowerCase().includes(q));
+   });
 
   const handleSelectProduct = (product: Product) => {
     setCart((prev) => {
@@ -582,22 +587,24 @@ export default function AdminPOS() {
         {activeTab === 'pos' && (
           <>
             <div className="flex flex-col lg:flex-row">
-              <POSProductGrid
-                search={search}
-                setSearch={setSearch}
-                manualBarcode={manualBarcode}
-                setManualBarcode={setManualBarcode}
-                filtered={filtered}
-                handleSelectProduct={handleSelectProduct}
-                handleBarcodeEnter={handleBarcodeEnter}
-                handleBarcodeSearch={handleBarcodeSearch}
-                setShowWebcamScanner={setShowWebcamScanner}
-                searchRef={searchRef}
-                barcodeInputRef={barcodeInputRef}
-                t={t}
-                language={language}
-                cart={cart}
-              />
+               <POSProductGrid
+                 search={search}
+                 setSearch={setSearch}
+                 manualBarcode={manualBarcode}
+                 setManualBarcode={setManualBarcode}
+                 filtered={filtered}
+                 handleSelectProduct={handleSelectProduct}
+                 handleBarcodeEnter={handleBarcodeEnter}
+                 handleBarcodeSearch={handleBarcodeSearch}
+                 setShowWebcamScanner={setShowWebcamScanner}
+                 searchRef={searchRef}
+                 barcodeInputRef={barcodeInputRef}
+                 t={t}
+                 language={language}
+                 cart={cart}
+                 serviceFilter={serviceFilter}
+                 setServiceFilter={setServiceFilter}
+               />
 
               <POSCart
                 isReturn={isReturn}

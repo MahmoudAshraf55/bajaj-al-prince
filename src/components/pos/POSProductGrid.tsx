@@ -20,6 +20,8 @@ interface POSProductGridProps {
   t: (key: string) => string;
   language: string;
   cart: CartItem[];
+  serviceFilter?: 'all' | 'parts' | 'service';
+  setServiceFilter?: (val: 'all' | 'parts' | 'service') => void;
 }
 
 export default function POSProductGrid({
@@ -37,6 +39,8 @@ export default function POSProductGrid({
   t,
   language,
   cart,
+  serviceFilter = 'all',
+  setServiceFilter,
 }: POSProductGridProps) {
   return (
     <div className="flex-1 p-4 sm:p-6 lg:p-8">
@@ -84,9 +88,45 @@ export default function POSProductGrid({
           <Camera className="w-4 h-4" />
           {t('pos_scan_webcam')}
         </button>
-      </div>
+       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+       {/* Service/Parts Filter (Issue 21) */}
+       {setServiceFilter && (
+         <div className="flex gap-2 mb-4">
+           <button
+             onClick={() => setServiceFilter('all')}
+             className={`flex-1 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+               serviceFilter === 'all'
+                 ? 'bg-primary text-primary-foreground'
+                 : 'bg-white/5 text-muted-foreground hover:bg-white/10'
+             }`}
+           >
+             {t('pos_all_items') || 'All'}
+           </button>
+           <button
+             onClick={() => setServiceFilter('parts')}
+             className={`flex-1 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+               serviceFilter === 'parts'
+                 ? 'bg-primary text-primary-foreground'
+                 : 'bg-white/5 text-muted-foreground hover:bg-white/10'
+             }`}
+           >
+             {t('pos_parts') || 'Parts'}
+           </button>
+           <button
+             onClick={() => setServiceFilter('service')}
+             className={`flex-1 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+               serviceFilter === 'service'
+                 ? 'bg-primary text-primary-foreground'
+                 : 'bg-white/5 text-muted-foreground hover:bg-white/10'
+             }`}
+           >
+             {t('pos_services') || 'Services'}
+           </button>
+         </div>
+       )}
+
+       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
         {search && filtered.length === 0 && (
           <div className="col-span-full text-center py-12 text-muted-foreground">
             <Package className="w-12 h-12 mx-auto mb-3 opacity-30" />
