@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Search, Plus, X, CheckCircle, Clock, Wrench, Package, DollarSign, Trash2, RotateCcw } from 'lucide-react';
+import { Search, Plus, X, CheckCircle, Clock, Wrench, Package, Barcode, DollarSign, Trash2, RotateCcw, Loader2 } from 'lucide-react';
 import { useTranslation } from '@/components/useTranslation';
 import { useToast } from '@/components/ToastContext';
 
@@ -97,6 +97,10 @@ export default function WorkOrdersPage() {
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'transfer'>('cash');
   const [paymentAmount, setPaymentAmount] = useState('');
   const [processingPayment, setProcessingPayment] = useState(false);
+  const [taxRate, setTaxRate] = useState(14);
+  const [discount, setDiscount] = useState(0);
+  const [discountType, setDiscountType] = useState<'amount' | 'percent'>('amount');
+  const [showInvoicePreview, setShowInvoicePreview] = useState(false);
 
   const statusLabels: Record<string, string> = {
     pending: t('wo_status_pending'),
@@ -303,7 +307,13 @@ export default function WorkOrdersPage() {
 
   const partsTotal = manageParts.reduce((sum, p) => sum + Number(p.total), 0);
   const labourTotal = manageLabour.reduce((sum, l) => sum + Number(l.total), 0);
-  const grandTotal = partsTotal + labourTotal;
+  const subtotalBeforeDisc = partsTotal + labourTotal;
+  const discountAmount = discountType === 'percent' ? subtotalBeforeDisc * (discount / 100) : discount;
+  const afterDiscount = Math.max(0, subtotalBeforeDisc - discountAmount);
+  const taxAmount = afterDiscount * (taxRate / 100);
+  const grandTotal = afterDiscount + taxAmount;
+  const paidNum = parseFloat(paymentAmount) || 0;
+  const change = paidNum > grandTotal ? paidNum - grandTotal : 0;
 
   const handleCompleteAndPay = async () => {
     if (!manageWo || !paymentAmount || parseFloat(paymentAmount) <= 0) return;
@@ -318,11 +328,37 @@ export default function WorkOrdersPage() {
           amountPaid: parseFloat(paymentAmount),
           partsTotal,
           labourTotal,
+          taxRate,
+          discount: discountAmount,
+          total: grandTotal,
         }),
       });
       const json = await res.json();
       if (json.success) {
         addToast('success', t('wo_completed_invoice'));
+        // Print receipt
+        const inv = json.data?.invoice;
+        if (inv) {
+          const receiptWindow = window.open('', '_blank', 'width=360,height=600');
+          if (receiptWindow) {
+            receiptWindow.document.write(`<html dir="${language === 'ar' ? 'rtl' : 'ltr'}"><head><meta charset="utf-8"><title>${t('pos_invoice_number')} ${inv.number || ''}</title><style>body{font-family:monospace;padding:16px;max-width:320px;margin:0 auto}hr{margin:8px 0;border-color:#ddd}.total{font-size:1.2em;font-weight:bold}</style></head><body>
+              <h2>${t('wo_invoice') || 'Invoice'}</h2>
+              <p><strong>#${inv.number}</strong></p><hr>
+              ${manageParts.map(p => `<div>${(p.product?.name || p.id)} x${p.quantity} - ${Number(p.total).toFixed(2)} EGP</div>`).join('')}
+              ${manageLabour.map(l => `<div>${l.description} - ${Number(l.total).toFixed(2)} EGP</div>`).join('')}
+              <hr><div>${t('pos_subtotal')}: ${subtotalBeforeDisc.toFixed(2)} EGP</div>
+              ${discountAmount > 0 ? `<div>${t('pos_discount')}: -${discountAmount.toFixed(2)} EGP</div>` : ''}
+              <div>${t('pos_tax')} (${taxRate}%): ${taxAmount.toFixed(2)} EGP</div>
+              <div class="total">${t('pos_total')}: ${grandTotal.toFixed(2)} EGP</div>
+              <div>${t('pos_paid')}: ${grandTotal.toFixed(2)} EGP</div>
+              ${change > 0 ? `<div>${t('pos_change')}: ${change.toFixed(2)} EGP</div>` : ''}
+              <hr><small>${new Date().toLocaleString()}</small>
+              </body></html>`);
+            receiptWindow.document.close();
+            receiptWindow.focus();
+            setTimeout(() => receiptWindow.print(), 300);
+          }
+        }
         setShowPaymentModal(false);
         setManageWo(null);
         fetchWorkOrders();
@@ -604,23 +640,30 @@ export default function WorkOrdersPage() {
 
             {showProductPicker && (
               <div className="mt-4 p-4 bg-white/5 rounded-xl">
-                <input autoFocus placeholder={t('wo_search_product')} value={productSearch}
-                  onChange={(e) => setProductSearch(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && productSearch.trim()) {
-                      e.preventDefault();
-                      const barcode = productSearch.trim();
-                      const match = products.find(p => p.barcode === barcode);
-                      if (match) {
-                        if (match.stock > 0) {
-                          addPart(match);
-                          setProductSearch('');
-                        } else {
-                          addToast('error', t('wo_out_of_stock'));
+                {/* Barcode Scanner */}
+                <div className="relative mb-2">
+                  <Barcode className="w-4 h-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input autoFocus placeholder={t('pos_manual_barcode')}
+                    value={productSearch}
+                    onChange={(e) => setProductSearch(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && productSearch.trim()) {
+                        e.preventDefault();
+                        const q = productSearch.trim();
+                        const match = products.find(p => p.barcode === q);
+                        if (match) {
+                          if (match.stock > 0) { addPart(match); setProductSearch(''); }
+                          else { addToast('error', t('wo_out_of_stock')); }
                         }
                       }
-                    }
-                  }}
+                    }}
+                    className="w-full pl-10 pr-4 py-2.5 rounded-lg bg-input border border-border text-sm focus:ring-2 focus:ring-ring"
+                    dir="ltr"
+                  />
+                </div>
+                {/* Text Search */}
+                <input placeholder={t('wo_search_product')} value={productSearch}
+                  onChange={(e) => setProductSearch(e.target.value)}
                   className="w-full px-3 py-2 rounded-lg bg-input border border-border text-sm mb-2" />
                 <div className="max-h-48 overflow-auto space-y-1">
                   {filteredProducts.map((p) => (
@@ -640,7 +683,7 @@ export default function WorkOrdersPage() {
 
       {showPaymentModal && manageWo && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <div className="glass rounded-2xl p-6 w-full max-w-md">
+          <div className="glass rounded-2xl p-6 w-full max-w-md max-h-[90vh] overflow-auto">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-bold text-lg">{t('wo_complete_pay')}</h3>
               <button onClick={() => setShowPaymentModal(false)} className="p-2 hover:bg-white/5 rounded-lg">
@@ -648,9 +691,34 @@ export default function WorkOrdersPage() {
               </button>
             </div>
             <div className="space-y-4">
-              <div className="bg-white/5 rounded-lg p-3">
-                <p className="text-sm text-muted-foreground mb-1">{t('wo_total_amount')}</p>
-                <p className="text-2xl font-bold">{grandTotal.toFixed(2)} EGP</p>
+              {/* Invoice Preview */}
+              <div className="bg-white/5 rounded-lg p-3 text-sm space-y-1.5">
+                <div className="flex justify-between"><span className="text-muted-foreground">{t('pos_subtotal')}</span><span>{subtotalBeforeDisc.toFixed(2)} EGP</span></div>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-muted-foreground">{t('pos_discount')}</span>
+                  <div className="flex items-center gap-1">
+                    <input type="number" min="0" max={discountType === 'percent' ? 100 : subtotalBeforeDisc} step="0.01" value={discount || ''}
+                      onChange={(e) => setDiscount(parseFloat(e.target.value) || 0)}
+                      className="w-20 text-right px-2 py-1 rounded-lg bg-input border border-border text-xs" />
+                    <button onClick={() => setDiscountType(discountType === 'amount' ? 'percent' : 'amount')}
+                      className={`px-2 py-0.5 rounded text-[10px] font-medium ${discountType === 'percent' ? 'bg-primary text-primary-foreground' : 'bg-white/5'}`}>
+                      {discountType === 'percent' ? '%' : 'EGP'}
+                    </button>
+                  </div>
+                </div>
+                {discountAmount > 0 && <div className="flex justify-between text-green-400"><span>{t('pos_discount')}</span><span>-{discountAmount.toFixed(2)} EGP</span></div>}
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">{t('pos_tax')}</span>
+                  <div className="flex items-center gap-1">
+                    <input type="number" min="0" max="100" step="1" value={taxRate}
+                      onChange={(e) => setTaxRate(parseFloat(e.target.value) || 0)}
+                      className="w-16 text-right px-2 py-1 rounded-lg bg-input border border-border text-xs" />
+                    <span className="text-xs text-muted-foreground">%</span>
+                  </div>
+                </div>
+                <div className="flex justify-between"><span className="text-muted-foreground">{t('pos_tax')}</span><span>{taxAmount.toFixed(2)} EGP</span></div>
+                <hr className="border-border" />
+                <div className="flex justify-between text-lg font-bold"><span>{t('pos_total')}</span><span>{grandTotal.toFixed(2)} EGP</span></div>
               </div>
               <div>
                 <label className="text-sm text-muted-foreground mb-1 block">{t('pos_payment_method')}</label>
@@ -666,8 +734,15 @@ export default function WorkOrdersPage() {
                 <input type="number" step="0.01" min="0" value={paymentAmount}
                   onChange={(e) => setPaymentAmount(e.target.value)}
                   placeholder={t('wo_enter_amount')}
+                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleCompleteAndPay(); } }}
                   className="w-full px-4 py-2.5 rounded-xl bg-input border border-border text-sm" />
               </div>
+              {change > 0 && (
+                <div className="flex justify-between text-green-400 font-bold text-sm">
+                  <span>{t('pos_change')}</span>
+                  <span>{change.toFixed(2)} EGP</span>
+                </div>
+              )}
               <div className="flex gap-3">
                 <button onClick={() => setShowPaymentModal(false)}
                   className="flex-1 py-2.5 rounded-xl bg-white/5 text-muted-foreground font-medium text-sm">
@@ -675,7 +750,8 @@ export default function WorkOrdersPage() {
                 </button>
                 <button onClick={() => handleCompleteAndPay()}
                   disabled={processingPayment || !paymentAmount || parseFloat(paymentAmount) <= 0}
-                  className="flex-1 py-2.5 rounded-xl bg-primary text-primary-foreground font-medium text-sm disabled:opacity-50">
+                  className="flex-1 py-2.5 rounded-xl bg-primary text-primary-foreground font-medium text-sm disabled:opacity-50 flex items-center justify-center gap-2">
+                  {processingPayment ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
                   {processingPayment ? t('wo_processing') : t('wo_complete_pay')}
                 </button>
               </div>
