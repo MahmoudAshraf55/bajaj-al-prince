@@ -418,14 +418,20 @@
 
 ## ثالث عشر: الترجمة
 
-### 🔴 المشكلة 26: الوضع العربي يظهر إنجليزي
-**التحليل:**  
-- الـ translations.ts فيه 920+ key لكل لغة  
-- التقارير والـ PDF ملهاش ترجمة  
-- 23 hardcoded English strings في dashboard و bookings
+### ✅ المشكلة 26: الوضع العربي + استقلال ترجمة Admin/Website (FIXED)
+**التحليل والحالة الحالية:**  
+- **الـ hardcoded strings:** commit `1b584c5` استبدل 23 string بـ translation keys في dashboard + bookings ✅
+- **استقلال Admin/Website (هذه الجلسة):** admin و website كانا يتشاركان نفس `localStorage` key والـ `cookie` و `<html dir>` → تغيير اللغة في admin يؤثر على website والعكس
+- **الحل:** فصل كامل للـ language context:
+  - `LanguageProvider` يقبل `scope` ('admin' | 'site') → مفاتيح مستقلة `el-prince-lang-admin` / `el-prince-lang-site`
+  - كل scope له `localStorage` + `cookie` منفصلين
+  - **الـ site scope فقط** يغير `<html dir>` العالمي (لزوار الويب)
+  - **الـ admin scope** يطبّق `dir` محلياً على container div عبر `AdminLangWrapper`
+- **الملفات:** `LanguageContext.tsx`, `AdminLangWrapper.tsx`, `app/layout.tsx`, `admin/layout.tsx`, `(site)/layout.tsx`
+- **النتيجة:** تغيير اللغة في admin لا يؤثر على website والعكس — استقلال تام + Build يمر
 
-**الموقع:** متعدد — كل الموقع  
-**المطلوب:** تصحيح كل hardcoded strings في كل ملفات admin
+**الموقع:** `LanguageContext.tsx`, `AdminLangWrapper.tsx`, layouts  
+**الحالة:** ✅ RESOLVED (scope-based Provider + hardcoded strings replaced)
 
 ---
 

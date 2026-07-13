@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { cookies } from 'next/headers';
 import "./globals.css";
-import { LanguageProvider } from "@/components/LanguageContext";
 import { SettingsProvider } from "@/components/SettingsContext";
 import ChatBot from "@/components/ChatBot";
 import { SpeedInsights } from "@vercel/speed-insights/next";
@@ -88,7 +87,7 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   const cookieStore = await cookies();
-  const lang = (cookieStore.get('el-prince-lang')?.value === 'ar' ? 'ar' : 'en') as 'en' | 'ar';
+  const lang = (cookieStore.get('el-prince-lang-site')?.value === 'ar' ? 'ar' : 'en') as 'en' | 'ar';
   const dir = lang === 'ar' ? 'rtl' : 'ltr';
 
   return (
@@ -103,12 +102,10 @@ export default async function RootLayout({
         <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:bg-primary focus:text-primary-foreground focus:rounded-xl">
           Skip to content
         </a>
-        <LanguageProvider>
-          <SettingsProvider>
+        <SettingsProvider>
             {children}
             <ChatBot />
           </SettingsProvider>
-        </LanguageProvider>
         <SpeedInsights />
         <Analytics />
       </body>
