@@ -4,6 +4,15 @@ import { withRole } from '@/lib/auth';
 import { withSecurityHeaders } from '@/lib/security';
 import { exportToExcel } from '@/lib/export-excel';
 
+// Expand a date-only string (YYYY-MM-DD) to the start/end of the local day so
+// that range queries capture the full day instead of a zero-width window (Issue 15).
+function parseRangeDate(val: string, endOfDay: boolean): Date {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(val)) {
+    return endOfDay ? new Date(`${val}T23:59:59.999`) : new Date(`${val}T00:00:00`);
+  }
+  return new Date(val);
+}
+
 export async function GET(req: NextRequest) {
   try {
     return await withRole(req, ['admin', 'staff'], async () => {
@@ -13,8 +22,8 @@ export async function GET(req: NextRequest) {
       const format = searchParams.get('format') || 'json';
       const reportType = searchParams.get('type') || 'top';
 
-      const fromDate = from ? new Date(from) : new Date(new Date().setMonth(new Date().getMonth() - 3));
-      const toDate = to ? new Date(to) : new Date();
+      const fromDate = from ? parseRangeDate(from, false) : new Date(new Date().setMonth(new Date().getMonth() - 3));
+      const toDate = to ? parseRangeDate(to, true) : new Date();
 
       const customers = await prisma.customer.findMany({
         where: { isDeleted: false },

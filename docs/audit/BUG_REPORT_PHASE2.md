@@ -237,13 +237,15 @@
 **الموقع:** `src/app/api/v1/reports/inventory/route.ts`  
 **الحالة:** ✅ RESOLVED (costPrice fallback + tenant isolation عبر extension)
 
-### 🟠 المشكلة 15: تقارير العملاء غير متزامنة مع الفواتير
-**التحليل:**  
-- Client report بيجيب customers with joined invoices  
-- **السبب:** الـ filter على `createdAt` مش الـ `invoice.date`
+### ✅ المشكلة 15: تقارير العملاء متزامنة مع الفواتير (FIXED)
+**التحليل والحالة الحالية:**  
+- `Invoice` model لا يملك حقل `date` — الطابع الزمني هو `createdAt` (يُستخدم بشكل صحيح في الفلتر خط 23 و `lastPurchase` خط 39)
+- **السبب الجذري الفعلي:** نطاق التاريخ كان يُفسر كـ midnight لـ from و to (date-only) → نافذة صفرية → لا تُطابَف الفواتير → العملاء يظهرون بـ `totalSpent = 0` (غير متزامنين)
+- **الإصلاح (هذه الجلسة):** دالة `parseRangeDate()` توسّع `from`/`to` لبداية/نهاية اليوم المحلي (نفس إصلاح Issue 8)
+- بعد الإصلاح: الفواتير ضمن النطاق تُطابَق → `totalSpent`, `invoiceCount`, `lastPurchase` متزامنة مع الفواتير الفعلية
 
-**الموقع:** `src/app/api/v1/reports/customers/route.ts:19-32`  
-**المطلوب:** استخدام `invoice.date` بدل `createdAt`
+**الموقع:** `src/app/api/v1/reports/customers/route.ts`  
+**الحالة:** ✅ RESOLVED (إصلاح نطاق التاريخ + createdAt هو الحقل الصحيح لعدم وجود date)
 
 ---
 
