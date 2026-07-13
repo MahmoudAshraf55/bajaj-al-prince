@@ -145,6 +145,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
             paymentMethod: data.paymentMethod,
             customerId: customer?.id || null,
             customerName: customer?.name || null,
+            workOrderId: id,
             createdById: payload.userId,
             tenantId,
             items: invoiceItems.length > 0 ? { create: invoiceItems } : undefined,
