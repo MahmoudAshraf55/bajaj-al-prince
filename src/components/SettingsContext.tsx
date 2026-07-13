@@ -32,12 +32,12 @@ const defaults: PublicSettings = {
   contact_whatsapp: '201221370120',
 };
 
-const SettingsContext = createContext<PublicSettings>(defaults);
+const SettingsContext = createContext<PublicSettings & { refreshSettings: () => void }>({ ...defaults, refreshSettings: () => {} });
 
 export function SettingsProvider({ children }: { children: ReactNode }) {
   const [settings, setSettings] = useState<PublicSettings>(defaults);
 
-  useEffect(() => {
+  const loadSettings = () => {
     fetch('/api/v1/public/settings/')
       .then((r) => r.json())
       .then((res) => {
@@ -48,10 +48,14 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       .catch((err) => {
         console.error('[SettingsContext] Failed to load public settings', err);
       });
+  };
+
+  useEffect(() => {
+    loadSettings();
   }, []);
 
   return (
-    <SettingsContext.Provider value={settings}>
+    <SettingsContext.Provider value={{ ...settings, refreshSettings: loadSettings }}>
       {children}
     </SettingsContext.Provider>
   );

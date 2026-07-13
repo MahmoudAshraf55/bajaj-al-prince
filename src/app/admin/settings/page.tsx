@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from '@/components/useTranslation';
 import { useToast } from '@/components/ToastContext';
 import BackButton from '@/components/BackButton';
+import { usePublicSettings } from '@/components/SettingsContext';
 import {
   Save, Loader2, Percent, Settings2, Package, Bell,
   AlertTriangle, Globe, MapPin, Phone, Upload, X,
@@ -24,6 +25,7 @@ const tabs: { id: TabId; icon: React.ComponentType<{ className?: string }> }[] =
 
 export default function SettingsPage() {
   const { t, isRTL } = useTranslation();
+  const { refreshSettings } = usePublicSettings();
   const { addToast } = useToast();
   const router = useRouter();
   const [loading, setLoading] = useState(true);
@@ -133,6 +135,7 @@ export default function SettingsPage() {
       if (d.success) {
         addToast('success', t('admin_settings_saved'));
         setDirty(false);
+        refreshSettings();
       } else {
         addToast('error', d.error || t('admin_settings_save_error'));
       }
