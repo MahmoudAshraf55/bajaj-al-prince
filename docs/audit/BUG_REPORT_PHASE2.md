@@ -32,14 +32,22 @@
 
 ## ثانياً: الـ POS — نقطة البيع
 
-### 🔴 المشكلة 3: لا يمكن فتح أكثر من فاتورة في نفس الوقت
-**التحليل:**  
-- الـ POS يستخدم `posStore` (Zustand) مع cart واحد  
-- ما فيش concept الـ draft invoices أو multi-tab  
-- **السبب:** تصميم معماري — الـ store مش بيسمح إلا بـ cart واحد
+### ✅ المشكلة 3: فتح أكثر من فاتورة (Hold / Multi-draft) (FIXED)
+**الحل المطبق:**  
+- أُضيف دعم الـ held drafts إلى `posStore`:
+  - `heldDrafts: HeldDraft[]` — قائمة الفواتير المحفوظة مؤقتاً
+  - `holdCart()` — يحفظ حالة السلة كاملة (cart, discount, paid, customer, notes, taxRate, paymentMethod, splitPayments, isReturn) ويمسح السلة الحالية
+  - `loadDraft(id)` — يسترجع مسودة ويعيدها للسلة ويحذفها من المحفوظات
+  - `removeDraft(id)` — يحذف مسودة
+- **الواجهة** (`POSCart.tsx`):
+  - زر **Hold** في ترويسة السلة (معطّل إن كانت فارغة)
+  - زر **Held Invoices** يعرض عداد المحفوظات ويفتح لوحة فيها كل مسودة مع أزرار Load/Delete
+  - كل مسودة تعرض: الاسم، عدد الأصناف، العميل، الإجمالي
+- **الترجمة:** أُضيفت مفاتيح `pos_hold`, `pos_hold_sale`, `pos_held_drafts`, `pos_load`, `pos_load_draft`, `pos_delete_draft`, `pos_walk_in` (EN + AR)
+- يمكن الآن فتح أكثر من فاتورة: احفظ الحالية مؤقتاً وابدأ أخرى ثم استرجعها
 
-**الموقع:** `src/store/posStore.ts`  
-**المطلوب:** إضافة multi-invoice support (draft/saved invoices)
+**الموقع:** `src/store/posStore.ts`, `src/components/pos/POSCart.tsx`, `src/app/admin/pos/page.tsx`, `src/components/translations.ts`  
+**الحالة:** ✅ RESOLVED (تم التنفيذ في هذه الجلسة)
 
 ### 🟠 المشكلة 4: الباركود اليدوي سريع جداً — الـ 150ms debounce مش مناسب للكتابة اليدوية
 **التحليل:**  

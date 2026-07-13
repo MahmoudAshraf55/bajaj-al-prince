@@ -44,6 +44,7 @@ export default function AdminPOS() {
     taxRate, setTaxRate,
     selectedCustomer, setSelectedCustomer,
     isReturn, setIsReturn,
+    heldDrafts, holdCart, loadDraft, removeDraft,
   } = usePOSStore();
 
   const [saving, setSaving] = useState(false);
@@ -635,6 +636,10 @@ export default function AdminPOS() {
                 change={change}
                 selectedWorkOrderId={selectedWorkOrderId}
                 setShowWorkOrderSelect={setShowWorkOrderSelect}
+                heldDrafts={heldDrafts}
+                holdCart={holdCart}
+                loadDraft={loadDraft}
+                removeDraft={removeDraft}
               />
             </div>
 

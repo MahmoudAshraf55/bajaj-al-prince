@@ -1,7 +1,9 @@
 'use client';
 
-import { ShoppingCart, Minus, Plus, Trash2, Check, Loader2, PlusCircle, X } from 'lucide-react';
+import { useState } from 'react';
+import { ShoppingCart, Minus, Plus, Trash2, Check, Loader2, PlusCircle, X, Pause, RotateCcw, Archive } from 'lucide-react';
 import { CartItem, Customer } from '@/types/pos';
+import type { HeldDraft } from '@/store/posStore';
 
 interface POSCartProps {
   isReturn: boolean;
@@ -32,6 +34,10 @@ interface POSCartProps {
   change: number;
   selectedWorkOrderId: string | null;
   setShowWorkOrderSelect: (val: boolean) => void;
+  heldDrafts: HeldDraft[];
+  holdCart: () => void;
+  loadDraft: (id: string) => void;
+  removeDraft: (id: string) => void;
 }
 
 export default function POSCart({
@@ -63,7 +69,13 @@ export default function POSCart({
   change,
   selectedWorkOrderId,
   setShowWorkOrderSelect,
+  heldDrafts,
+  holdCart,
+  loadDraft,
+  removeDraft,
 }: POSCartProps) {
+  const [showDrafts, setShowDrafts] = useState(false);
+
   const addSplitPayment = () => {
     setSplitPayments([...splitPayments, { method: 'cash', amount: '' }]);
   };
@@ -78,17 +90,69 @@ export default function POSCart({
 
   return (
     <div className="w-full lg:w-96 xl:w-[28rem] glass ltr:lg:border-l rtl:lg:border-r border-border lg:min-h-[calc(100vh-0px)] flex flex-col">
-      <div className="p-4 border-b border-border flex items-center justify-between">
+      <div className="p-4 border-b border-border flex items-center justify-between gap-2">
         <h2 className="font-bold">{t('pos_cart')} ({cart.length})</h2>
-        <button
-          onClick={() => setIsReturn(!isReturn)}
-          className={`px-3 py-1 rounded-lg text-xs font-bold transition-colors ${
-            isReturn ? 'bg-red-500/20 text-red-400' : 'bg-primary/20 text-primary'
-          }`}
-        >
-          {isReturn ? t('pos_refund_mode') || 'Refund Mode' : t('pos_sale_mode') || 'Sale Mode'}
-        </button>
+        <div className="flex items-center gap-2">
+          {heldDrafts.length > 0 && (
+            <button
+              onClick={() => setShowDrafts((v) => !v)}
+              className={`px-3 py-1 rounded-lg text-xs font-bold transition-colors flex items-center gap-1 ${showDrafts ? 'bg-primary/20 text-primary' : 'bg-white/5 text-muted-foreground hover:bg-white/10'}`}
+              aria-label={t('pos_held_drafts') || 'Held invoices'}
+            >
+              <Archive className="w-3.5 h-3.5" />
+              {heldDrafts.length}
+            </button>
+          )}
+          <button
+            onClick={holdCart}
+            disabled={cart.length === 0}
+            className="px-3 py-1 rounded-lg text-xs font-bold transition-colors flex items-center gap-1 bg-white/5 text-muted-foreground hover:bg-white/10 disabled:opacity-40"
+            aria-label={t('pos_hold_sale') || 'Hold sale'}
+          >
+            <Pause className="w-3.5 h-3.5" />
+            {t('pos_hold') || 'Hold'}
+          </button>
+          <button
+            onClick={() => setIsReturn(!isReturn)}
+            className={`px-3 py-1 rounded-lg text-xs font-bold transition-colors ${
+              isReturn ? 'bg-red-500/20 text-red-400' : 'bg-primary/20 text-primary'
+            }`}
+          >
+            {isReturn ? t('pos_refund_mode') || 'Refund Mode' : t('pos_sale_mode') || 'Sale Mode'}
+          </button>
+        </div>
       </div>
+
+      {showDrafts && heldDrafts.length > 0 && (
+        <div className="border-b border-border bg-white/5 p-3 space-y-2 max-h-60 overflow-auto">
+          <p className="text-xs font-semibold text-muted-foreground">{t('pos_held_drafts') || 'Held invoices'}</p>
+          {heldDrafts.map((d) => (
+            <div key={d.id} className="flex items-center justify-between gap-2 glass-light rounded-lg p-2">
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-medium truncate">{d.label} · {d.cart.length} {t('pos_items')}</p>
+                <p className="text-[10px] text-muted-foreground truncate">
+                  {d.selectedCustomer ? d.selectedCustomer.name : t('pos_walk_in') || 'Walk-in'} · {d.cart.reduce((s, i) => s + i.total, 0).toFixed(2)} EGP
+                </p>
+              </div>
+              <button
+                onClick={() => loadDraft(d.id)}
+                className="px-2 py-1 rounded-lg bg-primary/20 text-primary text-xs font-medium hover:bg-primary/30 flex items-center gap-1"
+                aria-label={t('pos_load_draft') || 'Load draft'}
+              >
+                <RotateCcw className="w-3 h-3" />
+                {t('pos_load') || 'Load'}
+              </button>
+              <button
+                onClick={() => removeDraft(d.id)}
+                className="p-1.5 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20"
+                aria-label={t('pos_delete_draft') || 'Delete draft'}
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
 
       <div className="flex-1 overflow-auto p-4 space-y-2">
         {cart.length === 0 && (
