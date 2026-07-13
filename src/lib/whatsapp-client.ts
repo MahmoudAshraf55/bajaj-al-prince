@@ -37,16 +37,30 @@ async function fetchWithRetry(url: string, options: RequestInit = {}, retries = 
 }
 
 export async function getWhatsAppStateFromService(): Promise<WhatsAppState> {
-  const res = await fetchWithRetry(`${SERVICE_URL}/status`, { cache: 'no-store' });
-  const data = await res.json();
-  if (data.success) return data.data as WhatsAppState;
-  throw new Error(data.error || 'Failed to get status');
+  try {
+    const res = await fetchWithRetry(`${SERVICE_URL}/status`, { cache: 'no-store' });
+    const data = await res.json();
+    if (data.success) return data.data as WhatsAppState;
+    throw new Error(data.error || 'Failed to get status');
+  } catch {
+    return {
+      status: 'disconnected',
+      qrDataUrl: null,
+      phone: null,
+      error: `WhatsApp service unreachable at ${SERVICE_URL}. Run: cd services/whatsapp && node index.js`,
+    };
+  }
 }
 
 export async function disconnectWhatsAppViaService(): Promise<void> {
-  const res = await fetchWithRetry(`${SERVICE_URL}/disconnect`, { method: 'POST', cache: 'no-store' });
-  const data = await res.json();
-  if (!data.success) throw new Error(data.error || 'Failed to disconnect');
+  try {
+    const res = await fetchWithRetry(`${SERVICE_URL}/disconnect`, { method: 'POST', cache: 'no-store' });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.error || 'Failed to disconnect');
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : 'Unknown error';
+    throw new Error(`Disconnect failed — is WhatsApp service running at ${SERVICE_URL}? ${msg}`);
+  }
 }
 
 export async function sendWhatsAppMessageViaService(phone: string, text: string): Promise<{ success: boolean; error?: string }> {
