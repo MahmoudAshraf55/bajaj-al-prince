@@ -50,10 +50,25 @@ export async function GET(req: NextRequest) {
         prisma.supplier.count({ where }),
       ]);
 
+      // Get purchase order counts for each supplier
+      const supplierIds = suppliers.map((s) => s.id);
+      const purchaseOrderCounts = await prisma.purchaseOrder.groupBy({
+        by: ['supplierId'],
+        where: { supplierId: { in: supplierIds }, isDeleted: false },
+        _count: { id: true },
+      });
+
+      const poCountMap = new Map(purchaseOrderCounts.map((pc) => [pc.supplierId, pc._count.id]));
+
+      const suppliersWithCounts = suppliers.map((s) => ({
+        ...s,
+        purchaseOrderCount: poCountMap.get(s.id) || 0,
+      }));
+
       return withSecurityHeaders(NextResponse.json({
         success: true,
         data: {
-          suppliers,
+          suppliers: suppliersWithCounts,
           meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
         },
       }));
