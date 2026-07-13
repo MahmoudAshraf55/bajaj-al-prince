@@ -288,26 +288,29 @@ function CashFlowReport({ data, t }: { data: Record<string, unknown>; t: (k: str
 }
 
 function InventorySummary({ data, t }: { data: Record<string, unknown>; t: (k: string) => string }) {
-  const d = data as { totalProducts: number; totalStock: number; lowStockCount: number; outOfStockCount: number; totalStockValue: number };
+  const d = data as { totalProducts?: number; totalStock?: number; lowStockCount?: number; outOfStockCount?: number; totalStockValue?: number };
+  const stockVal = typeof d.totalStockValue === 'number' ? d.totalStockValue : 0;
   return (
     <div className="space-y-4">
       <h3 className="text-lg font-bold">{t('rpt_stock_summary')}</h3>
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-        <Card label={t('rpt_total_products')} value={d.totalProducts} />
-        <Card label={t('rpt_total_stock_units')} value={d.totalStock} />
-        <Card label={t('rpt_low_stock_items')} value={d.lowStockCount} color="amber" />
-        <Card label={t('rpt_out_of_stock')} value={d.outOfStockCount} color="red" />
-        <Card label={t('rpt_stock_value_egp')} value={d.totalStockValue.toFixed(2)} color="green" />
+        <Card label={t('rpt_total_products')} value={d.totalProducts ?? 0} />
+        <Card label={t('rpt_total_stock_units')} value={d.totalStock ?? 0} />
+        <Card label={t('rpt_low_stock_items')} value={d.lowStockCount ?? 0} color="amber" />
+        <Card label={t('rpt_out_of_stock')} value={d.outOfStockCount ?? 0} color="red" />
+        <Card label={t('rpt_stock_value_egp')} value={stockVal.toFixed(2)} color="green" />
       </div>
     </div>
   );
 }
 
 function LowStockReport({ data, t }: { data: Record<string, unknown>; t: (k: string) => string }) {
-  const d = data as { count: number; products: Array<Record<string, unknown>> };
+  const d = data as { count?: number; products?: Array<Record<string, unknown>> };
+  const count = typeof d.count === 'number' ? d.count : 0;
+  const products = Array.isArray(d.products) ? d.products : [];
   return (
     <div className="space-y-4">
-      <h3 className="text-lg font-bold">{t('rpt_low_stock')} ({d.count})</h3>
+      <h3 className="text-lg font-bold">{t('rpt_low_stock')} ({count})</h3>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
@@ -319,7 +322,7 @@ function LowStockReport({ data, t }: { data: Record<string, unknown>; t: (k: str
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
-            {d.products.map((p, i) => (
+            {products.map((p, i) => (
               <tr key={i}>
                 <td className="py-2 px-2">{p.name as string}</td>
                 <td className="py-2 px-2 text-center text-red-400">{p.stock as number}</td>
@@ -335,16 +338,22 @@ function LowStockReport({ data, t }: { data: Record<string, unknown>; t: (k: str
 }
 
 function StockValueReport({ data, t }: { data: Record<string, unknown>; t: (k: string) => string }) {
-  const d = data as { totalProducts: number; totalStockValue: number; totalRetailValue: number; potentialProfit: number; byCategory: Array<Record<string, unknown>> };
+  const d = data as { totalProducts?: number; totalStockValue?: number; totalRetailValue?: number; potentialProfit?: number; byCategory?: Array<Record<string, unknown>> };
+  const products = typeof d.totalProducts === 'number' ? d.totalProducts : 0;
+  const stockVal = typeof d.totalStockValue === 'number' ? d.totalStockValue : 0;
+  const retailVal = typeof d.totalRetailValue === 'number' ? d.totalRetailValue : 0;
+  const profit = typeof d.potentialProfit === 'number' ? d.potentialProfit : 0;
+  const cats = Array.isArray(d.byCategory) ? d.byCategory : [];
   return (
     <div className="space-y-4">
       <h3 className="text-lg font-bold">{t('rpt_stock_value')}</h3>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <Card label={t('rpt_products')} value={d.totalProducts} />
-        <Card label={t('rpt_stock_value_label')} value={d.totalStockValue.toFixed(2)} color="blue" />
-        <Card label={t('rpt_retail_value')} value={d.totalRetailValue.toFixed(2)} color="green" />
-        <Card label={t('rpt_potential_profit')} value={d.potentialProfit.toFixed(2)} color="green" />
+        <Card label={t('rpt_products')} value={products} />
+        <Card label={t('rpt_stock_value_label')} value={stockVal.toFixed(2)} color="blue" />
+        <Card label={t('rpt_retail_value')} value={retailVal.toFixed(2)} color="green" />
+        <Card label={t('rpt_potential_profit')} value={profit.toFixed(2)} color="green" />
       </div>
+      {cats.length > 0 && (
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
@@ -356,26 +365,29 @@ function StockValueReport({ data, t }: { data: Record<string, unknown>; t: (k: s
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
-            {d.byCategory.map((c, i) => (
+            {cats.map((c, i) => (
               <tr key={i}>
-                <td className="py-2 px-2">{c.category as string}</td>
-                <td className="py-2 px-2 text-center">{c.count as number}</td>
-                <td className="py-2 px-2 text-right">{(c.stockValue as number).toFixed(2)}</td>
-                <td className="py-2 px-2 text-right">{(c.retailValue as number).toFixed(2)}</td>
+                <td className="py-2 px-2">{(c.category as string) || '-'}</td>
+                <td className="py-2 px-2 text-center">{typeof c.count === 'number' ? c.count : 0}</td>
+                <td className="py-2 px-2 text-right">{typeof c.stockValue === 'number' ? c.stockValue.toFixed(2) : '0.00'}</td>
+                <td className="py-2 px-2 text-right">{typeof c.retailValue === 'number' ? c.retailValue.toFixed(2) : '0.00'}</td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+      )}
     </div>
   );
 }
 
 function CustomerReportView({ data, t, type }: { data: Record<string, unknown>; t: (k: string) => string; type: string }) {
-  const d = data as { count: number; customers: Array<Record<string, unknown>> };
+  const d = data as { count?: number; customers?: Array<Record<string, unknown>> };
+  const count = typeof d.count === 'number' ? d.count : 0;
+  const customers = Array.isArray(d.customers) ? d.customers : [];
   return (
     <div className="space-y-4">
-      <h3 className="text-lg font-bold">{type === 'top' ? t('rpt_top_customers') : t('rpt_customer_activity')} ({d.count})</h3>
+      <h3 className="text-lg font-bold">{type === 'top' ? t('rpt_top_customers') : t('rpt_customer_activity')} ({count})</h3>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
@@ -388,7 +400,7 @@ function CustomerReportView({ data, t, type }: { data: Record<string, unknown>; 
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
-            {d.customers.slice(0, 20).map((c, i) => (
+            {customers.slice(0, 20).map((c, i) => (
               <tr key={i}>
                 <td className="py-2 px-2">{c.name as string}</td>
                 <td className="py-2 px-2 text-right font-medium">{(c.totalSpent as number).toFixed(2)}</td>

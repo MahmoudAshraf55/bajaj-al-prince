@@ -78,9 +78,13 @@ export async function GET(req: NextRequest) {
         }
         const totalStockValue = products.reduce((s, p) => {
           const cost = Number(p.costPrice || 0);
-          return s + (cost > 0 ? cost : Number(p.price)) * p.stock;
+          const val = (cost > 0 ? cost : Number(p.price)) * p.stock;
+          return s + (isNaN(val) ? 0 : val);
         }, 0);
-        const totalRetailValue = products.reduce((s, p) => s + Number(p.price) * p.stock, 0);
+        const totalRetailValue = products.reduce((s, p) => {
+          const val = Number(p.price) * p.stock;
+          return s + (isNaN(val) ? 0 : val);
+        }, 0);
         return withSecurityHeaders(NextResponse.json({
           success: true,
           data: {
