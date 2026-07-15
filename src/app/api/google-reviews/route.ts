@@ -77,8 +77,13 @@ export async function GET(request: NextRequest) {
         },
       });
       logger.info('New unique visitor logged', { ipHash: ipHash.slice(0, 10) });
-    } catch {
-      // Unique constraint failed, meaning visitor already exists in DB — ignore silently
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      if (message.includes('Unique constraint') || message.includes('unique constraint') || message.includes('P2002')) {
+        // Unique constraint failed — visitor already exists, ignore silently
+      } else {
+        logger.warn('Failed to log unique visitor', { error: message });
+      }
     }
 
     // 3. Count total unique visitors

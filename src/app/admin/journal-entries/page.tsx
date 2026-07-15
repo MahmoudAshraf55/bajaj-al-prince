@@ -1,15 +1,17 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { useTranslation } from '@/components/useTranslation';
 import { useToast } from '@/components/ToastContext';
 import BackButton from '@/components/BackButton';
 import { fetchWithRetry } from '@/lib/fetchWithRetry';
 import {
-  Search, Plus, ChevronLeft, ChevronRight, AlertCircle, X, FileText,
+  Search, Plus, AlertCircle, FileText,
 } from 'lucide-react';
+import Pagination from '@/components/ui/Pagination';
+import PageSpinner from '@/components/ui/PageSpinner';
+import Modal from '@/components/ui/Modal';
 
 interface JournalEntryLine {
   id: string;
@@ -44,8 +46,7 @@ const typeColors: Record<string, string> = {
 export default function JournalEntriesPage() {
   const { t } = useTranslation();
   const { addToast } = useToast();
-  const router = useRouter();
-  const [loading, setLoading] = useState(true);
+  const [loading] = useState(false);
   const [error, setError] = useState('');
   const [entries, setEntries] = useState<JournalEntry[]>([]);
   const [meta, setMeta] = useState({ total: 0, page: 1, limit: 20, totalPages: 1 });
@@ -84,18 +85,6 @@ export default function JournalEntriesPage() {
       setError(err instanceof Error ? err.message : t('je_no_entries'));
     }
   }, [t]);
-
-  useEffect(() => {
-    fetch('/api/auth/me/', { credentials: 'include' })
-      .then((r) => r.json().catch(() => ({ success: false, error: 'Invalid auth response' })))
-      .then((d) => {
-        if (!d?.success) router.push('/admin/');
-        else { setLoading(false); }
-      })
-      .catch(() => {
-        router.push('/admin/');
-      });
-  }, [router]);
 
   useEffect(() => {
     if (loading) return;
@@ -146,9 +135,7 @@ export default function JournalEntriesPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-      </div>
+      <PageSpinner />
     );
   }
 
@@ -284,137 +271,91 @@ export default function JournalEntriesPage() {
         </div>
 
         {/* Pagination */}
-        {meta.totalPages > 1 && (
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-muted-foreground">
-              {t('sup_pagination_showing')} {((meta.page - 1) * meta.limit) + 1}–{Math.min(meta.page * meta.limit, meta.total)} {t('sup_pagination_of')} {meta.total}
-            </span>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                disabled={meta.page <= 1}
-                className="p-2 rounded-lg hover:bg-white/5 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </button>
-              <span className="text-sm font-medium min-w-[3rem] text-center">
-                {meta.page} / {meta.totalPages}
-              </span>
-              <button
-                onClick={() => setPage((p) => Math.min(meta.totalPages, p + 1))}
-                disabled={meta.page >= meta.totalPages}
-                className="p-2 rounded-lg hover:bg-white/5 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-              >
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-        )}
+        <Pagination
+          meta={meta}
+          onPageChange={setPage}
+          showingLabel={t('sup_pagination_showing')}
+          ofLabel={t('sup_pagination_of')}
+        />
       </motion.div>
 
       {/* Manual Entry Modal */}
-      <AnimatePresence>
-        {showModal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-40 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
-            onClick={() => setShowModal(false)}
-          >
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              onClick={(e) => e.stopPropagation()}
-              role="dialog"
-              aria-modal="true"
-              className="glass rounded-2xl p-6 w-full max-w-md border border-border"
+      <Modal isOpen={showModal} onClose={() => setShowModal(false)} title={t('je_add_modal')}>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="text-xs font-medium text-muted-foreground mb-1.5 block">{t('je_type')}</label>
+            <select
+              value={form.type}
+              onChange={(e) => setForm((f) => ({ ...f, type: e.target.value }))}
+              className="w-full px-4 py-2.5 rounded-xl bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm"
             >
-              <div className="flex items-center justify-between mb-5">
-                <h3 className="text-lg font-bold">{t('je_add_modal')}</h3>
-                <button onClick={() => setShowModal(false)} className="p-1 rounded-lg hover:bg-white/5 text-muted-foreground">
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-1.5 block">{t('je_type')}</label>
-                  <select
-                    value={form.type}
-                    onChange={(e) => setForm((f) => ({ ...f, type: e.target.value }))}
-                    className="w-full px-4 py-2.5 rounded-xl bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm"
-                  >
-                    {(['SALE', 'RETURN', 'PURCHASE', 'INCOME', 'EXPENSE', 'STOCK_ADJUSTMENT'] as const).map((type) => {
-                      const typeLabelMap: Record<string, string> = {
-                        SALE: t('je_type_sale'),
-                        RETURN: t('je_type_return'),
-                        PURCHASE: t('je_type_purchase'),
-                        INCOME: t('je_type_income'),
-                        EXPENSE: t('je_type_expense'),
-                        STOCK_ADJUSTMENT: t('je_type_stock_adjustment'),
-                      };
-                      return <option key={type} value={type}>{typeLabelMap[type] || type}</option>;
-                    })}
-                  </select>
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-1.5 block">{t('je_amount')}</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    required
-                    value={form.amount}
-                    onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value }))}
-                    className="w-full px-4 py-2.5 rounded-xl bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm"
-                    placeholder="0.00"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-1.5 block">{t('je_description')}</label>
-                  <textarea
-                    rows={2}
-                    required
-                    value={form.description}
-                    onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-                    className="w-full px-4 py-2.5 rounded-xl bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm resize-none"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-1.5 block">{t('je_payment_method')}</label>
-                  <select
-                    value={form.paymentMethod}
-                    onChange={(e) => setForm((f) => ({ ...f, paymentMethod: e.target.value }))}
-                    className="w-full px-4 py-2.5 rounded-xl bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm"
-                  >
-                    <option value="cash">{t('je_payment_cash')}</option>
-                    <option value="card">{t('je_payment_card')}</option>
-                    <option value="transfer">{t('je_payment_transfer')}</option>
-                  </select>
-                </div>
-                {formError && (
-                  <div className="flex items-center gap-2 text-red-400 text-xs bg-red-400/10 border border-red-400/20 rounded-xl px-3 py-2">
-                    <AlertCircle className="w-3.5 h-3.5" />
-                    {formError}
-                  </div>
-                )}
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="w-full py-2.5 rounded-xl bg-primary text-primary-foreground font-medium text-sm hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {submitting ? (
-                    <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin mx-auto" />
-                  ) : (
-                    t('je_new')
-                  )}
-                </button>
-              </form>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+              {(['SALE', 'RETURN', 'PURCHASE', 'INCOME', 'EXPENSE', 'STOCK_ADJUSTMENT'] as const).map((type) => {
+                const typeLabelMap: Record<string, string> = {
+                  SALE: t('je_type_sale'),
+                  RETURN: t('je_type_return'),
+                  PURCHASE: t('je_type_purchase'),
+                  INCOME: t('je_type_income'),
+                  EXPENSE: t('je_type_expense'),
+                  STOCK_ADJUSTMENT: t('je_type_stock_adjustment'),
+                };
+                return <option key={type} value={type}>{typeLabelMap[type] || type}</option>;
+              })}
+            </select>
+          </div>
+          <div>
+            <label className="text-xs font-medium text-muted-foreground mb-1.5 block">{t('je_amount')}</label>
+            <input
+              type="number"
+              step="0.01"
+              min="0"
+              required
+              value={form.amount}
+              onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value }))}
+              className="w-full px-4 py-2.5 rounded-xl bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm"
+              placeholder="0.00"
+            />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-muted-foreground mb-1.5 block">{t('je_description')}</label>
+            <textarea
+              rows={2}
+              required
+              value={form.description}
+              onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+              className="w-full px-4 py-2.5 rounded-xl bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm resize-none"
+            />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-muted-foreground mb-1.5 block">{t('je_payment_method')}</label>
+            <select
+              value={form.paymentMethod}
+              onChange={(e) => setForm((f) => ({ ...f, paymentMethod: e.target.value }))}
+              className="w-full px-4 py-2.5 rounded-xl bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm"
+            >
+              <option value="cash">{t('je_payment_cash')}</option>
+              <option value="card">{t('je_payment_card')}</option>
+              <option value="transfer">{t('je_payment_transfer')}</option>
+            </select>
+          </div>
+          {formError && (
+            <div className="flex items-center gap-2 text-red-400 text-xs bg-red-400/10 border border-red-400/20 rounded-xl px-3 py-2">
+              <AlertCircle className="w-3.5 h-3.5" />
+              {formError}
+            </div>
+          )}
+          <button
+            type="submit"
+            disabled={submitting}
+            className="w-full py-2.5 rounded-xl bg-primary text-primary-foreground font-medium text-sm hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {submitting ? (
+              <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin mx-auto" />
+            ) : (
+              t('je_new')
+            )}
+          </button>
+        </form>
+      </Modal>
     </div>
   );
 }

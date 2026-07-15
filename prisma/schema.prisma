@@ -702,7 +702,7 @@ model Review {
 
 model UniqueVisitor {
   id        String    @id @default(uuid())
-  ipHash    String    @unique
+  ipHash    String
   userAgent String?
   createdAt DateTime  @default(now()) @db.Timestamp(6)
   isDeleted Boolean   @default(false)

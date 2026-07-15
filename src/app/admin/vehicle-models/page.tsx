@@ -1,16 +1,17 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { useTranslation } from '@/components/useTranslation';
 import { useToast } from '@/components/ToastContext';
 import BackButton from '@/components/BackButton';
 import { fetchWithRetry } from '@/lib/fetchWithRetry';
 import type { VehicleModel } from '@/types';
 import {
-  Plus, X, AlertCircle, List, Trash2, Pencil,
+  Plus, AlertCircle, List, Trash2, Pencil,
 } from 'lucide-react';
+import PageSpinner from '@/components/ui/PageSpinner';
+import Modal from '@/components/ui/Modal';
 
 interface Manufacturer {
   id: string;
@@ -21,8 +22,7 @@ interface Manufacturer {
 export default function VehicleModelsPage() {
   const { t } = useTranslation();
   const { addToast } = useToast();
-  const router = useRouter();
-  const [loading, setLoading] = useState(true);
+  const [loading] = useState(false);
   const [error, setError] = useState('');
   const [models, setModels] = useState<VehicleModel[]>([]);
   const [manufacturers, setManufacturers] = useState<Manufacturer[]>([]);
@@ -51,26 +51,17 @@ export default function VehicleModelsPage() {
 
   useEffect(() => {
     const controller = new AbortController();
-    fetch('/api/auth/me/', { credentials: 'include' })
-      .then((r) => r.json().catch(() => ({ success: false, error: 'Invalid auth response' })))
-      .then((d) => {
-        if (!d?.success) router.push('/admin/');
-        else {
-          setLoading(false);
-          fetchModels(controller.signal);
-          fetch('/api/v1/manufacturers/?all=true', { credentials: 'include', signal: controller.signal })
-            .then((r) => r.json())
-            .then((data) => {
-              if (data?.success && Array.isArray(data?.data?.manufacturers)) {
-                setManufacturers(data.data.manufacturers);
-              }
-            })
-            .catch(() => {});
+    fetchModels(controller.signal);
+    fetch('/api/v1/manufacturers/?all=true', { credentials: 'include', signal: controller.signal })
+      .then((r) => r.json())
+      .then((data) => {
+        if (data?.success && Array.isArray(data?.data?.manufacturers)) {
+          setManufacturers(data.data.manufacturers);
         }
       })
-      .catch(() => router.push('/admin/'));
+      .catch(() => {});
     return () => controller.abort();
-  }, [router, fetchModels]);
+  }, [fetchModels]);
 
   const openAddModal = () => {
     setEditingModel(null);
@@ -143,9 +134,7 @@ export default function VehicleModelsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-      </div>
+      <PageSpinner />
     );
   }
 
@@ -246,86 +235,60 @@ export default function VehicleModelsPage() {
       </motion.div>
 
       {/* Add Modal */}
-      <AnimatePresence>
-        {showModal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-40 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
-            onClick={() => setShowModal(false)}
-          >
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              onClick={(e) => e.stopPropagation()}
-              role="dialog"
-              aria-modal="true"
-              className="glass rounded-2xl p-6 w-full max-w-md border border-border"
+      <Modal isOpen={showModal} onClose={() => { setShowModal(false); setEditingModel(null); }} title={editingModel ? t('vmodels_edit_modal_title') : t('vmodels_add_modal_title')}>
+        <form onSubmit={handleSave} className="space-y-4">
+          <div>
+            <label className="text-xs font-medium text-muted-foreground mb-1.5 block">{t('vmodels_name')}</label>
+            <input
+              required
+              value={form.name}
+              onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+              className="w-full px-4 py-2.5 rounded-xl bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm"
+              placeholder="Pulsar N160"
+            />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-muted-foreground mb-1.5 block">{t('vmodels_make')}</label>
+            <input
+              required
+              value={form.make}
+              onChange={(e) => setForm((f) => ({ ...f, make: e.target.value }))}
+              className="w-full px-4 py-2.5 rounded-xl bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm"
+              placeholder="Bajaj"
+            />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-muted-foreground mb-1.5 block">{t('vmodels_manufacturer')}</label>
+            <select
+              value={form.manufacturerId}
+              onChange={(e) => setForm((f) => ({ ...f, manufacturerId: e.target.value }))}
+              className="w-full px-4 py-2.5 rounded-xl bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm"
             >
-              <div className="flex items-center justify-between mb-5">
-                <h3 className="text-lg font-bold">{editingModel ? t('vmodels_edit_modal_title') : t('vmodels_add_modal_title')}</h3>
-                <button onClick={() => { setShowModal(false); setEditingModel(null); }} className="p-1 rounded-lg hover:bg-white/5 text-muted-foreground">
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-              <form onSubmit={handleSave} className="space-y-4">
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-1.5 block">{t('vmodels_name')}</label>
-                  <input
-                    required
-                    value={form.name}
-                    onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                    className="w-full px-4 py-2.5 rounded-xl bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm"
-                    placeholder="Pulsar N160"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-1.5 block">{t('vmodels_make')}</label>
-                  <input
-                    required
-                    value={form.make}
-                    onChange={(e) => setForm((f) => ({ ...f, make: e.target.value }))}
-                    className="w-full px-4 py-2.5 rounded-xl bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm"
-                    placeholder="Bajaj"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-1.5 block">{t('vmodels_manufacturer')}</label>
-                  <select
-                    value={form.manufacturerId}
-                    onChange={(e) => setForm((f) => ({ ...f, manufacturerId: e.target.value }))}
-                    className="w-full px-4 py-2.5 rounded-xl bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm"
-                  >
-                    <option value="">{t('vmodels_no_manufacturer')}</option>
-                    {manufacturers.map((man) => (
-                      <option key={man.id} value={man.id}>{man.name} {man.nameAr ? `(${man.nameAr})` : ''}</option>
-                    ))}
-                  </select>
-                </div>
-                {formError && (
-                  <div className="flex items-center gap-2 text-red-400 text-xs bg-red-400/10 border border-red-400/20 rounded-xl px-3 py-2">
-                    <AlertCircle className="w-3.5 h-3.5" />
-                    {formError}
-                  </div>
-                )}
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="w-full py-2.5 rounded-xl bg-primary text-primary-foreground font-medium text-sm hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {submitting ? (
-                    <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin mx-auto" />
-                  ) : (
-                    editingModel ? t('vmodels_save') : t('vmodels_create')
-                  )}
-                </button>
-              </form>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+              <option value="">{t('vmodels_no_manufacturer')}</option>
+              {manufacturers.map((man) => (
+                <option key={man.id} value={man.id}>{man.name} {man.nameAr ? `(${man.nameAr})` : ''}</option>
+              ))}
+            </select>
+          </div>
+          {formError && (
+            <div className="flex items-center gap-2 text-red-400 text-xs bg-red-400/10 border border-red-400/20 rounded-xl px-3 py-2">
+              <AlertCircle className="w-3.5 h-3.5" />
+              {formError}
+            </div>
+          )}
+          <button
+            type="submit"
+            disabled={submitting}
+            className="w-full py-2.5 rounded-xl bg-primary text-primary-foreground font-medium text-sm hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {submitting ? (
+              <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin mx-auto" />
+            ) : (
+              editingModel ? t('vmodels_save') : t('vmodels_create')
+            )}
+          </button>
+        </form>
+      </Modal>
     </div>
   );
 }

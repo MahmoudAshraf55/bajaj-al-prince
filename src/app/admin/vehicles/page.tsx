@@ -1,84 +1,55 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
+import useSWR from 'swr';
 import { useTranslation } from '@/components/useTranslation';
-import { useToast } from '@/components/ToastContext';
 import BackButton from '@/components/BackButton';
-import { fetchWithRetry } from '@/lib/fetchWithRetry';
+import fetcher from '@/lib/fetcher';
 import type { Vehicle } from '@/types';
 import {
-  Search, Car, ChevronLeft, ChevronRight, Hash,
+  Search, Car, Hash,
   AlertCircle, User,
 } from 'lucide-react';
+import Pagination from '@/components/ui/Pagination';
+import PageSpinner from '@/components/ui/PageSpinner';
+
+interface VehiclesResponse {
+  success: boolean;
+  data: {
+    vehicles: Vehicle[];
+    meta: { total: number; page: number; limit: number; totalPages: number };
+  };
+  error?: string;
+}
 
 export default function VehiclesPage() {
   const { t } = useTranslation();
-  const { addToast } = useToast();
-  const router = useRouter();
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
-  const [meta, setMeta] = useState({ total: 0, page: 1, limit: 10, totalPages: 1 });
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
 
-  const fetchVehicles = useCallback(async (p: number, q?: string, signal?: AbortSignal) => {
-    setError('');
-    try {
-      const url = new URL('/api/vehicles/', window.location.origin);
-      url.searchParams.set('page', String(p));
-      url.searchParams.set('limit', '10');
-      if (q) url.searchParams.set('search', q);
-      const res = await fetchWithRetry(url.toString(), { credentials: 'include', signal });
-      const data = await res.json();
-      if (data?.success && Array.isArray(data?.data?.vehicles)) {
-        setVehicles(data.data.vehicles);
-        setMeta(data.data.meta ?? { total: 0, page: 1, limit: 10, totalPages: 1 });
-      } else {
-        setError(data?.error || t('crm_failed_load_vehicles'));
-        addToast('error', data?.error || t('crm_failed_load_vehicles'));
-      }
-    } catch (err) {
-      if (err instanceof Error && err.name === 'AbortError') return;
-      const msg = err instanceof Error ? err.message : t('crm_failed_load_vehicles');
-      setError(msg);
-      addToast('error', msg);
-    }
-  }, [t, addToast]);
+  const swrKey = useMemo(() => {
+    const params = new URLSearchParams({ page: String(page), limit: '10' });
+    if (search) params.set('search', search);
+    return `/api/vehicles/?${params.toString()}`;
+  }, [page, search]);
 
-  useEffect(() => {
-    fetch('/api/auth/me/', { credentials: 'include' })
-      .then((r) => r.json().catch(() => ({ success: false, error: 'Invalid auth response' })))
-      .then((d) => {
-        if (!d?.success) router.push('/admin/');
-        else { setLoading(false); }
-      })
-      .catch(() => {
-        router.push('/admin/');
-      });
-  }, [router]);
+  const { data, error, isLoading } = useSWR<VehiclesResponse>(swrKey, fetcher, {
+    keepPreviousData: true,
+    revalidateOnFocus: true,
+  });
 
-  useEffect(() => {
-    if (loading) return;
-    const controller = new AbortController();
-    fetchVehicles(page, search, controller.signal);
-    return () => controller.abort();
-  }, [page, loading, search, fetchVehicles]);
+  const vehicles = data?.data?.vehicles ?? [];
+  const meta = data?.data?.meta ?? { total: 0, page: 1, limit: 10, totalPages: 1 };
 
   const handleSearch = (val: string) => {
     setSearch(val);
     setPage(1);
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
+  if (isLoading) {
+    return <PageSpinner />;
   }
 
   if (error && !vehicles.length) {
@@ -87,9 +58,9 @@ export default function VehiclesPage() {
         <div className="glass rounded-2xl p-8 text-center max-w-md">
           <AlertCircle className="w-10 h-10 text-red-400 mx-auto mb-3" />
           <p className="text-red-400 font-medium mb-2">{t('crm_error_loading')}</p>
-          <p className="text-muted-foreground text-sm">{error}</p>
+          <p className="text-muted-foreground text-sm">{error.message}</p>
           <button
-            onClick={() => { setError(''); fetchVehicles(page, search); }}
+            onClick={() => window.location.reload()}
             className="mt-4 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
           >
             {t('crm_retry')}
@@ -137,7 +108,7 @@ export default function VehiclesPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {vehicles?.map((v) => (
+                {vehicles?.map((v: Vehicle) => (
                   <tr key={v.id} className="hover:bg-white/5 transition-colors">
                     <td className="px-5 py-4">
                       <div className="flex items-center gap-3">
@@ -196,32 +167,12 @@ export default function VehiclesPage() {
           </div>
 
           {/* Pagination */}
-          {meta.totalPages > 1 && (
-            <div className="flex items-center justify-between px-5 py-4 border-t border-border">
-              <span className="text-xs text-muted-foreground">
-                {t('crm_pagination_showing')} {((meta.page - 1) * meta.limit) + 1}–{Math.min(meta.page * meta.limit, meta.total)} {t('crm_pagination_of')} {meta.total}
-              </span>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  disabled={meta.page <= 1}
-                  className="p-2 rounded-lg hover:bg-white/5 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                >
-                  <ChevronLeft className="w-4 h-4" />
-                </button>
-                <span className="text-sm font-medium min-w-[3rem] text-center">
-                  {meta.page} / {meta.totalPages}
-                </span>
-                <button
-                  onClick={() => setPage((p) => Math.min(meta.totalPages, p + 1))}
-                  disabled={meta.page >= meta.totalPages}
-                  className="p-2 rounded-lg hover:bg-white/5 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                >
-                  <ChevronRight className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-          )}
+          <Pagination
+            meta={meta}
+            onPageChange={setPage}
+            showingLabel={t('crm_pagination_showing')}
+            ofLabel={t('crm_pagination_of')}
+          />
         </div>
       </motion.div>
     </div>

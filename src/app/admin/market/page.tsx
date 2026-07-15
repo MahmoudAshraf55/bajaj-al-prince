@@ -1,12 +1,12 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from '@/components/useTranslation';
 import { useToast } from '@/components/ToastContext';
-import { Package, Plus, Pencil, Trash2, X, Search, Upload, Sparkles, Loader2, AlertTriangle } from 'lucide-react';
+import { Package, Plus, Pencil, Trash2, Search, Upload, Sparkles, Loader2, AlertTriangle } from 'lucide-react';
+import PageSpinner from '@/components/ui/PageSpinner';
+import Modal from '@/components/ui/Modal';
 
 interface Product {
   id: string;
@@ -25,9 +25,8 @@ const CATEGORIES = ['Motorcycles', 'Spare Parts', 'Accessories'];
 export default function AdminMarket() {
   const { t, language } = useTranslation();
   const { addToast } = useToast();
-  const router = useRouter();
   const [products, setProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState<Product | null>(null);
@@ -44,16 +43,6 @@ export default function AdminMarket() {
     image: '',
     available: true,
   });
-
-  useEffect(() => {
-    fetch('/api/auth/me/', { credentials: 'include' })
-      .then((r) => r.json())
-      .then((d) => {
-        if (!d.success) router.push('/admin/');
-        else setLoading(false);
-      })
-      .catch(() => { router.push('/admin/'); });
-  }, [router]);
 
   const load = useCallback(async () => {
     try {
@@ -238,9 +227,7 @@ export default function AdminMarket() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-      </div>
+      <PageSpinner className="bg-background" />
     );
   }
 
@@ -309,198 +296,157 @@ export default function AdminMarket() {
         </div>
       </div>
 
-      <AnimatePresence mode="wait">
-        {showModal && (
-          <motion.div
-            key={`modal-${editing?.id || 'add'}`}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
-            onClick={() => setShowModal(false)}
-          >
-            <motion.div
-              key={`content-${editing?.id || 'add'}`}
-              initial={{ opacity: 0, scale: 0.95, y: 10 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 10 }}
-              onClick={(e) => e.stopPropagation()}
-              role="dialog"
-              aria-modal="true"
-              className="w-full max-w-xl glass rounded-2xl border border-white/10 shadow-2xl max-h-[90vh] overflow-y-auto"
+      <Modal isOpen={showModal} onClose={() => setShowModal(false)} title={editing ? t('admin_market_edit_modal') : t('admin_market_add_modal')} contentClassName="max-w-xl max-h-[90vh] overflow-y-auto">
+        <div className="space-y-5">
+          <div className="grid sm:grid-cols-2 gap-4">
+            <div className="sm:col-span-2">
+              <label className="block text-xs font-medium text-muted-foreground mb-1.5">{t('admin_market_name')}</label>
+              <input
+                type="text"
+                value={form.name}
+                onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
+                className="w-full px-4 py-2.5 rounded-xl bg-input border border-border text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                dir="auto"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-muted-foreground mb-1.5">{t('admin_market_category')}</label>
+              <select
+                value={form.category}
+                onChange={(e) => setForm((prev) => ({ ...prev, category: e.target.value }))}
+                className="w-full px-4 py-2.5 rounded-xl bg-input border border-border text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              >
+                <option value="">{t('admin_market_select_category')}</option>
+                {CATEGORIES.map((cat) => (
+                  <option key={cat} value={cat}>{t(`admin_market_cat_${cat.toLowerCase().replace(/\s+/g, '')}`)}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-muted-foreground mb-1.5">{t('admin_market_price')}</label>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={form.price}
+                onChange={(e) => setForm((prev) => ({ ...prev, price: e.target.value }))}
+                className="w-full px-4 py-2.5 rounded-xl bg-input border border-border text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-muted-foreground mb-1.5">{t('admin_market_stock')}</label>
+              <input
+                type="number"
+                min="0"
+                value={form.stock}
+                onChange={(e) => setForm((prev) => ({ ...prev, stock: e.target.value }))}
+                className="w-full px-4 py-2.5 rounded-xl bg-input border border-border text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              />
+            </div>
+            <div className="flex items-center gap-3 pt-6">
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={form.available}
+                  onChange={(e) => setForm((prev) => ({ ...prev, available: e.target.checked }))}
+                  className="sr-only peer"
+                />
+                <div className="w-9 h-5 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div>
+                <span className="ms-3 text-sm">{t('admin_market_available')}</span>
+              </label>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-muted-foreground mb-1.5">{t('admin_market_description')}</label>
+            <textarea
+              value={form.description}
+              onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))}
+              rows={3}
+              className="w-full px-4 py-2.5 rounded-xl bg-input border border-border text-sm focus:outline-none focus:ring-2 focus:ring-ring resize-none"
+              dir="auto"
+            />
+            <button
+              onClick={handleAiDescribe}
+              disabled={aiBusy === 'describe' || !form.name}
+              className="mt-2 inline-flex items-center gap-1.5 text-xs text-primary hover:text-primary/80 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              <div className="flex items-center justify-between p-5 border-b border-white/10">
-                <h2 className="text-lg font-bold">
-                  {editing ? t('admin_market_edit_modal') : t('admin_market_add_modal')}
-                </h2>
-                <button onClick={() => setShowModal(false)} className="p-2 rounded-lg hover:bg-white/5 text-muted-foreground hover:text-foreground transition-colors">
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              <div className="p-5 space-y-5">
-                <div className="grid sm:grid-cols-2 gap-4">
-                  <div className="sm:col-span-2">
-                    <label className="block text-xs font-medium text-muted-foreground mb-1.5">{t('admin_market_name')}</label>
-                    <input
-                      type="text"
-                      value={form.name}
-                      onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
-                      className="w-full px-4 py-2.5 rounded-xl bg-input border border-border text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                      dir="auto"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-muted-foreground mb-1.5">{t('admin_market_category')}</label>
-                    <select
-                      value={form.category}
-                      onChange={(e) => setForm((prev) => ({ ...prev, category: e.target.value }))}
-                      className="w-full px-4 py-2.5 rounded-xl bg-input border border-border text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                    >
-                      <option value="">{t('admin_market_select_category')}</option>
-                      {CATEGORIES.map((cat) => (
-                        <option key={cat} value={cat}>{t(`admin_market_cat_${cat.toLowerCase().replace(/\s+/g, '')}`)}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-muted-foreground mb-1.5">{t('admin_market_price')}</label>
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={form.price}
-                      onChange={(e) => setForm((prev) => ({ ...prev, price: e.target.value }))}
-                      className="w-full px-4 py-2.5 rounded-xl bg-input border border-border text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-muted-foreground mb-1.5">{t('admin_market_stock')}</label>
-                    <input
-                      type="number"
-                      min="0"
-                      value={form.stock}
-                      onChange={(e) => setForm((prev) => ({ ...prev, stock: e.target.value }))}
-                      className="w-full px-4 py-2.5 rounded-xl bg-input border border-border text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                    />
-                  </div>
-                  <div className="flex items-center gap-3 pt-6">
-                    <label className="relative inline-flex items-center cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={form.available}
-                        onChange={(e) => setForm((prev) => ({ ...prev, available: e.target.checked }))}
-                        className="sr-only peer"
-                      />
-                      <div className="w-9 h-5 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div>
-                      <span className="ms-3 text-sm">{t('admin_market_available')}</span>
-                    </label>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-medium text-muted-foreground mb-1.5">{t('admin_market_description')}</label>
-                  <textarea
-                    value={form.description}
-                    onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))}
-                    rows={3}
-                    className="w-full px-4 py-2.5 rounded-xl bg-input border border-border text-sm focus:outline-none focus:ring-2 focus:ring-ring resize-none"
-                    dir="auto"
-                  />
-                  <button
-                    onClick={handleAiDescribe}
-                    disabled={aiBusy === 'describe' || !form.name}
-                    className="mt-2 inline-flex items-center gap-1.5 text-xs text-primary hover:text-primary/80 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                  >
-                    {aiBusy === 'describe' ? (
-                      <Loader2 className="w-3 h-3 animate-spin" />
-                    ) : (
-                      <Sparkles className="w-3 h-3" />
-                    )}
-                    {t('admin_market_ai_describe')}
-                  </button>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-medium text-muted-foreground mb-1.5">{t('admin_market_image')}</label>
-                  {form.image && (
-                    <div className="mb-3 w-32 h-32 rounded-xl overflow-hidden bg-secondary border border-border relative">
-                      <Image src={form.image} alt="preview" fill className="object-cover" sizes="128px" unoptimized />
-                    </div>
-                  )}
-                  <div className="flex flex-wrap gap-2">
-                    <label className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-input border border-border text-sm cursor-pointer hover:bg-white/5 transition-colors">
-                      <Upload className="w-4 h-4" />
-                      {t('admin_market_upload_image')}
-                      <input type="file" accept="image/*" onChange={handleUpload} className="hidden" />
-                    </label>
-                    <button
-                      onClick={handleAiGenerateImage}
-                      disabled={aiBusy === 'image' || !form.name}
-                      className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-input border border-border text-sm hover:bg-white/5 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                    >
-                      {aiBusy === 'image' ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <Sparkles className="w-4 h-4" />
-                      )}
-                      {t('admin_market_ai_generate_image')}
-                    </button>
-                  </div>
-                  <p className="mt-2 text-[10px] text-muted-foreground">{t('admin_market_ai_no_key')}</p>
-                </div>
-              </div>
-
-              {saveError && (
-                <div className="px-5 pt-2">
-                  <p className="text-xs text-red-400 whitespace-pre-wrap bg-red-500/5 rounded-xl p-3 border border-red-500/10">{saveError}</p>
-                </div>
+              {aiBusy === 'describe' ? (
+                <Loader2 className="w-3 h-3 animate-spin" />
+              ) : (
+                <Sparkles className="w-3 h-3" />
               )}
-              <div className="flex items-center justify-end gap-3 p-5 border-t border-white/10">
-                <button
-                  onClick={() => setShowModal(false)}
-                  className="px-4 py-2.5 rounded-xl border border-border text-sm font-medium hover:bg-white/5 transition-colors"
-                >
-                  {t('admin_market_cancel')}
-                </button>
-                <button
-                  onClick={handleSave}
-                  disabled={saving || !form.name || !form.price}
-                  className="px-4 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
-                >
-                  {saving ? t('admin_market_saving') : t('admin_market_save')}
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+              {t('admin_market_ai_describe')}
+            </button>
+          </div>
 
-      {deleteConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setDeleteConfirm(null)}>
-          <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} onClick={(e) => e.stopPropagation()}
-            role="dialog" aria-modal="true" className="glass rounded-2xl p-6 w-full max-w-sm">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-full bg-red-500/20 flex items-center justify-center">
-                <AlertTriangle className="w-5 h-5 text-red-400" />
+          <div>
+            <label className="block text-xs font-medium text-muted-foreground mb-1.5">{t('admin_market_image')}</label>
+            {form.image && (
+              <div className="mb-3 w-32 h-32 rounded-xl overflow-hidden bg-secondary border border-border relative">
+                <Image src={form.image} alt="preview" fill className="object-cover" sizes="128px" unoptimized />
               </div>
-              <div>
-                <h3 className="font-bold">{t('admin_market_delete_title') || 'Delete Product'}</h3>
-                <p className="text-sm text-muted-foreground">{t('admin_market_delete_confirm')}</p>
-              </div>
-            </div>
-            <div className="flex gap-3">
-              <button onClick={() => setDeleteConfirm(null)} className="flex-1 px-4 py-2.5 rounded-xl bg-white/5 text-sm font-medium hover:bg-white/10 transition-colors">
-                {t('admin_market_cancel')}
+            )}
+            <div className="flex flex-wrap gap-2">
+              <label className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-input border border-border text-sm cursor-pointer hover:bg-white/5 transition-colors">
+                <Upload className="w-4 h-4" />
+                {t('admin_market_upload_image')}
+                <input type="file" accept="image/*" onChange={handleUpload} className="hidden" />
+              </label>
+              <button
+                onClick={handleAiGenerateImage}
+                disabled={aiBusy === 'image' || !form.name}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-input border border-border text-sm hover:bg-white/5 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {aiBusy === 'image' ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Sparkles className="w-4 h-4" />
+                )}
+                {t('admin_market_ai_generate_image')}
               </button>
-              <button onClick={handleDeleteConfirm} disabled={saving} className="flex-1 px-4 py-2.5 rounded-xl bg-red-500 text-white text-sm font-medium hover:bg-red-600 transition-colors flex items-center justify-center gap-2">
-                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
-                {t('admin_market_delete') || 'Delete'}
-              </button>
             </div>
-          </motion.div>
+            <p className="mt-2 text-[10px] text-muted-foreground">{t('admin_market_ai_no_key')}</p>
+          </div>
         </div>
-      )}
+
+        {saveError && (
+          <p className="text-xs text-red-400 whitespace-pre-wrap bg-red-500/5 rounded-xl p-3 border border-red-500/10 mt-3">{saveError}</p>
+        )}
+        <div className="flex items-center justify-end gap-3 mt-4">
+          <button
+            onClick={() => setShowModal(false)}
+            className="px-4 py-2.5 rounded-xl border border-border text-sm font-medium hover:bg-white/5 transition-colors"
+          >
+            {t('admin_market_cancel')}
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={saving || !form.name || !form.price}
+            className="px-4 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
+          >
+            {saving ? t('admin_market_saving') : t('admin_market_save')}
+          </button>
+        </div>
+      </Modal>
+
+      <Modal isOpen={!!deleteConfirm} onClose={() => setDeleteConfirm(null)} title={t('admin_market_delete_title') || 'Delete Product'} showCloseButton={false}>
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-10 h-10 rounded-full bg-red-500/20 flex items-center justify-center">
+            <AlertTriangle className="w-5 h-5 text-red-400" />
+          </div>
+          <p className="text-sm text-muted-foreground">{t('admin_market_delete_confirm')}</p>
+        </div>
+        <div className="flex gap-3">
+          <button onClick={() => setDeleteConfirm(null)} className="flex-1 px-4 py-2.5 rounded-xl bg-white/5 text-sm font-medium hover:bg-white/10 transition-colors">
+            {t('admin_market_cancel')}
+          </button>
+          <button onClick={handleDeleteConfirm} disabled={saving} className="flex-1 px-4 py-2.5 rounded-xl bg-red-500 text-white text-sm font-medium hover:bg-red-600 transition-colors flex items-center justify-center gap-2">
+            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+            {t('admin_market_delete') || 'Delete'}
+          </button>
+        </div>
+      </Modal>
     </div>
   );
 }

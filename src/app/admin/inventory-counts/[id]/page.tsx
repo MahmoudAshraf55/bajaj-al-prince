@@ -6,6 +6,8 @@ import { motion } from 'framer-motion';
 import { useTranslation } from '@/components/useTranslation';
 import { useToast } from '@/components/ToastContext';
 import BackButton from '@/components/BackButton';
+import Modal from '@/components/ui/Modal';
+import StatusBadge from '@/components/ui/StatusBadge';
 import {
   Loader2, AlertCircle, Save, CheckCircle2, ClipboardList, User, Calendar,
 } from 'lucide-react';
@@ -39,13 +41,6 @@ interface InventoryCount {
   completedAt?: string | null;
   notes?: string | null;
 }
-
-const statusColors: Record<string, string> = {
-  draft: 'bg-gray-500/10 text-gray-400 border-gray-500/20',
-  in_progress: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
-  completed: 'bg-green-500/10 text-green-400 border-green-500/20',
-  cancelled: 'bg-red-500/10 text-red-400 border-red-500/20',
-};
 
 const statusLabels: Record<string, string> = {
   draft: 'ic_status_draft',
@@ -209,9 +204,7 @@ export default function InventoryCountDetailPage() {
               <ClipboardList className="w-6 h-6 text-primary" />
               {count.name}
             </h2>
-            <span className={`inline-flex items-center text-xs px-2.5 py-1 rounded-full border ${statusColors[count.status]}`}>
-              {t(statusLabels[count.status])}
-            </span>
+            <StatusBadge status={count.status} label={t(statusLabels[count.status])} />
           </div>
         </div>
 
@@ -338,44 +331,24 @@ export default function InventoryCountDetailPage() {
       </motion.div>
 
       {/* Confirm Complete Modal */}
-      {showConfirm && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="fixed inset-0 z-40 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
-          onClick={() => setShowConfirm(false)}
-        >
-          <motion.div
-            initial={{ scale: 0.95, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            onClick={(e) => e.stopPropagation()}
-              role="dialog"
-              aria-modal="true"
-            className="glass rounded-2xl p-6 w-full max-w-md border border-border"
+      <Modal isOpen={showConfirm} onClose={() => setShowConfirm(false)} title={<><CheckCircle2 className="w-6 h-6 text-green-400 inline mr-2" />{t('ic_complete')}</>}>
+        <p className="text-sm text-muted-foreground mb-6">{t('ic_complete_confirm')}</p>
+        <div className="flex gap-3">
+          <button
+            onClick={() => setShowConfirm(false)}
+            className="flex-1 py-2.5 rounded-xl bg-muted text-muted-foreground font-medium text-sm"
           >
-            <div className="flex items-center gap-3 mb-4">
-              <CheckCircle2 className="w-6 h-6 text-green-400" />
-              <h3 className="text-lg font-bold">{t('ic_complete')}</h3>
-            </div>
-            <p className="text-sm text-muted-foreground mb-6">{t('ic_complete_confirm')}</p>
-            <div className="flex gap-3">
-              <button
-                onClick={() => setShowConfirm(false)}
-                className="flex-1 py-2.5 rounded-xl bg-muted text-muted-foreground font-medium text-sm"
-              >
-                {t('ic_cancel')}
-              </button>
-              <button
-                onClick={handleComplete}
-                disabled={completing}
-                className="flex-1 py-2.5 rounded-xl bg-green-600 text-white font-medium text-sm hover:bg-green-600/90 disabled:opacity-50"
-              >
-                {completing ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : t('ic_complete')}
-              </button>
-            </div>
-          </motion.div>
-        </motion.div>
-      )}
+            {t('ic_cancel')}
+          </button>
+          <button
+            onClick={handleComplete}
+            disabled={completing}
+            className="flex-1 py-2.5 rounded-xl bg-green-600 text-white font-medium text-sm hover:bg-green-600/90 disabled:opacity-50"
+          >
+            {completing ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : t('ic_complete')}
+          </button>
+        </div>
+      </Modal>
     </div>
   );
 }

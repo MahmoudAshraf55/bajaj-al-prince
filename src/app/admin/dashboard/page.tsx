@@ -10,6 +10,7 @@ import {
   Users, ArrowRight, Bell, X,
 } from 'lucide-react';
 import Link from 'next/link';
+import PageSpinner from '@/components/ui/PageSpinner';
 
 interface ContactMessage {
   id: string; name: string; phone: string; email: string; message: string; createdAt: string;
@@ -40,7 +41,7 @@ export default function AdminDashboard() {
   const { t } = useTranslation();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [loading, setLoading] = useState(true);
+  const [loading] = useState(false);
   const [messages, setMessages] = useState<ContactMessage[]>([]);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
@@ -66,16 +67,6 @@ export default function AdminDashboard() {
   const setTab = (id: Tab) => {
     router.push(`?tab=${id}`, { scroll: false });
   };
-
-  useEffect(() => {
-    fetch('/api/auth/me/', { credentials: 'include' })
-      .then((r) => r.json())
-      .then((d) => {
-        if (!d.success) { router.push('/admin/'); }
-        else { setLoading(false); }
-      })
-      .catch(() => router.push('/admin/'));
-  }, [router]);
 
   useEffect(() => {
     if (loading) return;
@@ -169,9 +160,7 @@ export default function AdminDashboard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-      </div>
+      <PageSpinner />
     );
   }
 

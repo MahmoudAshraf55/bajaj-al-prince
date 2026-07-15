@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { useRouter } from 'next/navigation';
 import { AnimatePresence } from 'framer-motion';
 import { useTranslation } from '@/components/useTranslation';
 import { useToast } from '@/components/ToastContext';
@@ -13,6 +12,7 @@ import WHImportTab from '@/components/warehouse/WHImportTab';
 import WHPdfImportTab from '@/components/warehouse/WHPdfImportTab';
 import WHEditModal from '@/components/warehouse/WHEditModal';
 import WHDetailModal from '@/components/warehouse/WHDetailModal';
+import PageSpinner from '@/components/ui/PageSpinner';
 import WHAdjustModal from '@/components/warehouse/WHAdjustModal';
 
 type Tab = 'inventory' | 'movements' | 'import';
@@ -21,9 +21,7 @@ type ImportSubTab = 'excel' | 'pdf';
 export default function AdminWarehouse() {
   const { t, language } = useTranslation();
   const { addToast } = useToast();
-  const router = useRouter();
-
-  const [loading, setLoading] = useState(true);
+  const [loading] = useState(false);
   const [tab, setTab] = useState<Tab>('inventory');
   const [importSubTab, setImportSubTab] = useState<ImportSubTab>('excel');
   const [products, setProducts] = useState<WarehouseProduct[]>([]);
@@ -53,16 +51,6 @@ export default function AdminWarehouse() {
   const [editSaving, setEditSaving] = useState(false);
   const [editForm, setEditForm] = useState<Record<string, string | number | boolean | null>>({} as Record<string, string | number | boolean | null>);
   const [categoryFilter, setCategoryFilter] = useState('');
-
-  useEffect(() => {
-    fetch('/api/auth/me/', { credentials: 'include' })
-      .then((r) => r.json())
-      .then((d) => {
-        if (!d.success) router.push('/admin/');
-        else setLoading(false);
-      })
-      .catch(() => router.push('/admin/'));
-  }, [router]);
 
   const loadProducts = useCallback(async () => {
     const res = await fetch('/api/v1/products/?limit=1000&admin=true', { credentials: 'include' });
@@ -263,18 +251,17 @@ export default function AdminWarehouse() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-      </div>
+      <PageSpinner className="bg-background" />
     );
   }
 
   const categories = [...new Set(products.map((p) => p.category))].sort();
 
   const filtered = products.filter((p) => {
+    if (!p) return false;
     if (categoryFilter && p.category !== categoryFilter) return false;
     const q = search.toLowerCase();
-    return p.name.toLowerCase().includes(q) ||
+    return p.name?.toLowerCase().includes(q) ||
       (p.barcode && p.barcode.toLowerCase().includes(q)) ||
       (p.sku && p.sku.toLowerCase().includes(q)) ||
       (p.nameAr && p.nameAr.toLowerCase().includes(q));

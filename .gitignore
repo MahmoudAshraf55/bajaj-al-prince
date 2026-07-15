@@ -1,104 +1,80 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+# =============================================================================
+# .gitignore — Bajaj El Prince (Comprehensive)
+# =============================================================================
 
-# dependencies
-/node_modules
-/.pnp
-.pnp.*
-.yarn/*
-!.yarn/patches
-!.yarn/plugins
-!.yarn/releases
-!.yarn/versions
-
-# testing
-/coverage
-
-# next.js
-/.next/
-/out/
-
-# production
-/build
-
-# misc
-.DS_Store
-*.pem
-
-# debug
+# 1. Dependencies & Build
+node_modules/
+services/whatsapp/node_modules/
+.next/
+out/
+build/
+.vercel/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
-
-# env files — NEVER commit real secrets
-.env
-.env.local
-.env.*.local
-.env.development
-.env.test
-.env.production
-.env.*
-# ALLOW .env.example to be committed as a template
-!.env.example
-
-# vercel
-.vercel
-
-# typescript
 *.tsbuildinfo
 next-env.d.ts
 
-# database
+# 2. Environment Variables (NEVER commit secrets)
+.env
+.env.*
+!.env.example
+
+# 3. Database & Local Storage
 *.db
 *.db-journal
 *.db-wal
 *.db-shm
 /prisma/migrations/migration_lock.toml
 
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
+# 4. WhatsApp Authentication State
+.baileys_auth/
+services/whatsapp/.baileys_auth/
 
-# OS
-Thumbs.db
-
-# test results
+# 5. Testing & Reports
 test-results/
 playwright-report/
 blob-report/
 all-blob-reports/
-
-# logs
-logs/
-*.log
-
-# local scratch / backup files
-*.bak
-*-test.html
-/zod/
-
-# local AI/tooling state
-.blackboxcli/
+playwright/.cache/
 .playwright-mcp/
+e2e/screenshots/
 
-# git worktree directories created inside this checkout
-worktree-*/
-
-# runtime session credentials
-.baileys_auth/
-services/whatsapp/.baileys_auth/
-
-# user uploads (ephemeral / local only; use S3/R2 in production)
+# 6. Uploads & Dynamic Media
 public/uploads/
 
-# generated documentation / presentations
-*.pdf
-*.pptx
-create_*.py
+# 7. IDE & OS Files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+.windsurf/
+.opencode/
+.blackboxcli/
+*.swp
+*.swo
+*~
 
-# Playwright local screenshots at repo root
+# 8. Logs
+logs/
+*.log
+*.bak
+
+# 9. Project-Specific Docs, AI & Private Files
+docs/
+مهم/
+AGENTS.md
+ANCHORED_SUMMARY.md
+CLAUDE.md
+التقرير_الشامل.md
+report*.md
+Bajaj_Ghabbour_*.pdf
+Bajaj_Ghabbour_*.pptx
+*.py
 /admin-*.png
-.env*
+
+# 10. Worktrees & Scratch
+worktree-*/
+*-test.html
+/zod/

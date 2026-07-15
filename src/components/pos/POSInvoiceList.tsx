@@ -3,6 +3,7 @@
 import { motion } from 'framer-motion';
 import { Search, Loader2, FileText, RotateCcw } from 'lucide-react';
 import { Invoice } from '@/types/pos';
+import StatusBadge from '@/components/ui/StatusBadge';
 
 interface POSInvoiceListProps {
   invLoading: boolean;
@@ -18,7 +19,6 @@ interface POSInvoiceListProps {
   invTotalPages: number;
   handleReturnInvoice: (inv: Invoice) => void;
   setDetailInvoice: (inv: Invoice | null) => void;
-  statusColors: Record<string, string>;
   t: (key: string) => string;
 }
 
@@ -36,7 +36,6 @@ export default function POSInvoiceList({
   invTotalPages,
   handleReturnInvoice,
   setDetailInvoice,
-  statusColors,
   t,
 }: POSInvoiceListProps) {
   return (
@@ -96,9 +95,7 @@ export default function POSInvoiceList({
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-sm font-bold">{inv.number}</span>
-                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${statusColors[inv.status] || ''}`}>
-                    {inv.status === 'confirmed' ? t('pos_status_confirmed') : inv.status === 'cancelled' ? t('pos_status_cancelled') : inv.status}
-                  </span>
+                  <StatusBadge status={inv.status} label={inv.status === 'confirmed' ? t('pos_status_confirmed') : inv.status === 'cancelled' ? t('pos_status_cancelled') : inv.status} className="text-[10px] px-2 py-0.5" />
                   <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/5 text-muted-foreground">
                     {inv.type === 'sale' ? t('pos_type_sale') : inv.type === 'return' ? t('pos_type_return') : inv.type}
                   </span>

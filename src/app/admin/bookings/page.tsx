@@ -1,10 +1,13 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
-import { Search, Calendar, Clock, User, Phone, Car, CheckCircle, X, AlertCircle, Filter } from 'lucide-react';
+import { useState } from 'react';
+import useSWR from 'swr';
+import { Search, Calendar, Clock, User, Phone, Car, AlertCircle, Filter } from 'lucide-react';
+import PageSpinner from '@/components/ui/PageSpinner';
+import StatusBadge from '@/components/ui/StatusBadge';
 import { useTranslation } from '@/components/useTranslation';
 import { useToast } from '@/components/ToastContext';
+import fetcher from '@/lib/fetcher';
 
 interface Customer {
   id: string;
@@ -38,29 +41,27 @@ interface Booking {
   } | null;
 }
 
-const statusColors: Record<string, string> = {
-  pending: 'bg-amber-500/10 text-amber-400',
-  accepted: 'bg-green-500/10 text-green-400',
-  rejected: 'bg-red-500/10 text-red-400',
-  completed: 'bg-blue-500/10 text-blue-400',
-};
+interface BookingsResponse {
+  success: boolean;
+  data: {
+    bookings: Booking[];
+  };
+}
 
-const statusIcons: Record<string, typeof Clock> = {
-  pending: Clock,
-  accepted: CheckCircle,
-  rejected: X,
-  completed: CheckCircle,
-};
+const swrKey = '/api/v1/bookings/?limit=100';
 
 export default function BookingsPage() {
   const { t, language } = useTranslation();
   const { addToast } = useToast();
-  const router = useRouter();
-  const [bookings, setBookings] = useState<Booking[]>([]);
-  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [updating, setUpdating] = useState<string | null>(null);
+
+  const { data, error, isLoading, mutate } = useSWR<BookingsResponse>(swrKey, fetcher, {
+    revalidateOnFocus: true,
+  });
+
+  const bookings = data?.data?.bookings ?? [];
 
   const statusLabels: Record<string, string> = {
     pending: t('crm_status_pending'),
@@ -68,33 +69,6 @@ export default function BookingsPage() {
     rejected: t('crm_status_rejected'),
     completed: t('crm_status_completed'),
   };
-
-  const fetchBookings = useCallback(async () => {
-    try {
-      const res = await fetch('/api/v1/bookings/?limit=100', { credentials: 'include' });
-      const json = await res.json();
-      if (json.success) {
-        setBookings(json.data.bookings || []);
-      }
-    } catch {
-      addToast('error', t('bookings_failed_load'));
-    } finally {
-      setLoading(false);
-    }
-  }, [addToast, t]);
-
-  useEffect(() => {
-    let cancelled = false;
-    fetch('/api/auth/me/', { credentials: 'include' })
-      .then((r) => r.json())
-      .then((d) => {
-        if (cancelled) return;
-        if (!d.success) { router.push('/admin/'); return; }
-        fetchBookings();
-      })
-      .catch(() => { if (!cancelled) router.push('/admin/'); });
-    return () => { cancelled = true; };
-  }, [router, fetchBookings]);
 
   const updateStatus = async (id: string, status: string) => {
     setUpdating(id);
@@ -107,7 +81,7 @@ export default function BookingsPage() {
       });
       const json = await res.json();
       if (json.success) {
-        setBookings((prev) => prev.map((b) => (b.id === id ? { ...b, status } : b)));
+        mutate();
         addToast('success', t('bookings_status_changed').replace('{{status}}', statusLabels[status] || status));
       } else {
         addToast('error', json.error || t('bookings_failed_update'));
@@ -139,10 +113,26 @@ export default function BookingsPage() {
     completed: bookings.filter((b) => b.status === 'completed').length,
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      <PageSpinner />
+    );
+  }
+
+  if (error && !bookings.length) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-6">
+        <div className="glass rounded-2xl p-8 text-center max-w-md">
+          <AlertCircle className="w-10 h-10 text-red-400 mx-auto mb-3" />
+          <p className="text-red-400 font-medium mb-2">{t('bookings_failed_load')}</p>
+          <p className="text-muted-foreground text-sm">{error.message}</p>
+          <button
+            onClick={() => mutate()}
+            className="mt-4 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
+          >
+            {t('crm_retry')}
+          </button>
+        </div>
       </div>
     );
   }
@@ -207,7 +197,6 @@ export default function BookingsPage() {
       {/* Bookings List */}
       <div className="space-y-3">
         {filteredBookings.map((booking) => {
-          const StatusIcon = statusIcons[booking.status] || Clock;
           return (
             <div key={booking.id} className="glass rounded-2xl p-5">
               <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-3">
@@ -237,10 +226,7 @@ export default function BookingsPage() {
                   </div>
                 </div>
                 <div className="flex flex-col items-end gap-2">
-                  <span className={`flex items-center gap-1 text-xs px-2.5 py-1 rounded-full ${statusColors[booking.status] || 'bg-gray-500/10 text-gray-400'}`}>
-                    <StatusIcon className="w-3 h-3" />
-                    {statusLabels[booking.status] || booking.status}
-                  </span>
+                  <StatusBadge status={booking.status} label={statusLabels[booking.status] || booking.status} />
                   {booking.workOrder && (
                     <a
                       href={`/admin/work-orders/${booking.workOrder.id}`}

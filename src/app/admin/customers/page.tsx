@@ -1,27 +1,34 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useMemo } from 'react';
 import Link from 'next/link';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
+import useSWR from 'swr';
 import { useTranslation } from '@/components/useTranslation';
 import { useToast } from '@/components/ToastContext';
 import BackButton from '@/components/BackButton';
-import { fetchWithRetry } from '@/lib/fetchWithRetry';
+import fetcher from '@/lib/fetcher';
 import type { Customer } from '@/types';
 import {
-  Search, Plus, ChevronLeft, ChevronRight, User,
-  AlertCircle, Car, X,
+  Search, Plus, User,
+  AlertCircle, Car,
 } from 'lucide-react';
+import Pagination from '@/components/ui/Pagination';
+import PageSpinner from '@/components/ui/PageSpinner';
+import Modal from '@/components/ui/Modal';
+
+interface CustomersResponse {
+  success: boolean;
+  data: {
+    customers: Customer[];
+    meta: { total: number; page: number; limit: number; totalPages: number };
+  };
+  error?: string;
+}
 
 export default function CustomersPage() {
   const { t } = useTranslation();
   const { addToast } = useToast();
-  const router = useRouter();
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [customers, setCustomers] = useState<Customer[]>([]);
-  const [meta, setMeta] = useState({ total: 0, page: 1, limit: 10, totalPages: 1 });
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [showModal, setShowModal] = useState(false);
@@ -30,53 +37,23 @@ export default function CustomersPage() {
   const [form, setForm] = useState({ name: '', phone: '', email: '', address: '' });
   const [formError, setFormError] = useState('');
 
-  const fetchCustomers = useCallback(async (p: number, q?: string, signal?: AbortSignal) => {
-    setError('');
-    try {
-      const url = new URL('/api/customers/', window.location.origin);
-      url.searchParams.set('page', String(p));
-      url.searchParams.set('limit', '10');
-      if (q) url.searchParams.set('search', q);
-      const res = await fetchWithRetry(url.toString(), { credentials: 'include', signal });
-      const data = await res.json();
-      if (data?.success && Array.isArray(data?.data?.customers)) {
-        setCustomers(data.data.customers);
-        setMeta(data.data.meta ?? { total: 0, page: 1, limit: 10, totalPages: 1 });
-      } else {
-        setError(data?.error || t('crm_failed_load_customers'));
-        addToast('error', data?.error || t('crm_failed_load_customers'));
-      }
-    } catch (err) {
-      if (err instanceof Error && err.name === 'AbortError') return;
-      const msg = err instanceof Error ? err.message : t('crm_failed_load_customers');
-      setError(msg);
-      addToast('error', msg);
-    }
-  }, [t, addToast]);
+  const swrKey = useMemo(() => {
+    const params = new URLSearchParams({ page: String(page), limit: '10' });
+    if (search) params.set('search', search);
+    return `/api/customers/?${params.toString()}`;
+  }, [page, search]);
 
-  useEffect(() => {
-    fetch('/api/auth/me/', { credentials: 'include' })
-      .then((r) => r.json().catch(() => ({ success: false, error: 'Invalid auth response' })))
-      .then((d) => {
-        if (!d?.success) router.push('/admin/');
-        else { setLoading(false); }
-      })
-      .catch(() => {
-        router.push('/admin/');
-      });
-  }, [router]);
+  const { data, error, isLoading, mutate } = useSWR<CustomersResponse>(swrKey, fetcher, {
+    keepPreviousData: true,
+    revalidateOnFocus: true,
+  });
 
-  useEffect(() => {
-    if (loading) return;
-    const controller = new AbortController();
-    fetchCustomers(page, search, controller.signal);
-    return () => controller.abort();
-  }, [page, loading, search, fetchCustomers]);
+  const customers = data?.data?.customers ?? [];
+  const meta = data?.data?.meta ?? { total: 0, page: 1, limit: 10, totalPages: 1 };
 
   const handleSearch = (val: string) => {
     setSearch(val);
     setPage(1);
-    fetchCustomers(1, val);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -99,14 +76,14 @@ export default function CustomersPage() {
           address: form.address.trim() || undefined,
         }),
       });
-      const data = await res.json();
-      if (data.success) {
+      const json = await res.json();
+      if (json.success) {
         addToast('success', t('crm_customer_created'));
         setForm({ name: '', phone: '', email: '', address: '' });
         setShowModal(false);
-        fetchCustomers(page, search);
+        mutate();
       } else {
-        setFormError(data.error || data.errors?.[0]?.message || t('crm_failed_create'));
+        setFormError(json.error || json.errors?.[0]?.message || t('crm_failed_create'));
       }
     } catch {
       setFormError(t('crm_network_error'));
@@ -115,12 +92,8 @@ export default function CustomersPage() {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
+  if (isLoading) {
+    return <PageSpinner />;
   }
 
   if (error && !customers.length) {
@@ -129,9 +102,9 @@ export default function CustomersPage() {
         <div className="glass rounded-2xl p-8 text-center max-w-md">
           <AlertCircle className="w-10 h-10 text-red-400 mx-auto mb-3" />
           <p className="text-red-400 font-medium mb-2">{t('crm_error_loading')}</p>
-          <p className="text-muted-foreground text-sm">{error}</p>
+          <p className="text-muted-foreground text-sm">{error.message}</p>
           <button
-            onClick={() => { setError(''); fetchCustomers(page, search); }}
+            onClick={() => mutate()}
             className="mt-4 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
           >
             {t('crm_retry')}
@@ -184,7 +157,7 @@ export default function CustomersPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {customers?.map((c) => (
+                {customers?.map((c: Customer) => (
                   <tr key={c.id} className="hover:bg-white/5 transition-colors">
                     <td className="px-5 py-4">
                       <div className="flex items-center gap-3">
@@ -224,123 +197,77 @@ export default function CustomersPage() {
           </div>
 
           {/* Pagination */}
-          {meta.totalPages > 1 && (
-            <div className="flex items-center justify-between px-5 py-4 border-t border-border">
-              <span className="text-xs text-muted-foreground">
-                {t('crm_pagination_showing')} {((meta.page - 1) * meta.limit) + 1}–{Math.min(meta.page * meta.limit, meta.total)} {t('crm_pagination_of')} {meta.total}
-              </span>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  disabled={meta.page <= 1}
-                  className="p-2 rounded-lg hover:bg-white/5 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                >
-                  <ChevronLeft className="w-4 h-4" />
-                </button>
-                <span className="text-sm font-medium min-w-[3rem] text-center">
-                  {meta.page} / {meta.totalPages}
-                </span>
-                <button
-                  onClick={() => setPage((p) => Math.min(meta.totalPages, p + 1))}
-                  disabled={meta.page >= meta.totalPages}
-                  className="p-2 rounded-lg hover:bg-white/5 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                >
-                  <ChevronRight className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-          )}
+          <Pagination
+            meta={meta}
+            onPageChange={setPage}
+            showingLabel={t('crm_pagination_showing')}
+            ofLabel={t('crm_pagination_of')}
+          />
         </div>
       </motion.div>
 
       {/* Add Customer Modal */}
-      <AnimatePresence>
-        {showModal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-40 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
-            onClick={() => setShowModal(false)}
+      <Modal isOpen={showModal} onClose={() => setShowModal(false)} title={t('crm_add_customer_modal')}>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="text-xs font-medium text-muted-foreground mb-1.5 block">{t('crm_full_name')}</label>
+            <input
+              required
+              value={form.name}
+              onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+              className="w-full px-4 py-2.5 rounded-xl bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm"
+              placeholder="John Doe"
+            />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-muted-foreground mb-1.5 block">{t('crm_phone')}</label>
+            <input
+              required
+              value={form.phone}
+              onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
+              className="w-full px-4 py-2.5 rounded-xl bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm"
+              placeholder="+20 123 456 7890"
+            />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-muted-foreground mb-1.5 block">{t('crm_email_label')}</label>
+            <input
+              type="email"
+              value={form.email}
+              onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+              className="w-full px-4 py-2.5 rounded-xl bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm"
+              placeholder="john@example.com"
+            />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-muted-foreground mb-1.5 block">{t('crm_address')}</label>
+            <textarea
+              rows={2}
+              value={form.address}
+              onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))}
+              className="w-full px-4 py-2.5 rounded-xl bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm resize-none"
+              placeholder="Street, City"
+            />
+          </div>
+          {formError && (
+            <div className="flex items-center gap-2 text-red-400 text-xs bg-red-400/10 border border-red-400/20 rounded-xl px-3 py-2">
+              <AlertCircle className="w-3.5 h-3.5" />
+              {formError}
+            </div>
+          )}
+          <button
+            type="submit"
+            disabled={submitting}
+            className="w-full py-2.5 rounded-xl bg-primary text-primary-foreground font-medium text-sm hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              onClick={(e) => e.stopPropagation()}
-              role="dialog"
-              aria-modal="true"
-              className="glass rounded-2xl p-6 w-full max-w-md border border-border"
-            >
-              <div className="flex items-center justify-between mb-5">
-                <h3 className="text-lg font-bold">{t('crm_add_customer_modal')}</h3>
-                <button onClick={() => setShowModal(false)} className="p-1 rounded-lg hover:bg-white/5 text-muted-foreground">
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-1.5 block">{t('crm_full_name')}</label>
-                  <input
-                    required
-                    value={form.name}
-                    onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                    className="w-full px-4 py-2.5 rounded-xl bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm"
-                    placeholder="John Doe"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-1.5 block">{t('crm_phone')}</label>
-                  <input
-                    required
-                    value={form.phone}
-                    onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
-                    className="w-full px-4 py-2.5 rounded-xl bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm"
-                    placeholder="+20 123 456 7890"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-1.5 block">{t('crm_email_label')}</label>
-                  <input
-                    type="email"
-                    value={form.email}
-                    onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
-                    className="w-full px-4 py-2.5 rounded-xl bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm"
-                    placeholder="john@example.com"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-1.5 block">{t('crm_address')}</label>
-                  <textarea
-                    rows={2}
-                    value={form.address}
-                    onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))}
-                    className="w-full px-4 py-2.5 rounded-xl bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm resize-none"
-                    placeholder="Street, City"
-                  />
-                </div>
-                {formError && (
-                  <div className="flex items-center gap-2 text-red-400 text-xs bg-red-400/10 border border-red-400/20 rounded-xl px-3 py-2">
-                    <AlertCircle className="w-3.5 h-3.5" />
-                    {formError}
-                  </div>
-                )}
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="w-full py-2.5 rounded-xl bg-primary text-primary-foreground font-medium text-sm hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {submitting ? (
-                    <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin mx-auto" />
-                  ) : (
-                    t('crm_create_customer')
-                  )}
-                </button>
-              </form>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+            {submitting ? (
+              <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin mx-auto" />
+            ) : (
+              t('crm_create_customer')
+            )}
+          </button>
+        </form>
+      </Modal>
     </div>
   );
 }

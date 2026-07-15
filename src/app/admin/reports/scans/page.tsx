@@ -1,12 +1,12 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { useTranslation } from '@/components/useTranslation';
 import BackButton from '@/components/BackButton';
 import { Barcode, Camera, History, AlertCircle } from 'lucide-react';
 import { fetchWithRetry } from '@/lib/fetchWithRetry';
+import PageSpinner from '@/components/ui/PageSpinner';
 
 interface ScanLog {
   id: string;
@@ -20,8 +20,7 @@ interface ScanLog {
 
 export default function ScanLogsPage() {
   const { t, language } = useTranslation();
-  const router = useRouter();
-  const [loading, setLoading] = useState(true);
+  const [loading] = useState(false);
   const [logs, setLogs] = useState<ScanLog[]>([]);
   const [error, setError] = useState('');
   const [page, setPage] = useState(1);
@@ -45,26 +44,14 @@ export default function ScanLogsPage() {
   }, []);
 
   useEffect(() => {
-    fetch('/api/auth/me/', { credentials: 'include' })
-      .then((r) => r.json().catch(() => ({ success: false })))
-      .then((d) => {
-        if (!d?.success || !['admin', 'staff'].includes(d.data?.user?.role)) {
-          router.push('/admin/');
-        } else {
-          setLoading(false);
-          const controller = new AbortController();
-          fetchLogs(page, controller.signal);
-          return () => controller.abort();
-        }
-      })
-      .catch(() => router.push('/admin/'));
-  }, [router, page, fetchLogs]);
+    const controller = new AbortController();
+    fetchLogs(page, controller.signal);
+    return () => controller.abort();
+  }, [page, fetchLogs]);
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-      </div>
+      <PageSpinner />
     );
   }
 

@@ -1,14 +1,19 @@
-node_modules
-.git
-.gitignore
-.env
-.env.example
-*.sqlite
-*.db
-prisma/migrations
-docs
-tests
-playwright
-**/*.test.ts
-**/*.spec.ts
-**/*.md
+# =============================================================================
+# .vercelignore — Exclude non-essential files from Vercel build
+# =============================================================================
+docs/
+مهم/
+e2e/
+scripts/
+.windsurf/
+.opencode/
+.baileys_auth/
+playwright.config.ts
+vitest.config.ts
+test-results/
+playwright-report/
+blob-report/
+*.md
+*.py
+*.pdf
+*.pptx

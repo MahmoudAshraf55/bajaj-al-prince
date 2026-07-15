@@ -1,7 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { useTranslation } from '@/components/useTranslation';
 import BackButton from '@/components/BackButton';
@@ -9,6 +8,7 @@ import { useToast } from '@/components/ToastContext';
 import {
   DollarSign, Package, Users, Download, TrendingUp,
 } from 'lucide-react';
+import PageSpinner from '@/components/ui/PageSpinner';
 
 type Tab = 'financial' | 'inventory' | 'customers';
 type FinancialReport = 'pnl' | 'balance' | 'cashflow';
@@ -18,8 +18,7 @@ type CustomerReport = 'top' | 'activity' | 'smart';
 export default function ReportsPage() {
   const { t } = useTranslation();
   const { addToast } = useToast();
-  const router = useRouter();
-  const [loading, setLoading] = useState(true);
+  const [loading] = useState(false);
   const [tab, setTab] = useState<Tab>('financial');
   const [reportData, setReportData] = useState<Record<string, unknown> | null>(null);
   const [loadingReport, setLoadingReport] = useState(false);
@@ -28,16 +27,6 @@ export default function ReportsPage() {
   const [finReport, setFinReport] = useState<FinancialReport>('pnl');
   const [invReport, setInvReport] = useState<InventoryReport>('summary');
   const [custReport, setCustReport] = useState<CustomerReport>('top');
-
-  useEffect(() => {
-    fetch('/api/auth/me/', { credentials: 'include' })
-      .then((r) => r.json().catch(() => ({ success: false })))
-      .then((d) => {
-        if (!d?.success) router.push('/admin/');
-        else setLoading(false);
-      })
-      .catch(() => router.push('/admin/'));
-  }, [router]);
 
   const generateReport = useCallback(async () => {
     setLoadingReport(true);
@@ -88,9 +77,7 @@ export default function ReportsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-      </div>
+      <PageSpinner />
     );
   }
 

@@ -1,13 +1,13 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { useTranslation } from '@/components/useTranslation';
 import type { AccountingSummary, AccountingTransaction, AccountingPeriod } from '@/types';
 import {
   ArrowUpRight, ArrowDownRight, Loader2, ChevronLeft, ChevronRight,
 } from 'lucide-react';
+import PageSpinner from '@/components/ui/PageSpinner';
 
 type PeriodTab = { key: AccountingPeriod; label: string; days: number };
 
@@ -63,10 +63,7 @@ const PERIODS: PeriodTab[] = [
 
 export default function AccountingPage() {
   const { t, language } = useTranslation();
-  const router = useRouter();
-
-  const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState<{ username: string } | null>(null);
+  const [loading] = useState(false);
   const [periodTab, setPeriodTab] = useState<AccountingPeriod>('day');
   const [customFrom, setCustomFrom] = useState('');
   const [customTo, setCustomTo] = useState('');
@@ -82,17 +79,6 @@ export default function AccountingPage() {
   const [balanceSheetLoading, setBalanceSheetLoading] = useState(false);
   const [incomeStatement, setIncomeStatement] = useState<IncomeStatementData | null>(null);
   const [incomeStatementLoading, setIncomeStatementLoading] = useState(false);
-
-  useEffect(() => {
-    fetch('/api/auth/me/', { credentials: 'include' })
-      .then((r) => r.json())
-      .then((d) => {
-        if (!d.success) { router.push('/admin/'); return; }
-        setUser(d.data);
-        setLoading(false);
-      })
-      .catch(() => router.push('/admin/'));
-  }, [router]);
 
   const getDateRange = useCallback((period: AccountingPeriod, customF?: string, customT?: string) => {
     const now = new Date();
@@ -158,20 +144,18 @@ export default function AccountingPage() {
   }, []);
 
   useEffect(() => {
-    if (user) {
-      if (activeView === 'summary') {
-        fetchSummary(periodTab, customFrom || undefined, customTo || undefined);
-      } else if (activeView === 'transactions') {
-        fetchTxns(periodTab, txnPage, customFrom || undefined, customTo || undefined);
-      } else if (activeView === 'trial-balance') {
-        fetchTrialBalance(customFrom || undefined, customTo || undefined);
-      } else if (activeView === 'balance-sheet') {
-        fetchBalanceSheet(customFrom || undefined, customTo || undefined);
-      } else if (activeView === 'income-statement') {
-        fetchIncomeStatement(customFrom || undefined, customTo || undefined);
-      }
+    if (activeView === 'summary') {
+      fetchSummary(periodTab, customFrom || undefined, customTo || undefined);
+    } else if (activeView === 'transactions') {
+      fetchTxns(periodTab, txnPage, customFrom || undefined, customTo || undefined);
+    } else if (activeView === 'trial-balance') {
+      fetchTrialBalance(customFrom || undefined, customTo || undefined);
+    } else if (activeView === 'balance-sheet') {
+      fetchBalanceSheet(customFrom || undefined, customTo || undefined);
+    } else if (activeView === 'income-statement') {
+      fetchIncomeStatement(customFrom || undefined, customTo || undefined);
     }
-  }, [user, activeView, periodTab, customFrom, customTo, txnPage, fetchSummary, fetchTxns, fetchTrialBalance, fetchBalanceSheet, fetchIncomeStatement]);
+  }, [activeView, periodTab, customFrom, customTo, txnPage, fetchSummary, fetchTxns, fetchTrialBalance, fetchBalanceSheet, fetchIncomeStatement]);
 
   const handlePeriodChange = (key: AccountingPeriod) => {
     setPeriodTab(key);
@@ -189,9 +173,7 @@ export default function AccountingPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      </div>
+      <PageSpinner className="bg-background" />
     );
   }
 
@@ -226,7 +208,7 @@ export default function AccountingPage() {
       <header className="sticky top-0 z-30 glass border-b border-border">
         <div className="flex items-center justify-between px-4 py-3">
           <h1 className="font-bold text-lg">{t('admin_accounting')}</h1>
-          <p className="text-sm text-muted-foreground">{user?.username}</p>
+          <p className="text-sm text-muted-foreground">{'—'}</p>
         </div>
       </header>
 

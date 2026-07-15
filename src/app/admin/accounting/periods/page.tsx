@@ -1,13 +1,16 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { useTranslation } from '@/components/useTranslation';
 import { useToast } from '@/components/ToastContext';
 import BackButton from '@/components/BackButton';
 import {
-  Plus, X, Calendar, CheckCircle2, Lock, Unlock, Loader2, ClipboardList,
+  Plus, Calendar, Loader2, ClipboardList,
 } from 'lucide-react';
+import StatusBadge from '@/components/ui/StatusBadge';
+import PageSpinner from '@/components/ui/PageSpinner';
+import Modal from '@/components/ui/Modal';
 
 interface AccountingPeriod {
   id: string;
@@ -21,18 +24,6 @@ interface AccountingPeriod {
   notes?: string | null;
   createdAt: string;
 }
-
-const statusColors: Record<string, string> = {
-  open: 'bg-green-500/10 text-green-400 border-green-500/20',
-  closed: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
-  locked: 'bg-red-500/10 text-red-400 border-red-500/20',
-};
-
-const statusIcons: Record<string, typeof CheckCircle2> = {
-  open: Unlock,
-  closed: CheckCircle2,
-  locked: Lock,
-};
 
 export default function AccountingPeriodsPage() {
   const { t, language } = useTranslation();
@@ -118,9 +109,7 @@ export default function AccountingPeriodsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-      </div>
+      <PageSpinner />
     );
   }
 
@@ -152,7 +141,6 @@ export default function AccountingPeriodsPage() {
         ) : (
           <div className="space-y-3">
             {periods.map((period, idx) => {
-              const StatusIcon = statusIcons[period.status];
               return (
                 <motion.div
                   key={period.id}
@@ -165,10 +153,7 @@ export default function AccountingPeriodsPage() {
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-1">
                         <p className="font-semibold text-lg">{period.name}</p>
-                        <span className={`inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full border ${statusColors[period.status]}`}>
-                          <StatusIcon className="w-3 h-3" />
-                          {statusLabels[period.status]}
-                        </span>
+                        <StatusBadge status={period.status} label={statusLabels[period.status]} />
                       </div>
                       <p className="text-sm text-muted-foreground flex items-center gap-1">
                         <Calendar className="w-3.5 h-3.5" />
@@ -217,77 +202,51 @@ export default function AccountingPeriodsPage() {
         )}
       </motion.div>
 
-      <AnimatePresence>
-        {showModal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-40 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
-            onClick={() => setShowModal(false)}
+      <Modal isOpen={showModal} onClose={() => setShowModal(false)} title={t('acc_new_period')}>
+        <form onSubmit={handleCreate} className="space-y-4">
+          <div>
+            <label className="text-xs font-medium text-muted-foreground mb-1.5 block">{t('acc_period_name')}</label>
+            <input
+              required
+              value={form.name}
+              onChange={(e) => setForm({ ...form, name: e.target.value })}
+              className="w-full px-4 py-2.5 rounded-xl bg-input border border-border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              placeholder={t('acc_period_name_placeholder')}
+            />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-muted-foreground mb-1.5 block">{t('acc_start_date')}</label>
+            <input
+              type="date"
+              required
+              value={form.startDate}
+              onChange={(e) => setForm({ ...form, startDate: e.target.value })}
+              className="w-full px-4 py-2.5 rounded-xl bg-input border border-border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-muted-foreground mb-1.5 block">{t('acc_end_date')}</label>
+            <input
+              type="date"
+              required
+              value={form.endDate}
+              onChange={(e) => setForm({ ...form, endDate: e.target.value })}
+              className="w-full px-4 py-2.5 rounded-xl bg-input border border-border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            />
+          </div>
+          <button
+            type="submit"
+            disabled={submitting}
+            className="w-full py-2.5 rounded-xl bg-primary text-primary-foreground font-medium text-sm hover:opacity-90 transition-opacity disabled:opacity-50"
           >
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              onClick={(e) => e.stopPropagation()}
-              role="dialog"
-              aria-modal="true"
-              className="glass rounded-2xl p-6 w-full max-w-md border border-border"
-            >
-              <div className="flex items-center justify-between mb-5">
-                <h3 className="text-lg font-bold">{t('acc_new_period')}</h3>
-                <button onClick={() => setShowModal(false)} className="p-1 rounded-lg hover:bg-white/5 text-muted-foreground">
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-              <form onSubmit={handleCreate} className="space-y-4">
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-1.5 block">{t('acc_period_name')}</label>
-                  <input
-                    required
-                    value={form.name}
-                    onChange={(e) => setForm({ ...form, name: e.target.value })}
-                    className="w-full px-4 py-2.5 rounded-xl bg-input border border-border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                    placeholder={t('acc_period_name_placeholder')}
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-1.5 block">{t('acc_start_date')}</label>
-                  <input
-                    type="date"
-                    required
-                    value={form.startDate}
-                    onChange={(e) => setForm({ ...form, startDate: e.target.value })}
-                    className="w-full px-4 py-2.5 rounded-xl bg-input border border-border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-1.5 block">{t('acc_end_date')}</label>
-                  <input
-                    type="date"
-                    required
-                    value={form.endDate}
-                    onChange={(e) => setForm({ ...form, endDate: e.target.value })}
-                    className="w-full px-4 py-2.5 rounded-xl bg-input border border-border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                  />
-                </div>
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="w-full py-2.5 rounded-xl bg-primary text-primary-foreground font-medium text-sm hover:opacity-90 transition-opacity disabled:opacity-50"
-                >
-                  {submitting ? (
-                    <Loader2 className="w-4 h-4 animate-spin mx-auto" />
-                  ) : (
-                    t('acc_new_period')
-                  )}
-                </button>
-              </form>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+            {submitting ? (
+              <Loader2 className="w-4 h-4 animate-spin mx-auto" />
+            ) : (
+              t('acc_new_period')
+            )}
+          </button>
+        </form>
+      </Modal>
     </div>
   );
 }

@@ -1,17 +1,20 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+
 import Link from 'next/link';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { useTranslation } from '@/components/useTranslation';
 import { useToast } from '@/components/ToastContext';
 import BackButton from '@/components/BackButton';
 import { fetchWithRetry } from '@/lib/fetchWithRetry';
 import {
-  Search, Plus, ChevronLeft, ChevronRight, Package,
-  AlertCircle, X, Trash2, PlusCircle, Upload,
+  Search, Plus, Package,
+  AlertCircle, Trash2, PlusCircle, Upload,
 } from 'lucide-react';
+import Pagination from '@/components/ui/Pagination';
+import PageSpinner from '@/components/ui/PageSpinner';
+import Modal from '@/components/ui/Modal';
 
 interface PurchaseOrder {
   id: string;
@@ -57,8 +60,7 @@ const statusStyles: Record<string, string> = {
 export default function PurchaseOrdersPage() {
   const { t } = useTranslation();
   const { addToast } = useToast();
-  const router = useRouter();
-  const [loading, setLoading] = useState(true);
+  const [loading] = useState(false);
   const [error, setError] = useState('');
   const [orders, setOrders] = useState<PurchaseOrder[]>([]);
   const [meta, setMeta] = useState({ total: 0, page: 1, limit: 10, totalPages: 1 });
@@ -122,18 +124,6 @@ export default function PurchaseOrdersPage() {
       }
     } catch { /* ignore */ }
   }, []);
-
-  useEffect(() => {
-    fetch('/api/auth/me/', { credentials: 'include' })
-      .then((r) => r.json().catch(() => ({ success: false, error: 'Invalid auth response' })))
-      .then((d) => {
-        if (!d?.success) router.push('/admin/');
-        else { setLoading(false); }
-      })
-      .catch(() => {
-        router.push('/admin/');
-      });
-  }, [router]);
 
   useEffect(() => {
     if (loading) return;
@@ -251,9 +241,7 @@ export default function PurchaseOrdersPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-      </div>
+      <PageSpinner />
     );
   }
 
@@ -387,187 +375,142 @@ export default function PurchaseOrdersPage() {
             </table>
           </div>
 
-          {meta.totalPages > 1 && (
-            <div className="flex items-center justify-between px-5 py-4 border-t border-border">
-              <span className="text-xs text-muted-foreground">
-                {t('sup_pagination_showing')} {((meta.page - 1) * meta.limit) + 1}–{Math.min(meta.page * meta.limit, meta.total)} {t('sup_pagination_of')} {meta.total}
-              </span>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  disabled={meta.page <= 1}
-                  className="p-2 rounded-lg hover:bg-white/5 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                >
-                  <ChevronLeft className="w-4 h-4" />
-                </button>
-                <span className="text-sm font-medium min-w-[3rem] text-center">
-                  {meta.page} / {meta.totalPages}
-                </span>
-                <button
-                  onClick={() => setPage((p) => Math.min(meta.totalPages, p + 1))}
-                  disabled={meta.page >= meta.totalPages}
-                  className="p-2 rounded-lg hover:bg-white/5 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                >
-                  <ChevronRight className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-          )}
+          {/* Pagination */}
+          <Pagination
+            meta={meta}
+            onPageChange={setPage}
+            showingLabel={t('sup_pagination_showing')}
+            ofLabel={t('sup_pagination_of')}
+          />
         </div>
       </motion.div>
 
       {/* Create Order Modal */}
-      <AnimatePresence>
-        {showModal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-40 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
-            onClick={() => setShowModal(false)}
-          >
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              onClick={(e) => e.stopPropagation()}
-              role="dialog"
-              aria-modal="true"
-              className="glass rounded-2xl p-6 w-full max-w-3xl border border-border max-h-[90vh] overflow-y-auto"
+      <Modal isOpen={showModal} onClose={() => setShowModal(false)} title={t('po_add_modal')} contentClassName="max-w-3xl">
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="text-xs font-medium text-muted-foreground mb-1.5 block">{t('po_supplier')}</label>
+            <select
+              required
+              value={form.supplierId}
+              onChange={(e) => setForm((f) => ({ ...f, supplierId: e.target.value }))}
+              className="w-full px-4 py-2.5 rounded-xl bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm"
             >
-              <div className="flex items-center justify-between mb-5">
-                <h3 className="text-lg font-bold">{t('po_add_modal')}</h3>
-                <button onClick={() => setShowModal(false)} className="p-1 rounded-lg hover:bg-white/5 text-muted-foreground">
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-1.5 block">{t('po_supplier')}</label>
+              <option value="">{t('po_select_supplier')}</option>
+              {suppliers.map((s) => (
+                <option key={s.id} value={s.id}>{s.name}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="text-xs font-medium text-muted-foreground mb-1.5 block">{t('po_notes')}</label>
+            <textarea
+              rows={2}
+              value={form.notes}
+              onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
+              className="w-full px-4 py-2.5 rounded-xl bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm resize-none"
+            />
+          </div>
+
+          {/* Line Items */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-xs font-medium text-muted-foreground">{t('po_items')}</label>
+              <button
+                type="button"
+                onClick={addLineItem}
+                className="flex items-center gap-1 text-xs text-primary hover:underline"
+              >
+                <PlusCircle className="w-3 h-3" />
+                {t('po_add_item')}
+              </button>
+            </div>
+
+            {form.items.map((item, idx) => (
+              <div key={idx} className="flex items-end gap-2 mb-2 p-2 rounded-xl bg-white/5">
+                <div className="flex-1">
+                  <label className="text-[10px] text-muted-foreground">{t('po_select_product')}</label>
                   <select
-                    required
-                    value={form.supplierId}
-                    onChange={(e) => setForm((f) => ({ ...f, supplierId: e.target.value }))}
-                    className="w-full px-4 py-2.5 rounded-xl bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm"
+                    value={item.productId}
+                    onChange={(e) => updateLineItem(idx, 'productId', e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-ring text-xs"
                   >
-                    <option value="">{t('po_select_supplier')}</option>
-                    {suppliers.map((s) => (
-                      <option key={s.id} value={s.id}>{s.name}</option>
+                    <option value="">--</option>
+                    {products.map((p) => (
+                      <option key={p.id} value={p.id}>{p.name}</option>
                     ))}
                   </select>
                 </div>
-
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-1.5 block">{t('po_notes')}</label>
-                  <textarea
-                    rows={2}
-                    value={form.notes}
-                    onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
-                    className="w-full px-4 py-2.5 rounded-xl bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm resize-none"
+                <div className="w-16">
+                  <label className="text-[10px] text-muted-foreground">{t('po_qty')}</label>
+                  <input
+                    type="number"
+                    min={1}
+                    value={item.quantity}
+                    onChange={(e) => updateLineItem(idx, 'quantity', e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-ring text-xs"
                   />
                 </div>
-
-                {/* Line Items */}
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <label className="text-xs font-medium text-muted-foreground">{t('po_items')}</label>
-                    <button
-                      type="button"
-                      onClick={addLineItem}
-                      className="flex items-center gap-1 text-xs text-primary hover:underline"
-                    >
-                      <PlusCircle className="w-3 h-3" />
-                      {t('po_add_item')}
-                    </button>
-                  </div>
-
-                  {form.items.map((item, idx) => (
-                    <div key={idx} className="flex items-end gap-2 mb-2 p-2 rounded-xl bg-white/5">
-                      <div className="flex-1">
-                        <label className="text-[10px] text-muted-foreground">{t('po_select_product')}</label>
-                        <select
-                          value={item.productId}
-                          onChange={(e) => updateLineItem(idx, 'productId', e.target.value)}
-                          className="w-full px-3 py-2 rounded-lg bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-ring text-xs"
-                        >
-                          <option value="">--</option>
-                          {products.map((p) => (
-                            <option key={p.id} value={p.id}>{p.name}</option>
-                          ))}
-                        </select>
-                      </div>
-                      <div className="w-16">
-                        <label className="text-[10px] text-muted-foreground">{t('po_qty')}</label>
-                        <input
-                          type="number"
-                          min={1}
-                          value={item.quantity}
-                          onChange={(e) => updateLineItem(idx, 'quantity', e.target.value)}
-                          className="w-full px-3 py-2 rounded-lg bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-ring text-xs"
-                        />
-                      </div>
-                      <div className="w-24">
-                        <label className="text-[10px] text-muted-foreground">{t('po_unit_price')}</label>
-                        <input
-                          type="number"
-                          min={0}
-                          step={0.01}
-                          value={item.unitPrice}
-                          onChange={(e) => updateLineItem(idx, 'unitPrice', e.target.value)}
-                          className="w-full px-3 py-2 rounded-lg bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-ring text-xs"
-                        />
-                      </div>
-                      <div className="w-20 text-right">
-                        <label className="text-[10px] text-muted-foreground">{t('po_line_total')}</label>
-                        <div className="text-xs font-medium py-2">{item.total.toFixed(2)}</div>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => removeLineItem(idx)}
-                        className="p-2 text-red-400 hover:text-red-300"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  ))}
+                <div className="w-24">
+                  <label className="text-[10px] text-muted-foreground">{t('po_unit_price')}</label>
+                  <input
+                    type="number"
+                    min={0}
+                    step={0.01}
+                    value={item.unitPrice}
+                    onChange={(e) => updateLineItem(idx, 'unitPrice', e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-ring text-xs"
+                  />
                 </div>
-
-                {/* Totals */}
-                {form.items.length > 0 && (
-                  <div className="border-t border-border pt-3 space-y-1 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">{t('po_subtotal')}</span>
-                      <span className="font-medium">{calcTotals().subtotal.toFixed(2)}</span>
-                    </div>
-                    <div className="flex justify-between text-base font-bold">
-                      <span>{t('po_grand_total')}</span>
-                      <span>{calcTotals().subtotal.toFixed(2)}</span>
-                    </div>
-                  </div>
-                )}
-
-                {formError && (
-                  <div className="flex items-center gap-2 text-red-400 text-xs bg-red-400/10 border border-red-400/20 rounded-xl px-3 py-2">
-                    <AlertCircle className="w-3.5 h-3.5" />
-                    {formError}
-                  </div>
-                )}
+                <div className="w-20 text-right">
+                  <label className="text-[10px] text-muted-foreground">{t('po_line_total')}</label>
+                  <div className="text-xs font-medium py-2">{item.total.toFixed(2)}</div>
+                </div>
                 <button
-                  type="submit"
-                  disabled={submitting}
-                  className="w-full py-2.5 rounded-xl bg-primary text-primary-foreground font-medium text-sm hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  type="button"
+                  onClick={() => removeLineItem(idx)}
+                  className="p-2 text-red-400 hover:text-red-300"
                 >
-                  {submitting ? (
-                    <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin mx-auto" />
-                  ) : (
-                    t('po_new')
-                  )}
+                  <Trash2 className="w-3.5 h-3.5" />
                 </button>
-              </form>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+              </div>
+            ))}
+          </div>
+
+          {/* Totals */}
+          {form.items.length > 0 && (
+            <div className="border-t border-border pt-3 space-y-1 text-sm">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">{t('po_subtotal')}</span>
+                <span className="font-medium">{calcTotals().subtotal.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between text-base font-bold">
+                <span>{t('po_grand_total')}</span>
+                <span>{calcTotals().subtotal.toFixed(2)}</span>
+              </div>
+            </div>
+          )}
+
+          {formError && (
+            <div className="flex items-center gap-2 text-red-400 text-xs bg-red-400/10 border border-red-400/20 rounded-xl px-3 py-2">
+              <AlertCircle className="w-3.5 h-3.5" />
+              {formError}
+            </div>
+          )}
+          <button
+            type="submit"
+            disabled={submitting}
+            className="w-full py-2.5 rounded-xl bg-primary text-primary-foreground font-medium text-sm hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {submitting ? (
+              <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin mx-auto" />
+            ) : (
+              t('po_new')
+            )}
+          </button>
+        </form>
+      </Modal>
     </div>
   );
 }

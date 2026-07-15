@@ -1,16 +1,18 @@
 'use client';
 
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { useRouter, useParams } from 'next/navigation';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useParams } from 'next/navigation';
+import { motion } from 'framer-motion';
 import { useTranslation } from '@/components/useTranslation';
 import { useToast } from '@/components/ToastContext';
 import BackButton from '@/components/BackButton';
 import { fetchWithRetry } from '@/lib/fetchWithRetry';
 import {
   Package, Truck, FileText, AlertCircle, Clock,
-  CheckCircle2, XCircle, Send, Ban, Plus, X, Download, Upload, Loader2,
+  CheckCircle2, XCircle, Send, Ban, Plus, Download, Upload, Loader2,
 } from 'lucide-react';
+import PageSpinner from '@/components/ui/PageSpinner';
+import Modal from '@/components/ui/Modal';
 
 
 interface PurchaseOrderDetail {
@@ -57,11 +59,10 @@ const statusConfig: Record<string, { color: string; icon: React.ComponentType<{ 
 export default function PurchaseOrderDetailPage() {
   const { t } = useTranslation();
   const { addToast } = useToast();
-  const router = useRouter();
   const params = useParams();
   const orderId = params.id as string;
 
-  const [loading, setLoading] = useState(true);
+  const [loading] = useState(false);
   const [error, setError] = useState('');
   const [order, setOrder] = useState<PurchaseOrderDetail | null>(null);
   const [transitioning, setTransitioning] = useState('');
@@ -147,21 +148,10 @@ export default function PurchaseOrderDetailPage() {
   }, [orderId, t, addToast]);
 
   useEffect(() => {
-    fetch('/api/auth/me/', { credentials: 'include' })
-      .then((r) => r.json().catch(() => ({ success: false, error: 'Invalid auth response' })))
-      .then((d) => {
-        if (!d?.success) router.push('/admin/');
-        else {
-          setLoading(false);
-          const controller = new AbortController();
-          fetchOrder(controller.signal);
-          return () => controller.abort();
-        }
-      })
-      .catch(() => {
-        router.push('/admin/');
-      });
-  }, [router, orderId, fetchOrder]);
+    const controller = new AbortController();
+    fetchOrder(controller.signal);
+    return () => controller.abort();
+  }, [fetchOrder]);
 
   const transitionStatus = async (newStatus: string) => {
     setTransitioning(newStatus);
@@ -188,9 +178,7 @@ export default function PurchaseOrderDetailPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-      </div>
+      <PageSpinner />
     );
   }
 
@@ -418,192 +406,157 @@ export default function PurchaseOrderDetailPage() {
       </motion.div>
 
       {/* Receive Modal */}
-      <AnimatePresence>
-        {showReceiveModal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-40 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
-            onClick={() => setShowReceiveModal(false)}
-          >
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              onClick={(e) => e.stopPropagation()}
-              role="dialog"
-              aria-modal="true"
-              className="glass rounded-2xl p-6 w-full max-w-lg border border-border"
-            >
-              <div className="flex items-center justify-between mb-5">
-                <h3 className="text-lg font-bold">{t('po_receive')}</h3>
-                <button onClick={() => setShowReceiveModal(false)} className="p-1 rounded-lg hover:bg-white/5 text-muted-foreground">
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-              <form onSubmit={handleReceive} className="space-y-4">
-                <p className="text-xs text-muted-foreground mb-2">
-                  {t('po_number')}: {order.number}
-                </p>
-                {order.items.map((item) => {
-                  const maxQty = item.quantity - item.receivedQty;
-                  return (
-                    <div key={item.id} className="flex items-center gap-3 bg-white/5 rounded-xl p-3">
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">{item.product.name}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {t('po_ordered')}: {item.quantity} | {t('po_received')}: {item.receivedQty} | {t('po_remaining')}: {maxQty}
-                        </p>
-                      </div>
-                      <div className="w-20">
-                        <input
-                          type="number"
-                          min={0}
-                          max={maxQty}
-                          value={receiveQuantities[item.id] || 0}
-                          onChange={(e) => {
-                            const val = Math.min(maxQty, Math.max(0, parseInt(e.target.value) || 0));
-                            setReceiveQuantities((q) => ({ ...q, [item.id]: val }));
-                          }}
-                          className="w-full px-3 py-2 rounded-lg bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm text-center"
-                        />
-                      </div>
-                    </div>
-                  );
-                })}
-
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-1.5 block">{t('po_notes')}</label>
-                  <textarea
-                    rows={2}
-                    value={receiveNotes}
-                    onChange={(e) => setReceiveNotes(e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-xl bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm resize-none"
+      <Modal isOpen={showReceiveModal} onClose={() => setShowReceiveModal(false)} title={t('po_receive')}>
+        <form onSubmit={handleReceive} className="space-y-4">
+          <p className="text-xs text-muted-foreground mb-2">
+            {t('po_number')}: {order.number}
+          </p>
+          {order.items.map((item) => {
+            const maxQty = item.quantity - item.receivedQty;
+            return (
+              <div key={item.id} className="flex items-center gap-3 bg-white/5 rounded-xl p-3">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">{item.product.name}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {t('po_ordered')}: {item.quantity} | {t('po_received')}: {item.receivedQty} | {t('po_remaining')}: {maxQty}
+                  </p>
+                </div>
+                <div className="w-20">
+                  <input
+                    type="number"
+                    min={0}
+                    max={maxQty}
+                    value={receiveQuantities[item.id] || 0}
+                    onChange={(e) => {
+                      const val = Math.min(maxQty, Math.max(0, parseInt(e.target.value) || 0));
+                      setReceiveQuantities((q) => ({ ...q, [item.id]: val }));
+                    }}
+                    className="w-full px-3 py-2 rounded-lg bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm text-center"
                   />
                 </div>
-
-                {receiveError && (
-                  <div className="flex items-center gap-2 text-red-400 text-xs bg-red-400/10 border border-red-400/20 rounded-xl px-3 py-2">
-                    <AlertCircle className="w-3.5 h-3.5" />
-                    {receiveError}
-                  </div>
-                )}
-
-                <button
-                  type="submit"
-                  disabled={receiving}
-                  className="w-full py-2.5 rounded-xl bg-green-600 text-white font-medium text-sm hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {receiving ? (
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto" />
-                  ) : (
-                    t('po_receive')
-                  )}
-                </button>
-              </form>
-            </motion.div>
-          </motion.div>
-        )}
-
-        {/* PDF Import Modal */}
-        {showPdfImport && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => { setShowPdfImport(false); setPdfItems([]); }}>
-            <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} onClick={(e) => e.stopPropagation()}
-              role="dialog" aria-modal="true" className="glass rounded-2xl p-6 w-full max-w-lg max-h-[85vh] overflow-auto">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="font-bold text-lg">{t('po_import_pdf') || 'Import PDF'}</h3>
-                <button onClick={() => { setShowPdfImport(false); setPdfItems([]); }} className="p-1 text-muted-foreground hover:text-foreground"><X className="w-5 h-5" /></button>
               </div>
-              {pdfImporting && (
-                <div className="flex items-center justify-center py-8"><div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>
-              )}
-              {pdfError && <p className="text-red-400 text-sm mb-3">{pdfError}</p>}
-              {!pdfImporting && pdfItems.length > 0 && (
-                <>
-                  <p className="text-sm text-muted-foreground mb-3">{pdfItems.length} {t('po_items_found') || 'items found'}</p>
-                  <div className="overflow-x-auto mb-4">
-                    <table className="w-full text-xs">
-                      <thead><tr className="border-b border-border bg-white/5 text-muted-foreground">
-                        <th className="text-left py-2 px-2">{t('po_barcode') || 'Barcode'}</th>
-                        <th className="text-left py-2 px-2">{t('po_product') || 'Product'}</th>
-                        <th className="text-center py-2 px-2">{t('po_qty')}</th>
-                        <th className="text-right py-2 px-2">{t('po_unit_price')}</th>
-                        <th className="text-right py-2 px-2">{t('po_line_total')}</th>
-                      </tr></thead>
-                      <tbody className="divide-y divide-border/50">
-                        {pdfItems.map((item, i) => {
-                          const mp = item.matchedProduct as Record<string, unknown> | null;
-                          return (
-                            <tr key={i}>
-                              <td className="py-2 px-2 font-mono text-[10px]">{item.barcode as string || '—'}</td>
-                              <td className="py-2 px-2">
-                                {mp ? <span className="text-green-400">{mp.name as string}</span> : <span className="text-yellow-400">{item.productName as string || '—'}</span>}
-                              </td>
-                              <td className="py-2 px-2 text-center">{item.quantity as number}</td>
-                              <td className="py-2 px-2 text-right">{typeof item.unitPrice === 'number' ? item.unitPrice.toFixed(2) : '—'}</td>
-                              <td className="py-2 px-2 text-right font-medium">{typeof item.total === 'number' ? item.total.toFixed(2) : '—'}</td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                  <div className="flex gap-3">
-                    <button onClick={() => { setShowPdfImport(false); setPdfItems([]); }}
-                      className="flex-1 py-2.5 rounded-xl bg-white/5 text-sm font-medium hover:bg-white/10">{t('wo_cancel')}</button>
-                    <button onClick={async () => {
-                      setPdfAdding(true);
-                      try {
-                        const res = await fetch(`/api/v1/purchase-orders/${order.id}/items/`, {
-                          method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
-                          body: JSON.stringify({ items: pdfItems }),
-                        });
-                        const d = await res.json();
-                        if (d.success) {
-                          setShowPdfImport(false);
-                          setPdfItems([]);
-                          fetchOrder();
-                          addToast('success', `${pdfItems.length} items added`);
-                        } else {
-                          addToast('error', d.error || 'Failed');
-                        }
-                      } catch { addToast('error', 'Network error'); }
-                      finally { setPdfAdding(false); }
-                    }} disabled={pdfAdding}
-                      className="flex-1 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-medium disabled:opacity-50 flex items-center justify-center gap-2">
-                      {pdfAdding ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-                      {t('po_add_items') || 'Add to Order'}
-                    </button>
-                  </div>
-                </>
-              )}
-              {!pdfImporting && pdfItems.length === 0 && !pdfError && (
-                <div className="text-center py-8 text-muted-foreground">
-                  <label className="flex flex-col items-center gap-3 cursor-pointer">
-                    <Upload className="w-10 h-10 opacity-30" />
-                    <span>{t('po_select_pdf') || 'Select a PDF file'}</span>
-                    <input type="file" accept=".pdf" className="hidden"
-                      onChange={async (e) => {
-                        const f = e.target.files?.[0];
-                        if (!f) return;
-                        setPdfImporting(true); setPdfError('');
-                        try {
-                          const fd = new FormData(); fd.append('file', f);
-                          const res = await fetch(`/api/v1/purchase-orders/${order.id}/import-pdf/`, { method: 'POST', credentials: 'include', body: fd });
-                          const d = await res.json();
-                          if (d.success) { setPdfItems(d.data.items || []); }
-                          else setPdfError(d.error || 'Failed');
-                        } catch { setPdfError('Network error'); }
-                        finally { setPdfImporting(false); }
-                      }} />
-                  </label>
-                </div>
-              )}
-            </motion.div>
+            );
+          })}
+
+          <div>
+            <label className="text-xs font-medium text-muted-foreground mb-1.5 block">{t('po_notes')}</label>
+            <textarea
+              rows={2}
+              value={receiveNotes}
+              onChange={(e) => setReceiveNotes(e.target.value)}
+              className="w-full px-4 py-2.5 rounded-xl bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm resize-none"
+            />
+          </div>
+
+          {receiveError && (
+            <div className="flex items-center gap-2 text-red-400 text-xs bg-red-400/10 border border-red-400/20 rounded-xl px-3 py-2">
+              <AlertCircle className="w-3.5 h-3.5" />
+              {receiveError}
+            </div>
+          )}
+
+          <button
+            type="submit"
+            disabled={receiving}
+            className="w-full py-2.5 rounded-xl bg-green-600 text-white font-medium text-sm hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {receiving ? (
+              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto" />
+            ) : (
+              t('po_receive')
+            )}
+          </button>
+        </form>
+      </Modal>
+
+      {/* PDF Import Modal */}
+      <Modal isOpen={showPdfImport} onClose={() => { setShowPdfImport(false); setPdfItems([]); }} title={t('po_import_pdf') || 'Import PDF'}>
+        {pdfImporting && (
+          <div className="flex items-center justify-center py-8"><div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>
+        )}
+        {pdfError && <p className="text-red-400 text-sm mb-3">{pdfError}</p>}
+        {!pdfImporting && pdfItems.length > 0 && (
+          <>
+            <p className="text-sm text-muted-foreground mb-3">{pdfItems.length} {t('po_items_found') || 'items found'}</p>
+            <div className="overflow-x-auto mb-4">
+              <table className="w-full text-xs">
+                <thead><tr className="border-b border-border bg-white/5 text-muted-foreground">
+                  <th className="text-left py-2 px-2">{t('po_barcode') || 'Barcode'}</th>
+                  <th className="text-left py-2 px-2">{t('po_product') || 'Product'}</th>
+                  <th className="text-center py-2 px-2">{t('po_qty')}</th>
+                  <th className="text-right py-2 px-2">{t('po_unit_price')}</th>
+                  <th className="text-right py-2 px-2">{t('po_line_total')}</th>
+                </tr></thead>
+                <tbody className="divide-y divide-border/50">
+                  {pdfItems.map((item, i) => {
+                    const mp = item.matchedProduct as Record<string, unknown> | null;
+                    return (
+                      <tr key={i}>
+                        <td className="py-2 px-2 font-mono text-[10px]">{item.barcode as string || '—'}</td>
+                        <td className="py-2 px-2">
+                          {mp ? <span className="text-green-400">{mp.name as string}</span> : <span className="text-yellow-400">{item.productName as string || '—'}</span>}
+                        </td>
+                        <td className="py-2 px-2 text-center">{item.quantity as number}</td>
+                        <td className="py-2 px-2 text-right">{typeof item.unitPrice === 'number' ? item.unitPrice.toFixed(2) : '—'}</td>
+                        <td className="py-2 px-2 text-right font-medium">{typeof item.total === 'number' ? item.total.toFixed(2) : '—'}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            <div className="flex gap-3">
+              <button onClick={() => { setShowPdfImport(false); setPdfItems([]); }}
+                className="flex-1 py-2.5 rounded-xl bg-white/5 text-sm font-medium hover:bg-white/10">{t('wo_cancel')}</button>
+              <button onClick={async () => {
+                setPdfAdding(true);
+                try {
+                  const res = await fetch(`/api/v1/purchase-orders/${order.id}/items/`, {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+                    body: JSON.stringify({ items: pdfItems }),
+                  });
+                  const d = await res.json();
+                  if (d.success) {
+                    setShowPdfImport(false);
+                    setPdfItems([]);
+                    fetchOrder();
+                    addToast('success', `${pdfItems.length} items added`);
+                  } else {
+                    addToast('error', d.error || 'Failed');
+                  }
+                } catch { addToast('error', 'Network error'); }
+                finally { setPdfAdding(false); }
+              }} disabled={pdfAdding}
+                className="flex-1 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-medium disabled:opacity-50 flex items-center justify-center gap-2">
+                {pdfAdding ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                {t('po_add_items') || 'Add to Order'}
+              </button>
+            </div>
+          </>
+        )}
+        {!pdfImporting && pdfItems.length === 0 && !pdfError && (
+          <div className="text-center py-8 text-muted-foreground">
+            <label className="flex flex-col items-center gap-3 cursor-pointer">
+              <Upload className="w-10 h-10 opacity-30" />
+              <span>{t('po_select_pdf') || 'Select a PDF file'}</span>
+              <input type="file" accept=".pdf" className="hidden"
+                onChange={async (e) => {
+                  const f = e.target.files?.[0];
+                  if (!f) return;
+                  setPdfImporting(true); setPdfError('');
+                  try {
+                    const fd = new FormData(); fd.append('file', f);
+                    const res = await fetch(`/api/v1/purchase-orders/${order.id}/import-pdf/`, { method: 'POST', credentials: 'include', body: fd });
+                    const d = await res.json();
+                    if (d.success) { setPdfItems(d.data.items || []); }
+                    else setPdfError(d.error || 'Failed');
+                  } catch { setPdfError('Network error'); }
+                  finally { setPdfImporting(false); }
+                }} />
+            </label>
           </div>
         )}
-      </AnimatePresence>
+      </Modal>
     </div>
   );
 }

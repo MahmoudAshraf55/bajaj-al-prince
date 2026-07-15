@@ -4,6 +4,7 @@ import { createContext, useContext, useState, useCallback, useEffect, type React
 
 type Language = 'en' | 'ar';
 type LangScope = 'admin' | 'site';
+type Dictionary = Record<string, string>;
 
 interface LanguageContextType {
   language: Language;
@@ -12,6 +13,7 @@ interface LanguageContextType {
   dir: 'ltr' | 'rtl';
   isRTL: boolean;
   scope: LangScope;
+  dictionary: Dictionary;
 }
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
@@ -22,8 +24,14 @@ function storageKey(scope: LangScope): string {
   return `${LANG_KEY_BASE}-${scope}`;
 }
 
+async function loadDictionary(lang: Language): Promise<Dictionary> {
+  const mod = await import(`@/dictionaries/${lang}.json`);
+  return mod.default as Dictionary;
+}
+
 export function LanguageProvider({ children, scope }: { children: ReactNode; scope: LangScope }) {
   const [language, setLanguageState] = useState<Language>('en');
+  const [dictionary, setDictionary] = useState<Dictionary>({});
   const key = storageKey(scope);
 
   useEffect(() => {
@@ -33,7 +41,14 @@ export function LanguageProvider({ children, scope }: { children: ReactNode; sco
     }
   }, [key]);
 
-  // Only site scope changes the HTML dir (global); admin stays contained (Issue 26)
+  useEffect(() => {
+    let cancelled = false;
+    loadDictionary(language).then(dict => {
+      if (!cancelled) setDictionary(dict);
+    });
+    return () => { cancelled = true; };
+  }, [language]);
+
   useEffect(() => {
     if (typeof window !== 'undefined' && scope === 'site') {
       document.documentElement.dir = language === 'ar' ? 'rtl' : 'ltr';
@@ -45,7 +60,6 @@ export function LanguageProvider({ children, scope }: { children: ReactNode; sco
     setLanguageState(lang);
     if (typeof window !== 'undefined') {
       localStorage.setItem(key, lang);
-      // Set scope-specific cookie for server-side rendering
       document.cookie = `${key}=${lang};path=/;max-age=31536000;SameSite=Lax`;
       if (scope === 'site') {
         document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
@@ -73,7 +87,7 @@ export function LanguageProvider({ children, scope }: { children: ReactNode; sco
   const isRTL = language === 'ar';
 
   return (
-    <LanguageContext.Provider value={{ language, setLanguage, toggleLanguage, dir, isRTL, scope }}>
+    <LanguageContext.Provider value={{ language, setLanguage, toggleLanguage, dir, isRTL, scope, dictionary }}>
       {children}
     </LanguageContext.Provider>
   );

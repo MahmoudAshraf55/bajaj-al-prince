@@ -1,15 +1,14 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { useTranslation } from '@/components/useTranslation';
 import { useToast } from '@/components/ToastContext';
 import BackButton from '@/components/BackButton';
 import { fetchWithRetry } from '@/lib/fetchWithRetry';
-import {
-  Plus, X, AlertCircle, Building2, Trash2, Pencil,
-} from 'lucide-react';
+import { Plus, AlertCircle, Building2, Trash2, Pencil } from 'lucide-react';
+import PageSpinner from '@/components/ui/PageSpinner';
+import Modal from '@/components/ui/Modal';
 
 interface Manufacturer {
   id: string;
@@ -21,9 +20,8 @@ interface Manufacturer {
 
 export default function ManufacturersPage() {
   const { addToast } = useToast();
-  const router = useRouter();
   const { t } = useTranslation();
-  const [loading, setLoading] = useState(true);
+  const [loading] = useState(false);
   const [error, setError] = useState('');
   const [manufacturers, setManufacturers] = useState<Manufacturer[]>([]);
   const [showModal, setShowModal] = useState(false);
@@ -50,18 +48,9 @@ export default function ManufacturersPage() {
 
   useEffect(() => {
     const controller = new AbortController();
-    fetch('/api/auth/me/', { credentials: 'include' })
-      .then((r) => r.json().catch(() => ({ success: false })))
-      .then((d) => {
-        if (!d?.success) router.push('/admin/');
-        else {
-          setLoading(false);
-          fetchData(controller.signal);
-        }
-      })
-      .catch(() => router.push('/admin/'));
+    fetchData(controller.signal);
     return () => controller.abort();
-  }, [router, fetchData]);
+  }, [fetchData]);
 
   const openAdd = () => {
     setEditing(null);
@@ -126,9 +115,7 @@ export default function ManufacturersPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-      </div>
+      <PageSpinner />
     );
   }
 
@@ -216,63 +203,37 @@ export default function ManufacturersPage() {
         </div>
       </motion.div>
 
-      <AnimatePresence>
-        {showModal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-40 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
-            onClick={() => setShowModal(false)}
+      <Modal isOpen={showModal} onClose={() => setShowModal(false)} title={editing ? t('mfr_edit_modal') : t('mfr_add_modal')}>
+        <form onSubmit={handleSave} className="space-y-4">
+          <div>
+            <label className="text-xs font-medium text-muted-foreground mb-1.5 block">{t('mfr_name_en')}</label>
+            <input required value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+              className="w-full px-4 py-2.5 rounded-xl bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm"
+              placeholder="Bajaj" />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-muted-foreground mb-1.5 block">{t('mfr_name_ar_label')}</label>
+            <input value={form.nameAr} onChange={(e) => setForm((f) => ({ ...f, nameAr: e.target.value }))}
+              className="w-full px-4 py-2.5 rounded-xl bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm"
+              placeholder="باجاج" />
+          </div>
+          {formError && (
+            <div className="flex items-center gap-2 text-red-400 text-xs bg-red-400/10 border border-red-400/20 rounded-xl px-3 py-2">
+              <AlertCircle className="w-3.5 h-3.5" />
+              {formError}
+            </div>
+          )}
+          <button type="submit" disabled={submitting}
+            className="w-full py-2.5 rounded-xl bg-primary text-primary-foreground font-medium text-sm hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              onClick={(e) => e.stopPropagation()}
-              role="dialog"
-              aria-modal="true"
-              className="glass rounded-2xl p-6 w-full max-w-md border border-border"
-            >
-              <div className="flex items-center justify-between mb-5">
-                <h3 className="text-lg font-bold">{editing ? t('mfr_edit_modal') : t('mfr_add_modal')}</h3>
-                <button onClick={() => setShowModal(false)} className="p-1 rounded-lg hover:bg-white/5 text-muted-foreground">
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-              <form onSubmit={handleSave} className="space-y-4">
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-1.5 block">{t('mfr_name_en')}</label>
-                  <input required value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                    className="w-full px-4 py-2.5 rounded-xl bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm"
-                    placeholder="Bajaj" />
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-1.5 block">{t('mfr_name_ar_label')}</label>
-                  <input value={form.nameAr} onChange={(e) => setForm((f) => ({ ...f, nameAr: e.target.value }))}
-                    className="w-full px-4 py-2.5 rounded-xl bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm"
-                    placeholder="باجاج" />
-                </div>
-                {formError && (
-                  <div className="flex items-center gap-2 text-red-400 text-xs bg-red-400/10 border border-red-400/20 rounded-xl px-3 py-2">
-                    <AlertCircle className="w-3.5 h-3.5" />
-                    {formError}
-                  </div>
-                )}
-                <button type="submit" disabled={submitting}
-                  className="w-full py-2.5 rounded-xl bg-primary text-primary-foreground font-medium text-sm hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {submitting ? (
-                    <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin mx-auto" />
-                  ) : (
-                    editing ? t('mfr_save_changes') : t('mfr_create')
-                  )}
-                </button>
-              </form>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+            {submitting ? (
+              <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin mx-auto" />
+            ) : (
+              editing ? t('mfr_save_changes') : t('mfr_create')
+            )}
+          </button>
+        </form>
+      </Modal>
     </div>
   );
 }

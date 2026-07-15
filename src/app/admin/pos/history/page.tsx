@@ -6,8 +6,11 @@ import { motion } from 'framer-motion';
 import { useTranslation } from '@/components/useTranslation';
 import { useToast } from '@/components/ToastContext';
 import {
-  FileText, Search, X, Printer, ArrowLeft, Download, RotateCcw,
+  FileText, Search, Printer, ArrowLeft, Download, RotateCcw,
 } from 'lucide-react';
+import StatusBadge from '@/components/ui/StatusBadge';
+import PageSpinner from '@/components/ui/PageSpinner';
+import Modal from '@/components/ui/Modal';
 
 interface InvoiceItem {
   id: string;
@@ -43,7 +46,7 @@ export default function InvoiceHistory() {
   const { addToast } = useToast();
   const router = useRouter();
 
-  const [loading, setLoading] = useState(true);
+  const [loading] = useState(false);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
@@ -64,16 +67,6 @@ export default function InvoiceHistory() {
       })
       .catch(() => {});
   }, []);
-
-  useEffect(() => {
-    fetch('/api/auth/me/', { credentials: 'include' })
-      .then((r) => r.json())
-      .then((d) => {
-        if (!d.success) router.push('/admin/');
-        else setLoading(false);
-      })
-      .catch(() => router.push('/admin/'));
-  }, [router]);
 
   const loadInvoices = useCallback(async () => {
     const params = new URLSearchParams({ page: String(page), limit: '20' });
@@ -122,17 +115,9 @@ export default function InvoiceHistory() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-      </div>
+      <PageSpinner className="bg-background" />
     );
   }
-
-  const statusColors: Record<string, string> = {
-    confirmed: 'text-green-400 bg-green-500/10',
-    draft: 'text-amber-400 bg-amber-500/10',
-    cancelled: 'text-red-400 bg-red-500/10',
-  };
 
   return (
     <div className="min-h-screen bg-background" dir={isRTL ? 'rtl' : 'ltr'}>
@@ -209,9 +194,7 @@ export default function InvoiceHistory() {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-bold">{inv.number}</span>
-                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${statusColors[inv.status] || ''}`}>
-                    {inv.status}
-                  </span>
+                  <StatusBadge status={inv.status} label={inv.status} className="text-[10px] px-2 py-0.5" />
                   <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/5 text-muted-foreground">
                     {inv.type}
                   </span>
@@ -262,65 +245,57 @@ export default function InvoiceHistory() {
         )}
       </div>
 
-      {detailInvoice && (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-0 z-40 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setDetailInvoice(null)}>
-          <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} onClick={(e) => e.stopPropagation()}
-              role="dialog"
-              aria-modal="true" className="glass rounded-2xl p-6 w-full max-w-lg max-h-[80vh] overflow-auto">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-bold">{detailInvoice.number}</h3>
-              <button onClick={() => setDetailInvoice(null)} className="text-muted-foreground hover:text-foreground"><X className="w-5 h-5" /></button>
-            </div>
-            <div className="text-xs text-muted-foreground mb-4 space-y-1">
-              <p>{t('pos_date')}: {new Date(detailInvoice.createdAt).toLocaleString()}</p>
-              <p>{t('pos_invoice_type')}: {detailInvoice.type}</p>
-              <p>{t('pos_invoice_status')}: {detailInvoice.status}</p>
-              <p>{t('pos_customer')}: {detailInvoice.customerName || '-'}</p>
-              <p>{t('pos_payment_method')}: {detailInvoice.paymentMethod || '-'}</p>
-              {detailInvoice.notes && <p>{t('pos_notes')}: {detailInvoice.notes}</p>}
-              <p>{t('admin_cashier')}: {detailInvoice.createdBy.username}</p>
-            </div>
-            <table className="w-full text-sm mb-4">
-              <thead>
-                <tr className="border-b border-border">
-                  <th scope="col" className="text-left pb-2 font-medium">{t('admin_market_name')}</th>
-                  <th scope="col" className="text-center pb-2 font-medium">{t('pos_quantity')}</th>
-                  <th scope="col" className="text-right pb-2 font-medium">{t('admin_market_price')}</th>
-                  <th scope="col" className="text-right pb-2 font-medium">{t('pos_total')}</th>
+      <Modal isOpen={!!detailInvoice} onClose={() => setDetailInvoice(null)} title={detailInvoice?.number}>
+        {detailInvoice && (<>
+          <div className="text-xs text-muted-foreground mb-4 space-y-1">
+            <p>{t('pos_date')}: {new Date(detailInvoice.createdAt).toLocaleString()}</p>
+            <p>{t('pos_invoice_type')}: {detailInvoice.type}</p>
+            <p>{t('pos_invoice_status')}: {detailInvoice.status}</p>
+            <p>{t('pos_customer')}: {detailInvoice.customerName || '-'}</p>
+            <p>{t('pos_payment_method')}: {detailInvoice.paymentMethod || '-'}</p>
+            {detailInvoice.notes && <p>{t('pos_notes')}: {detailInvoice.notes}</p>}
+            <p>{t('admin_cashier')}: {detailInvoice.createdBy.username}</p>
+          </div>
+          <table className="w-full text-sm mb-4">
+            <thead>
+              <tr className="border-b border-border">
+                <th scope="col" className="text-left pb-2 font-medium">{t('admin_market_name')}</th>
+                <th scope="col" className="text-center pb-2 font-medium">{t('pos_quantity')}</th>
+                <th scope="col" className="text-right pb-2 font-medium">{t('admin_market_price')}</th>
+                <th scope="col" className="text-right pb-2 font-medium">{t('pos_total')}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {detailInvoice.items.map((item) => (
+                <tr key={item.id} className="border-b border-border/50">
+                  <td className="py-2">{item.productName}</td>
+                  <td className="py-2 text-center">{item.quantity}</td>
+                  <td className="py-2 text-right">{Number(item.unitPrice).toFixed(2)}</td>
+                  <td className="py-2 text-right font-medium">{Number(item.total).toFixed(2)}</td>
                 </tr>
-              </thead>
-              <tbody>
-                {detailInvoice.items.map((item) => (
-                  <tr key={item.id} className="border-b border-border/50">
-                    <td className="py-2">{item.productName}</td>
-                    <td className="py-2 text-center">{item.quantity}</td>
-                    <td className="py-2 text-right">{Number(item.unitPrice).toFixed(2)}</td>
-                    <td className="py-2 text-right font-medium">{Number(item.total).toFixed(2)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            <div className="space-y-1 text-sm border-t border-border pt-3">
-              <div className="flex justify-between"><span>{t('pos_subtotal')}</span><span>{Number(detailInvoice.subtotal).toFixed(2)} EGP</span></div>
-              <div className="flex justify-between"><span>{t('pos_tax')} ({taxRate}%)</span><span>{Number(detailInvoice.taxTotal).toFixed(2)} EGP</span></div>
-              <div className="flex justify-between"><span>{t('pos_discount')}</span><span>{Number(detailInvoice.discount).toFixed(2)} EGP</span></div>
-              <div className="flex justify-between font-bold text-lg"><span>{t('pos_total')}</span><span>{Number(detailInvoice.total).toFixed(2)} EGP</span></div>
-              <div className="flex justify-between"><span>{t('pos_paid')}</span><span>{Number(detailInvoice.paid).toFixed(2)} EGP</span></div>
-              {Number(detailInvoice.change) > 0 && (
-                <div className="flex justify-between text-green-400"><span>{t('pos_change')}</span><span>{Number(detailInvoice.change).toFixed(2)} EGP</span></div>
-              )}
-            </div>
-            <div className="flex gap-3 mt-6">
-              <button onClick={() => window.print()} className="flex-1 py-2.5 rounded-xl bg-white/5 text-sm font-medium hover:bg-white/10 transition-colors flex items-center justify-center gap-2">
-                <Printer className="w-4 h-4" /> {t('pos_print')}
-              </button>
-              <button onClick={() => setDetailInvoice(null)} className="flex-1 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-medium">
-                {t('pos_confirm')}
-              </button>
-            </div>
-          </motion.div>
-        </motion.div>
-      )}
+              ))}
+            </tbody>
+          </table>
+          <div className="space-y-1 text-sm border-t border-border pt-3">
+            <div className="flex justify-between"><span>{t('pos_subtotal')}</span><span>{Number(detailInvoice.subtotal).toFixed(2)} EGP</span></div>
+            <div className="flex justify-between"><span>{t('pos_tax')} ({taxRate}%)</span><span>{Number(detailInvoice.taxTotal).toFixed(2)} EGP</span></div>
+            <div className="flex justify-between"><span>{t('pos_discount')}</span><span>{Number(detailInvoice.discount).toFixed(2)} EGP</span></div>
+            <div className="flex justify-between font-bold text-lg"><span>{t('pos_total')}</span><span>{Number(detailInvoice.total).toFixed(2)} EGP</span></div>
+            <div className="flex justify-between"><span>{t('pos_paid')}</span><span>{Number(detailInvoice.paid).toFixed(2)} EGP</span></div>
+            {Number(detailInvoice.change) > 0 && (
+              <div className="flex justify-between text-green-400"><span>{t('pos_change')}</span><span>{Number(detailInvoice.change).toFixed(2)} EGP</span></div>
+            )}
+          </div>
+          <div className="flex gap-3 mt-6">
+            <button onClick={() => window.print()} className="flex-1 py-2.5 rounded-xl bg-white/5 text-sm font-medium hover:bg-white/10 transition-colors flex items-center justify-center gap-2">
+              <Printer className="w-4 h-4" /> {t('pos_print')}
+            </button>
+            <button onClick={() => setDetailInvoice(null)} className="flex-1 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-medium">
+              {t('pos_confirm')}
+            </button>
+          </div>
+        </>)}
+      </Modal>
     </div>
   );
 }

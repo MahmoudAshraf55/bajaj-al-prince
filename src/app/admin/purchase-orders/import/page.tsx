@@ -11,6 +11,7 @@ import {
   Upload, FileText, PlusCircle, Trash2, AlertCircle,
   CheckCircle2, ArrowLeft,
 } from 'lucide-react';
+import PageSpinner from '@/components/ui/PageSpinner';
 
 interface Supplier {
   id: string;
@@ -36,7 +37,7 @@ export default function PurchaseOrderImportPage() {
   const { addToast } = useToast();
   const router = useRouter();
 
-  const [loading, setLoading] = useState(true);
+  const [loading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
@@ -74,18 +75,9 @@ export default function PurchaseOrderImportPage() {
   }, []);
 
   useEffect(() => {
-    fetch('/api/auth/me/', { credentials: 'include' })
-      .then((r) => r.json().catch(() => ({ success: false, error: 'Invalid auth response' })))
-      .then((d) => {
-        if (!d?.success) router.push('/admin/');
-        else {
-          setLoading(false);
-          fetchSuppliers();
-          fetchProducts();
-        }
-      })
-      .catch(() => router.push('/admin/'));
-  }, [router, fetchSuppliers, fetchProducts]);
+    fetchSuppliers();
+    fetchProducts();
+  }, [fetchSuppliers, fetchProducts]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -188,9 +180,7 @@ export default function PurchaseOrderImportPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-      </div>
+      <PageSpinner />
     );
   }
 

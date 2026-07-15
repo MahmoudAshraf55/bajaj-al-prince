@@ -1,15 +1,17 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { useTranslation } from '@/components/useTranslation';
 import { useToast } from '@/components/ToastContext';
 import BackButton from '@/components/BackButton';
+import StatusBadge from '@/components/ui/StatusBadge';
 import {
-  Plus, X, Package, Loader2, Trash2, Eye, ClipboardList,
+  Plus, Package, Loader2, Trash2, Eye, ClipboardList,
 } from 'lucide-react';
+import PageSpinner from '@/components/ui/PageSpinner';
+import Modal from '@/components/ui/Modal';
 
 interface InventoryCount {
   id: string;
@@ -23,13 +25,6 @@ interface InventoryCount {
   completedAt?: string | null;
 }
 
-const statusColors: Record<string, string> = {
-  draft: 'bg-gray-500/10 text-gray-400 border-gray-500/20',
-  in_progress: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
-  completed: 'bg-green-500/10 text-green-400 border-green-500/20',
-  cancelled: 'bg-red-500/10 text-red-400 border-red-500/20',
-};
-
 const statusLabels: Record<string, string> = {
   draft: 'ic_status_draft',
   in_progress: 'ic_status_in_progress',
@@ -40,8 +35,6 @@ const statusLabels: Record<string, string> = {
 export default function InventoryCountsPage() {
   const { t, language } = useTranslation();
   const { addToast } = useToast();
-  const router = useRouter();
-
   const [counts, setCounts] = useState<InventoryCount[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -62,17 +55,8 @@ export default function InventoryCountsPage() {
   }, [addToast]);
 
   useEffect(() => {
-    let cancelled = false;
-    fetch('/api/auth/me/', { credentials: 'include' })
-      .then((r) => r.json())
-      .then((d) => {
-        if (cancelled) return;
-        if (!d.success) { router.push('/admin/'); return; }
-        fetchCounts();
-      })
-      .catch(() => { if (!cancelled) router.push('/admin/'); });
-    return () => { cancelled = true; };
-  }, [router, fetchCounts]);
+    fetchCounts();
+  }, [fetchCounts]);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -129,9 +113,7 @@ export default function InventoryCountsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-      </div>
+      <PageSpinner />
     );
   }
 
@@ -174,9 +156,7 @@ export default function InventoryCountsPage() {
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-1">
                       <p className="font-semibold text-lg">{count.name}</p>
-                      <span className={`inline-flex items-center text-xs px-2.5 py-1 rounded-full border ${statusColors[count.status]}`}>
-                        {t(statusLabels[count.status])}
-                      </span>
+                      <StatusBadge status={count.status} label={t(statusLabels[count.status])} />
                     </div>
                     <p className="text-sm text-muted-foreground flex items-center gap-3">
                       <span>{t('ic_items')}: {itemCount(count)}</span>
@@ -209,57 +189,31 @@ export default function InventoryCountsPage() {
         )}
       </motion.div>
 
-      <AnimatePresence>
-        {showModal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-40 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
-            onClick={() => setShowModal(false)}
+      <Modal isOpen={showModal} onClose={() => setShowModal(false)} title={t('ic_new_count')}>
+        <form onSubmit={handleCreate} className="space-y-4">
+          <div>
+            <label className="text-xs font-medium text-muted-foreground mb-1.5 block">{t('ic_count_name')}</label>
+            <input
+              required
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="w-full px-4 py-2.5 rounded-xl bg-input border border-border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              placeholder={t('ic_count_name_placeholder')}
+            />
+          </div>
+          <button
+            type="submit"
+            disabled={submitting}
+            className="w-full py-2.5 rounded-xl bg-primary text-primary-foreground font-medium text-sm hover:opacity-90 transition-opacity disabled:opacity-50"
           >
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              onClick={(e) => e.stopPropagation()}
-              role="dialog"
-              aria-modal="true"
-              className="glass rounded-2xl p-6 w-full max-w-md border border-border"
-            >
-              <div className="flex items-center justify-between mb-5">
-                <h3 className="text-lg font-bold">{t('ic_new_count')}</h3>
-                <button onClick={() => setShowModal(false)} className="p-1 rounded-lg hover:bg-white/5 text-muted-foreground">
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-              <form onSubmit={handleCreate} className="space-y-4">
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-1.5 block">{t('ic_count_name')}</label>
-                  <input
-                    required
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-xl bg-input border border-border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                    placeholder={t('ic_count_name_placeholder')}
-                  />
-                </div>
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="w-full py-2.5 rounded-xl bg-primary text-primary-foreground font-medium text-sm hover:opacity-90 transition-opacity disabled:opacity-50"
-                >
-                  {submitting ? (
-                    <Loader2 className="w-4 h-4 animate-spin mx-auto" />
-                  ) : (
-                    t('ic_new_count')
-                  )}
-                </button>
-              </form>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+            {submitting ? (
+              <Loader2 className="w-4 h-4 animate-spin mx-auto" />
+            ) : (
+              t('ic_new_count')
+            )}
+          </button>
+        </form>
+      </Modal>
     </div>
   );
 }

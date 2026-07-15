@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from '@/components/useTranslation';
 import { useToast } from '@/components/ToastContext';
@@ -11,6 +10,7 @@ import {
   Save, Loader2, Percent, Settings2, Package, Bell,
   AlertTriangle, Globe, MapPin, Phone, Upload, X,
 } from 'lucide-react';
+import PageSpinner from '@/components/ui/PageSpinner';
 
 type TabId = 'general' | 'inventory' | 'notifications' | 'branding' | 'location' | 'contact';
 
@@ -27,7 +27,6 @@ export default function SettingsPage() {
   const { t, isRTL } = useTranslation();
   const { refreshSettings } = usePublicSettings();
   const { addToast } = useToast();
-  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState<TabId>('general');
@@ -56,40 +55,33 @@ export default function SettingsPage() {
 
   useEffect(() => {
     let cancelled = false;
-    fetch('/api/auth/me/', { credentials: 'include' })
+    fetch('/api/v1/settings/', { credentials: 'include' })
       .then((r) => r.json())
-      .then((d) => {
-        if (cancelled) return;
-        if (!d.success) { router.push('/admin/'); return; }
-        fetch('/api/v1/settings/', { credentials: 'include' })
-          .then((r) => r.json())
-          .then((res) => {
-            if (res.success && res.data?.settings) {
-              const s = res.data.settings;
-              setTaxRate(s.tax_rate ?? '14');
-              setLowStockThreshold(s.low_stock_threshold ?? '5');
-              setNotifyOnLowStock(s.notify_on_low_stock !== 'false');
-              setNotifyOnBooking(s.notify_on_booking !== 'false');
-              setBrandName(s.brand_name ?? 'El Prince Bajaj');
-              setBrandTagline(s.brand_tagline ?? '');
-              setBrandLogo(s.brand_logo ?? '');
-              setLocationAddress(s.location_address ?? '35JH+PC مركز أوسيم');
-              setLocationMapUrl(s.location_map_url ?? 'https://maps.app.goo.gl/fh1AgzDpB6K87iAs5');
-              setContactPhone1(s.contact_phone1 ?? '0122 137 0120');
-              setContactPhone2(s.contact_phone2 ?? '0155 123 3908');
-              setContactEmail(s.contact_email ?? '');
-              setContactFacebook(s.contact_facebook ?? 'https://www.facebook.com/elprince.bajaj');
-              setContactInstagram(s.contact_instagram ?? 'https://www.instagram.com/elprincebajaj');
-              setContactTiktok(s.contact_tiktok ?? 'https://www.tiktok.com/@elprince.bajajj');
-              setContactWhatsapp(s.contact_whatsapp ?? '201221370120');
-            }
-          })
-          .catch(() => {})
-          .finally(() => { if (!cancelled) setLoading(false); });
+      .then((res) => {
+        if (res.success && res.data?.settings) {
+          const s = res.data.settings;
+          setTaxRate(s.tax_rate ?? '14');
+          setLowStockThreshold(s.low_stock_threshold ?? '5');
+          setNotifyOnLowStock(s.notify_on_low_stock !== 'false');
+          setNotifyOnBooking(s.notify_on_booking !== 'false');
+          setBrandName(s.brand_name ?? 'El Prince Bajaj');
+          setBrandTagline(s.brand_tagline ?? '');
+          setBrandLogo(s.brand_logo ?? '');
+          setLocationAddress(s.location_address ?? '35JH+PC مركز أوسيم');
+          setLocationMapUrl(s.location_map_url ?? 'https://maps.app.goo.gl/fh1AgzDpB6K87iAs5');
+          setContactPhone1(s.contact_phone1 ?? '0122 137 0120');
+          setContactPhone2(s.contact_phone2 ?? '0155 123 3908');
+          setContactEmail(s.contact_email ?? '');
+          setContactFacebook(s.contact_facebook ?? 'https://www.facebook.com/elprince.bajaj');
+          setContactInstagram(s.contact_instagram ?? 'https://www.instagram.com/elprincebajaj');
+          setContactTiktok(s.contact_tiktok ?? 'https://www.tiktok.com/@elprince.bajajj');
+          setContactWhatsapp(s.contact_whatsapp ?? '201221370120');
+        }
       })
-      .catch(() => { if (!cancelled) router.push('/admin/'); });
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [router]);
+  }, []);
 
   const handleSaveAll = async () => {
     setSaving(true);
@@ -148,9 +140,7 @@ export default function SettingsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-      </div>
+      <PageSpinner />
     );
   }
 

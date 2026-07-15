@@ -1,8 +1,13 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
-import { Search, Plus, X, CheckCircle, Clock, Wrench, Package, Barcode, DollarSign, Trash2, RotateCcw, Loader2 } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import useSWR from 'swr';
+import fetcher from '@/lib/fetcher';
+
+import { Search, Plus, Package, Barcode, DollarSign, Trash2, RotateCcw, Loader2 } from 'lucide-react';
+import PageSpinner from '@/components/ui/PageSpinner';
+import Modal from '@/components/ui/Modal';
+import StatusBadge from '@/components/ui/StatusBadge';
 import { useTranslation } from '@/components/useTranslation';
 import { useToast } from '@/components/ToastContext';
 
@@ -58,29 +63,51 @@ interface SimpleProduct {
   stock: number;
 }
 
-const statusColors: Record<string, string> = {
-  pending: 'bg-amber-500/10 text-amber-400',
-  in_progress: 'bg-blue-500/10 text-blue-400',
-  completed: 'bg-green-500/10 text-green-400',
-  cancelled: 'bg-red-500/10 text-red-400',
-};
+interface WorkOrdersResponse {
+  success: boolean;
+  data: { workOrders: WorkOrderItem[] };
+}
 
-const statusIcons: Record<string, typeof Clock> = {
-  pending: Clock,
-  in_progress: Wrench,
-  completed: CheckCircle,
-  cancelled: X,
-};
+interface VehiclesListResponse {
+  success: boolean;
+  data: { vehicles: { id: string; make: string; model: string; plateNumber: string | null }[] };
+}
+
+interface ProductsResponse {
+  success: boolean;
+  data: { products: SimpleProduct[] };
+}
 
 export default function WorkOrdersPage() {
   const { t, language } = useTranslation();
   const { addToast } = useToast();
-  const router = useRouter();
-  const [workOrders, setWorkOrders] = useState<WorkOrderItem[]>([]);
-  const [loading, setLoading] = useState(true);
+
+  const {
+    data: woData,
+    isLoading,
+    mutate: mutateWo,
+  } = useSWR<WorkOrdersResponse>('/api/v1/work-orders/?limit=100', fetcher, {
+    revalidateOnFocus: true,
+  });
+
+  const { data: vData } = useSWR<VehiclesListResponse>('/api/v1/vehicles/?limit=500', fetcher);
+  const { data: pData } = useSWR<ProductsResponse>('/api/v1/products/?limit=500', fetcher);
+
+  const workOrders = woData?.data?.workOrders ?? [];
+
+  const vehicles = useMemo(
+    () =>
+      vData?.data?.vehicles?.map((v) => ({
+        id: v.id,
+        label: `${v.make} ${v.model}${v.plateNumber ? ` (${v.plateNumber})` : ''}`,
+      })) ?? [],
+    [vData]
+  );
+
+  const products = pData?.data?.products ?? [];
+
   const [search, setSearch] = useState('');
   const [showCreate, setShowCreate] = useState(false);
-  const [vehicles, setVehicles] = useState<{ id: string; label: string }[]>([]);
   const [form, setForm] = useState({ vehicleId: '', description: '', cost: '' });
   const [updating, setUpdating] = useState<string | null>(null);
 
@@ -88,7 +115,6 @@ export default function WorkOrdersPage() {
   const [manageParts, setManageParts] = useState<WorkOrderPart[]>([]);
   const [manageLabour, setManageLabour] = useState<WorkOrderLabour[]>([]);
   const [productSearch, setProductSearch] = useState('');
-  const [products, setProducts] = useState<SimpleProduct[]>([]);
   const [showProductPicker, setShowProductPicker] = useState(false);
   const [addLabourOpen, setAddLabourOpen] = useState(false);
   const [labourForm, setLabourForm] = useState({ description: '', hours: '', rate: '', total: '' });
@@ -108,45 +134,6 @@ export default function WorkOrdersPage() {
     cancelled: t('wo_status_cancelled'),
   };
 
-  const fetchWorkOrders = useCallback(async () => {
-    const res = await fetch('/api/v1/work-orders/?limit=100', { credentials: 'include' });
-    const json = await res.json();
-    if (json.success) setWorkOrders(json.data.workOrders);
-  }, []);
-
-  const fetchVehicles = useCallback(async () => {
-    const res = await fetch('/api/v1/vehicles/?limit=500', { credentials: 'include' });
-    const json = await res.json();
-    if (json.success) {
-      setVehicles(
-        json.data.vehicles.map((v: { id: string; make: string; model: string; plateNumber: string | null }) => ({
-          id: v.id,
-          label: `${v.make} ${v.model}${v.plateNumber ? ` (${v.plateNumber})` : ''}`,
-        }))
-      );
-    }
-  }, []);
-
-  const fetchProducts = useCallback(async () => {
-    const res = await fetch('/api/v1/products/?limit=500', { credentials: 'include' });
-    const json = await res.json();
-    if (json.success) setProducts(json.data.products || []);
-  }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-    fetch('/api/auth/me/', { credentials: 'include' })
-      .then((r) => r.json())
-      .then((d) => {
-        if (cancelled) return;
-        if (!d.success) { router.push('/admin/'); return; }
-        setLoading(false);
-        Promise.all([fetchWorkOrders(), fetchVehicles(), fetchProducts()]);
-      })
-      .catch(() => { if (!cancelled) router.push('/admin/'); });
-    return () => { cancelled = true; };
-  }, [router, fetchWorkOrders, fetchVehicles, fetchProducts]);
-
   const createWorkOrder = async (e: React.FormEvent) => {
     e.preventDefault();
     const res = await fetch('/api/v1/work-orders/', {
@@ -161,7 +148,7 @@ export default function WorkOrdersPage() {
     });
     const json = await res.json();
     if (json.success) {
-      setWorkOrders((prev) => [json.data.workOrder, ...prev]);
+      mutateWo();
       setShowCreate(false);
       setForm({ vehicleId: '', description: '', cost: '' });
       addToast('success', t('wo_created_toast'));
@@ -181,7 +168,7 @@ export default function WorkOrdersPage() {
     if (res.ok) {
       const json = await res.json();
       if (json.success) {
-        setWorkOrders((prev) => prev.map((wo) => (wo.id === id ? json.data.workOrder : wo)));
+        mutateWo();
         addToast('success', t('wo_status_changed', { status }));
       }
     } else {
@@ -201,7 +188,7 @@ export default function WorkOrdersPage() {
       const json = await res.json();
       if (json.success) {
         addToast('success', t('wo_returned_success'));
-        fetchWorkOrders();
+        mutateWo();
       } else {
         addToast('error', json.error || t('wo_failed_return'));
       }
@@ -360,7 +347,7 @@ export default function WorkOrdersPage() {
         }
         setShowPaymentModal(false);
         setManageWo(null);
-        fetchWorkOrders();
+        mutateWo();
       } else {
         addToast('error', json.error || t('wo_failed_complete'));
       }
@@ -376,11 +363,9 @@ export default function WorkOrdersPage() {
     return !q || p.name.toLowerCase().includes(q) || (p.barcode && p.barcode.toLowerCase().includes(q));
   });
 
-  if (loading) {
+  if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-      </div>
+      <PageSpinner />
     );
   }
 
@@ -400,34 +385,24 @@ export default function WorkOrdersPage() {
         </button>
       </div>
 
-      {showCreate && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <div className="glass rounded-2xl p-6 w-full max-w-lg">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-bold text-lg">{t('wo_create')}</h3>
-              <button onClick={() => setShowCreate(false)} className="p-2 hover:bg-white/5 rounded-lg">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <form onSubmit={createWorkOrder} className="space-y-4">
-              <select required value={form.vehicleId} onChange={(e) => setForm({ ...form, vehicleId: e.target.value })}
-                className="w-full px-4 py-2.5 rounded-xl bg-input border border-border text-foreground text-sm">
-                <option value="">{t('wo_select_vehicle')}</option>
-                {vehicles.map((v) => (<option key={v.id} value={v.id}>{v.label}</option>))}
-              </select>
-              <textarea required placeholder={t('wo_describe_work')} value={form.description}
-                onChange={(e) => setForm({ ...form, description: e.target.value })}
-                className="w-full px-4 py-2.5 rounded-xl bg-input border border-border text-foreground text-sm min-h-[100px]" />
-              <input type="number" step="0.01" min="0" placeholder={t('wo_cost_optional')} value={form.cost}
-                onChange={(e) => setForm({ ...form, cost: e.target.value })}
-                className="w-full px-4 py-2.5 rounded-xl bg-input border border-border text-foreground text-sm" />
-              <button type="submit" className="w-full py-2.5 rounded-xl bg-primary text-primary-foreground font-medium text-sm">
-                {t('wo_create_btn')}
-              </button>
-            </form>
-          </div>
-        </div>
-      )}
+      <Modal isOpen={showCreate} onClose={() => setShowCreate(false)} title={t('wo_create')}>
+        <form onSubmit={createWorkOrder} className="space-y-4">
+          <select required value={form.vehicleId} onChange={(e) => setForm({ ...form, vehicleId: e.target.value })}
+            className="w-full px-4 py-2.5 rounded-xl bg-input border border-border text-foreground text-sm">
+            <option value="">{t('wo_select_vehicle')}</option>
+            {vehicles.map((v) => (<option key={v.id} value={v.id}>{v.label}</option>))}
+          </select>
+          <textarea required placeholder={t('wo_describe_work')} value={form.description}
+            onChange={(e) => setForm({ ...form, description: e.target.value })}
+            className="w-full px-4 py-2.5 rounded-xl bg-input border border-border text-foreground text-sm min-h-[100px]" />
+          <input type="number" step="0.01" min="0" placeholder={t('wo_cost_optional')} value={form.cost}
+            onChange={(e) => setForm({ ...form, cost: e.target.value })}
+            className="w-full px-4 py-2.5 rounded-xl bg-input border border-border text-foreground text-sm" />
+          <button type="submit" className="w-full py-2.5 rounded-xl bg-primary text-primary-foreground font-medium text-sm">
+            {t('wo_create_btn')}
+          </button>
+        </form>
+      </Modal>
 
       <div className="relative mb-4">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -444,7 +419,7 @@ export default function WorkOrdersPage() {
             wo.vehicle.model.toLowerCase().includes(search.toLowerCase())
           )
           .map((wo) => {
-            const StatusIcon = statusIcons[wo.status] || Clock;
+
             const partCount = (wo.parts || []).length;
             return (
               <div key={wo.id} className="glass rounded-2xl p-5">
@@ -464,10 +439,7 @@ export default function WorkOrdersPage() {
                         <Package className="w-3 h-3" /> {partCount}
                       </span>
                     )}
-                    <span className={`flex items-center gap-1 text-xs px-2.5 py-1 rounded-full ${statusColors[wo.status] || 'bg-gray-500/10 text-gray-400'}`}>
-                      <StatusIcon className="w-3 h-3" />
-                      {statusLabels[wo.status] || wo.status.replace('_', ' ')}
-                    </span>
+                    <StatusBadge status={wo.status} label={statusLabels[wo.status] || wo.status.replace('_', ' ')} />
                     {wo.cost !== null && (
                       <span className="text-sm font-mono font-bold text-primary">{wo.cost.toLocaleString()} EGP</span>
                     )}
@@ -514,20 +486,9 @@ export default function WorkOrdersPage() {
         )}
       </div>
 
-      {manageWo && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <div className="glass rounded-2xl p-6 w-full max-w-2xl max-h-[85vh] overflow-auto">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-bold text-lg flex items-center gap-2">
-                <Wrench className="w-5 h-5 text-primary" />
-                {manageWo.vehicle.make} {manageWo.vehicle.model}
-              </h3>
-              <button onClick={() => { setManageWo(null); fetchWorkOrders(); }} className="p-2 hover:bg-white/5 rounded-lg">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <p className="text-sm text-muted-foreground bg-white/5 rounded-lg p-3 mb-4">{manageWo.description}</p>
+      <Modal isOpen={!!manageWo} onClose={() => { setManageWo(null); mutateWo(); }} title={`${manageWo?.vehicle.make ?? ''} ${manageWo?.vehicle.model ?? ''}`} contentClassName="max-w-2xl max-h-[85vh] overflow-auto">
+        {manageWo && (<>
+        <p className="text-sm text-muted-foreground bg-white/5 rounded-lg p-3 mb-4">{manageWo.description}</p>
 
             <div className="mb-4">
               <div className="flex items-center justify-between mb-2">
@@ -676,20 +637,11 @@ export default function WorkOrdersPage() {
                 </div>
               </div>
             )}
-          </div>
-        </div>
-      )}
+        </>)}
+        </Modal>
 
-      {showPaymentModal && manageWo && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <div className="glass rounded-2xl p-6 w-full max-w-md max-h-[90vh] overflow-auto">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-bold text-lg">{t('wo_complete_pay')}</h3>
-              <button onClick={() => setShowPaymentModal(false)} className="p-2 hover:bg-white/5 rounded-lg">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <div className="space-y-4">
+      <Modal isOpen={!!showPaymentModal && !!manageWo} onClose={() => setShowPaymentModal(false)} title={t('wo_complete_pay')} contentClassName="max-w-md max-h-[90vh] overflow-auto">
+        <div className="space-y-4">
               {/* Invoice Preview */}
               <div className="bg-white/5 rounded-lg p-3 text-sm space-y-1.5">
                 <div className="flex justify-between"><span className="text-muted-foreground">{t('pos_subtotal')}</span><span>{subtotalBeforeDisc.toFixed(2)} EGP</span></div>
@@ -755,9 +707,7 @@ export default function WorkOrdersPage() {
                 </button>
               </div>
             </div>
-          </div>
-        </div>
-      )}
+      </Modal>
     </div>
   );
 }

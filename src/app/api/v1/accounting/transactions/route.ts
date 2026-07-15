@@ -2,15 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { withAuth } from '@/lib/auth';
 import { withSecurityHeaders } from '@/lib/security';
-
-// Expand a date-only string (YYYY-MM-DD) to the start/end of the local day so
-// that range queries capture the full day instead of a zero-width window (Issue 8).
-function parseRangeDate(val: string, endOfDay: boolean): Date {
-  if (/^\d{4}-\d{2}-\d{2}$/.test(val)) {
-    return endOfDay ? new Date(`${val}T23:59:59.999`) : new Date(`${val}T00:00:00`);
-  }
-  return new Date(val);
-}
+import { parseRangeDate } from '@/lib/utils';
 
 export async function GET(req: NextRequest) {
   return withAuth(req, async (user) => {
