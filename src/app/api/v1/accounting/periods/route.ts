@@ -22,7 +22,10 @@ export async function GET(req: NextRequest) {
       });
       return withSecurityHeaders(NextResponse.json({ success: true, data: { periods } }));
     });
-  } catch { return withSecurityHeaders(NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })); }
+  } catch (error) {
+    console.error('Accounting periods error:', error);
+    return withSecurityHeaders(NextResponse.json({ success: false, error: 'Failed to fetch periods' }, { status: 500 }));
+  }
 }
 
 export async function POST(req: NextRequest) {
@@ -53,5 +56,8 @@ export async function POST(req: NextRequest) {
       });
       return withSecurityHeaders(NextResponse.json({ success: true, data: { period } }, { status: 201 }));
     });
-  } catch { return withSecurityHeaders(NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })); }
+  } catch (error) {
+    console.error('Accounting periods error:', error);
+    return withSecurityHeaders(NextResponse.json({ success: false, error: 'Failed to fetch periods' }, { status: 500 }));
+  }
 }

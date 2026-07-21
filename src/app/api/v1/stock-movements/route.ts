@@ -74,6 +74,13 @@ export async function POST(req: NextRequest) {
         return withSecurityHeaders(NextResponse.json({ success: false, error: 'Product not found' }, { status: 404 }));
       }
 
+      if (data.type === 'out' && product.stock < data.quantity) {
+        return withSecurityHeaders(NextResponse.json(
+          { success: false, error: `Insufficient stock for ${product.name}: available ${product.stock}, requested ${data.quantity}` },
+          { status: 400 },
+        ));
+      }
+
       await prisma.$transaction(async (tx) => {
         let stockChange: number;
         if (data.type === 'in') stockChange = data.quantity;

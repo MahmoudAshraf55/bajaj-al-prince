@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { LanguageProvider } from "@/components/LanguageContext";
 
 export const metadata: Metadata = {
   title: "Book a Service | El Prince Bajaj — Motorcycle Maintenance",
@@ -10,5 +11,5 @@ export default function BookingLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  return <>{children}</>;
+  return <LanguageProvider scope="site">{children}</LanguageProvider>;
 }

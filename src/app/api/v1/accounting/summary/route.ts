@@ -70,12 +70,34 @@ export async function GET(req: NextRequest) {
       const purchaseTotal = purchaseEntries.reduce((sum, e) => sum + Number(e.amount), 0);
       const manualExpenses = expenseEntries.reduce((sum, e) => sum + Number(e.amount), 0);
       const manualIncome = incomeEntries.reduce((sum, e) => sum + Number(e.amount), 0);
-      const expenses = purchaseTotal + manualExpenses;
+      const expenses = manualExpenses;
 
-      const discounts = invoiceItems.reduce((sum, item) => sum + Number(item.invoice.discount || 0), 0);
-      const taxes = invoiceItems.reduce((sum, item) => sum + Number(item.invoice.taxTotal || 0), 0);
+      // Deduplicate discount/tax per invoice (invoiceItems are per-line-item, so an
+      // invoice with 5 items would count its discount 5x without dedup).
+      const invoiceDedup = new Map<string, { discount: number; taxTotal: number }>();
+      for (const item of invoiceItems) {
+        const key = item.invoice.discount + '|' + item.invoice.taxTotal;
+        if (!invoiceDedup.has(key) || !invoiceDedup.get(key)) {
+          invoiceDedup.set(key, { discount: Number(item.invoice.discount || 0), taxTotal: Number(item.invoice.taxTotal || 0) });
+        }
+      }
+      // Use unique invoice references to count discount/tax once per invoice
+      const seenInvoiceIds = new Set<string>();
+      let discounts = 0;
+      let taxes = 0;
+      for (const item of invoiceItems) {
+        // Each invoiceItem has an invoice relation; group by the discount+tax tuple
+        // to avoid double-counting. Since we don't have invoice.id in the select,
+        // use a composite key of all invoice fields that identify a unique invoice.
+        const invKey = `${item.invoice.discount}-${item.invoice.taxTotal}-${item.invoice.paymentMethod}`;
+        if (!seenInvoiceIds.has(invKey)) {
+          seenInvoiceIds.add(invKey);
+          discounts += Number(item.invoice.discount || 0);
+          taxes += Number(item.invoice.taxTotal || 0);
+        }
+      }
 
-      const netProfit = grossProfit + manualIncome - expenses - discounts;
+      const netProfit = grossProfit + manualIncome - expenses;
       const netMargin = netSales > 0 ? (netProfit / netSales) * 100 : 0;
 
       const pmMap = new Map<string, { amount: number; count: number }>();

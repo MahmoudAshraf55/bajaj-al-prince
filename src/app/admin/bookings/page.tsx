@@ -35,10 +35,10 @@ interface Booking {
   createdAt: string;
   customer?: Customer | null;
   vehicle?: Vehicle | null;
-  workOrder?: {
+  workOrders?: {
     id: string;
     status: string;
-  } | null;
+  }[];
 }
 
 interface BookingsResponse {
@@ -227,9 +227,9 @@ export default function BookingsPage() {
                 </div>
                 <div className="flex flex-col items-end gap-2">
                   <StatusBadge status={booking.status} label={statusLabels[booking.status] || booking.status} />
-                  {booking.workOrder && (
+                  {booking.workOrders && booking.workOrders.length > 0 && (
                     <a
-                      href={`/admin/work-orders/${booking.workOrder.id}`}
+                      href={`/admin/work-orders?search=${encodeURIComponent(booking.workOrders[0].id)}`}
                       className="text-xs text-primary hover:underline"
                     >
                       {t('bookings_view_work_order')}

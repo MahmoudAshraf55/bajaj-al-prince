@@ -13,11 +13,6 @@ interface JournalLineWithAccount extends JournalLine {
   accountId: string;
 }
 
-type WhereClause = Record<string, unknown> & {
-  accountId?: string;
-  journalEntry?: { date?: { gte?: Date; lte?: Date } };
-};
-
 const ACCOUNT_NAMES: Record<string, { name: string; nameAr: string; type: 'asset' | 'liability' | 'equity' | 'revenue' | 'expense' }> = {
   // Assets
   [ACCOUNT_CODES.CASH]: { name: 'Cash', nameAr: 'النقدية', type: 'asset' },
@@ -84,13 +79,13 @@ export class AccountingService {
 
     if (!account) throw new Error(`Account not found: ${accountId}`);
 
-    const where: WhereClause = { accountId };
-    if (asOfDate) {
-      where.journalEntry = { date: { lte: asOfDate } };
-    }
+    const journalEntryIds = (await tx.journalEntry.findMany({
+      where: { isDeleted: false, ...(asOfDate ? { date: { lte: asOfDate } } : {}) },
+      select: { id: true },
+    })).map((e) => e.id);
 
     const journalLines = await tx.journalEntryLine.findMany({
-      where,
+      where: { accountId, journalEntryId: { in: journalEntryIds } },
       select: { debit: true, credit: true },
     });
 
@@ -116,13 +111,13 @@ export class AccountingService {
       select: { id: true, code: true, name: true, nameAr: true, type: true },
     });
 
-    const where: WhereClause = {};
-    if (asOfDate) {
-      where.journalEntry = { date: { lte: asOfDate } };
-    }
+    const journalEntryIds = (await tx.journalEntry.findMany({
+      where: { isDeleted: false, ...(asOfDate ? { date: { lte: asOfDate } } : {}) },
+      select: { id: true },
+    })).map((e) => e.id);
 
     const journalLines = await tx.journalEntryLine.findMany({
-      where,
+      where: { journalEntryId: { in: journalEntryIds } },
       select: { accountId: true, debit: true, credit: true },
     });
 
@@ -177,13 +172,17 @@ export class AccountingService {
       select: { id: true, code: true, name: true, nameAr: true, type: true },
     });
 
-    const where: WhereClause = {};
+    const journalEntryWhere: { isDeleted: boolean; date?: { lte: Date } } = { isDeleted: false };
     if (asOfDate) {
-      where.journalEntry = { date: { lte: asOfDate } };
+      journalEntryWhere.date = { lte: asOfDate };
     }
+    const validEntryIds = (await tx.journalEntry.findMany({
+      where: journalEntryWhere,
+      select: { id: true },
+    })).map((e) => e.id);
 
     const journalLines = await tx.journalEntryLine.findMany({
-      where,
+      where: { journalEntryId: { in: validEntryIds } },
       select: { accountId: true, debit: true, credit: true },
     });
 
@@ -247,15 +246,19 @@ export class AccountingService {
       select: { id: true, code: true, name: true, nameAr: true, type: true },
     });
 
-    const where: WhereClause = {};
+    const journalEntryWhere: { isDeleted: boolean; date?: { gte?: Date; lte?: Date } } = { isDeleted: false };
     if (fromDate || toDate) {
-      where.journalEntry = { date: {} };
-      if (fromDate && where.journalEntry.date) where.journalEntry.date.gte = fromDate;
-      if (toDate && where.journalEntry.date) where.journalEntry.date.lte = toDate;
+      journalEntryWhere.date = {};
+      if (fromDate) journalEntryWhere.date.gte = fromDate;
+      if (toDate) journalEntryWhere.date.lte = toDate;
     }
+    const validEntryIds = (await tx.journalEntry.findMany({
+      where: journalEntryWhere,
+      select: { id: true },
+    })).map((e) => e.id);
 
     const journalLines = await tx.journalEntryLine.findMany({
-      where,
+      where: { journalEntryId: { in: validEntryIds } },
       select: { accountId: true, debit: true, credit: true },
     });
 

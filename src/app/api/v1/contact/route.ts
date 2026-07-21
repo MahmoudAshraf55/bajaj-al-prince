@@ -45,8 +45,8 @@ export async function GET(req: NextRequest) {
       const skip = (page - 1) * limit;
 
       const [messages, total] = await Promise.all([
-        prisma.contactMessage.findMany({ skip, take: limit, orderBy: { createdAt: 'desc' } }),
-        prisma.contactMessage.count(),
+        prisma.contactMessage.findMany({ where: { isDeleted: false }, skip, take: limit, orderBy: { createdAt: 'desc' } }),
+        prisma.contactMessage.count({ where: { isDeleted: false } }),
       ]);
 
       return withSecurityHeaders(NextResponse.json({

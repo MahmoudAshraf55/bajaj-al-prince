@@ -1,11 +1,13 @@
 'use client';
 
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useState, useMemo, useRef } from 'react';
+import useSWR from 'swr';
 import { AnimatePresence } from 'framer-motion';
 import { useTranslation } from '@/components/useTranslation';
 import { useToast } from '@/components/ToastContext';
+import fetcher from '@/lib/fetcher';
 import { Package, History, Upload, AlertTriangle, Download, FileText } from 'lucide-react';
-import type { WarehouseProduct, StockMovement, ImportPreview, ImportResult } from '@/types/warehouse';
+import type { WarehouseProduct, StockMovement, ImportPreview, ImportPreviewRow, ImportResult, ImportDecision } from '@/types/warehouse';
 import WHProductList from '@/components/warehouse/WHProductList';
 import WHMovementsList from '@/components/warehouse/WHMovementsList';
 import WHImportTab from '@/components/warehouse/WHImportTab';
@@ -13,20 +15,31 @@ import WHPdfImportTab from '@/components/warehouse/WHPdfImportTab';
 import WHEditModal from '@/components/warehouse/WHEditModal';
 import WHDetailModal from '@/components/warehouse/WHDetailModal';
 import PageSpinner from '@/components/ui/PageSpinner';
+import Pagination from '@/components/ui/Pagination';
 import WHAdjustModal from '@/components/warehouse/WHAdjustModal';
 
 type Tab = 'inventory' | 'movements' | 'import';
 type ImportSubTab = 'excel' | 'pdf';
 
+interface ProductsResponse {
+  success: boolean;
+  data: { products: WarehouseProduct[]; meta: { total: number; page: number; limit: number; totalPages: number } };
+}
+
+interface MovementsResponse {
+  success: boolean;
+  data: { movements: StockMovement[]; meta: { page: number; limit: number; total: number; totalPages: number } };
+}
+
 export default function AdminWarehouse() {
   const { t, language } = useTranslation();
   const { addToast } = useToast();
-  const [loading] = useState(false);
   const [tab, setTab] = useState<Tab>('inventory');
   const [importSubTab, setImportSubTab] = useState<ImportSubTab>('excel');
-  const [products, setProducts] = useState<WarehouseProduct[]>([]);
-  const [movements, setMovements] = useState<StockMovement[]>([]);
   const [search, setSearch] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('');
+  const [movementsPage, setMovementsPage] = useState(1);
+
   const [showAdjustModal, setShowAdjustModal] = useState(false);
   const [adjustProduct, setAdjustProduct] = useState<WarehouseProduct | null>(null);
   const [adjustType, setAdjustType] = useState<'in' | 'out'>('in');
@@ -43,6 +56,7 @@ export default function AdminWarehouse() {
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
   const [importAborted, setImportAborted] = useState(false);
+  const [importDecisions, setImportDecisions] = useState<Map<string, ImportDecision>>(new Map());
   const abortRef = useRef<AbortController | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -50,29 +64,27 @@ export default function AdminWarehouse() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [editSaving, setEditSaving] = useState(false);
   const [editForm, setEditForm] = useState<Record<string, string | number | boolean | null>>({} as Record<string, string | number | boolean | null>);
-  const [categoryFilter, setCategoryFilter] = useState('');
 
-  const loadProducts = useCallback(async () => {
-    const res = await fetch('/api/v1/products/?limit=1000&admin=true', { credentials: 'include' });
-    const d = await res.json();
-    if (d.success) setProducts(d.data.products);
-  }, []);
+  const { data: productsData, isLoading: loadingProducts, mutate: mutateProducts } = useSWR<ProductsResponse>(
+    '/api/v1/products/?limit=1000&admin=true',
+    fetcher,
+    { revalidateOnFocus: true },
+  );
 
-  const loadMovements = useCallback(async () => {
-    const res = await fetch('/api/v1/stock-movements/', { credentials: 'include' });
-    const d = await res.json();
-    if (d.success) setMovements(d.data.movements);
-  }, []);
+  const movementsKey = useMemo(
+    () => `/api/v1/stock-movements/?page=${movementsPage}&limit=20`,
+    [movementsPage],
+  );
 
-  useEffect(() => {
-    if (loading) return;
-    loadProducts();
-  }, [loading, loadProducts]);
+  const { data: movementsData, isLoading: loadingMovements, mutate: mutateMovements } = useSWR<MovementsResponse>(
+    tab === 'movements' ? movementsKey : null,
+    fetcher,
+    { keepPreviousData: true },
+  );
 
-  useEffect(() => {
-    if (loading || tab !== 'movements') return;
-    loadMovements();
-  }, [loading, tab, loadMovements]);
+  const products = productsData?.data?.products ?? [];
+  const movements = movementsData?.data?.movements ?? [];
+  const movementsMeta = movementsData?.data?.meta ?? { page: 1, limit: 20, total: 0, totalPages: 1 };
 
   const handleAdjust = async () => {
     if (!adjustProduct || adjustQty < 1) return;
@@ -95,8 +107,8 @@ export default function AdminWarehouse() {
         setShowAdjustModal(false);
         setAdjustQty(1);
         setAdjustNotes('');
-        await loadProducts();
-        if (tab === 'movements') await loadMovements();
+        mutateProducts();
+        if (tab === 'movements') mutateMovements();
       } else {
         addToast('error', d.error || t('wh_failed'));
       }
@@ -121,6 +133,7 @@ export default function AdminWarehouse() {
   const handleImportFile = async (file: File) => {
     setImportPreview(null);
     setImportResult(null);
+    setImportDecisions(new Map());
     setImportFile(file);
     const fd = new FormData();
     fd.append('file', file);
@@ -152,6 +165,7 @@ export default function AdminWarehouse() {
       const fd = new FormData();
       fd.append('action', 'confirm');
       fd.append('file', importFile);
+      fd.append('decisions', JSON.stringify([...importDecisions.values()]));
       const res = await fetch('/api/v1/products/import-excel/', {
         method: 'POST',
         credentials: 'include',
@@ -162,7 +176,7 @@ export default function AdminWarehouse() {
       if (d.success) {
         setImportResult(d.data);
         addToast('success', t('wh_import_success') + ` (${d.data.created} ${t('wh_import_created')}, ${d.data.updated} ${t('wh_import_updated')})`);
-        await loadProducts();
+        mutateProducts();
       } else {
         addToast('error', d.error || t('wh_import_error'));
       }
@@ -198,9 +212,9 @@ export default function AdminWarehouse() {
       category: product.category,
       price: product.price,
       costPrice: product.costPrice ?? '',
-      stock: product.stock,
       barcode: product.barcode ?? '',
       sku: product.sku ?? '',
+      stock: product.stock,
       unit: product.unit,
       vehicleModel: product.vehicleModel ?? '',
       description: product.description ?? '',
@@ -238,7 +252,7 @@ export default function AdminWarehouse() {
         addToast('success', t('wh_product_updated'));
         setShowEditModal(false);
         setEditProduct(null);
-        await loadProducts();
+        mutateProducts();
       } else {
         addToast('error', d.error || t('wh_failed'));
       }
@@ -249,7 +263,7 @@ export default function AdminWarehouse() {
     }
   };
 
-  if (loading) {
+  if (loadingProducts) {
     return (
       <PageSpinner className="bg-background" />
     );
@@ -328,10 +342,22 @@ export default function AdminWarehouse() {
             />
           )}
           {tab === 'movements' && (
-            <WHMovementsList
-              movements={movements}
-              t={t}
-            />
+            <div className="glass rounded-2xl overflow-hidden">
+              {loadingMovements ? (
+                <div className="flex justify-center py-12"><PageSpinner className="bg-transparent" /></div>
+              ) : (
+                <>
+                  <WHMovementsList
+                    movements={movements}
+                    t={t}
+                  />
+                  <Pagination
+                    meta={movementsMeta}
+                    onPageChange={(p) => setMovementsPage(p)}
+                  />
+                </>
+              )}
+            </div>
           )}
         </AnimatePresence>
       </div>
@@ -366,6 +392,8 @@ export default function AdminWarehouse() {
               handleImportConfirm={handleImportConfirm}
               handleImportCancel={handleImportCancel}
               resetImport={resetImport}
+              importDecisions={importDecisions}
+              setImportDecisions={setImportDecisions}
             />
           ) : (
             <WHPdfImportTab />

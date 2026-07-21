@@ -46,7 +46,7 @@ export default function InvoiceHistory() {
   const { addToast } = useToast();
   const router = useRouter();
 
-  const [loading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
@@ -69,15 +69,24 @@ export default function InvoiceHistory() {
   }, []);
 
   const loadInvoices = useCallback(async () => {
-    const params = new URLSearchParams({ page: String(page), limit: '20' });
-    if (search) params.set('search', search);
-    if (typeFilter) params.set('type', typeFilter);
-    if (statusFilter) params.set('status', statusFilter);
-    const res = await fetch(`/api/v1/invoices/?${params}`, { credentials: 'include' });
-    const d = await res.json();
-    if (d.success) {
-      setInvoices(d.data.invoices);
-      setTotalPages(d.data.meta.totalPages);
+    setLoading(true);
+    try {
+      const params = new URLSearchParams({ page: String(page), limit: '20' });
+      if (search) params.set('search', search);
+      if (typeFilter) params.set('type', typeFilter);
+      if (statusFilter) params.set('status', statusFilter);
+      const res = await fetch(`/api/v1/invoices/?${params}`, { credentials: 'include' });
+      const d = await res.json();
+      if (d.success) {
+        setInvoices(d.data.invoices);
+        setTotalPages(d.data.meta.totalPages);
+      } else {
+        addToast('error', d.error || t('pos_fetch_invoices_failed'));
+      }
+    } catch {
+      addToast('error', t('pos_network_error'));
+    } finally {
+      setLoading(false);
     }
   }, [page, search, typeFilter, statusFilter]);
 
@@ -99,6 +108,7 @@ export default function InvoiceHistory() {
           paymentMethod: orig.paymentMethod || 'cash',
           notes: `${t('pos_return_for')} ${orig.number}`,
           customerName: orig.customerName,
+          returnInvoiceId: orig.id,
         }),
       });
       const d = await res.json();

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { withRole } from '@/lib/auth';
 import { withSecurityHeaders } from '@/lib/security';
+import { exportToExcel } from '@/lib/export-excel';
 
 interface SmartCustomer {
   id: string;
@@ -12,9 +13,9 @@ interface SmartCustomer {
   totalRevenue: number;
   totalProfit: number;
   avgProfitPerVisit: number;
-  recommendation: 'discount_10_labour' | 'free_service' | 'free_wash' | null;
+  recommendation: 'discount_10_labour' | 'free_service' | 'free_wash' | 'discount_5_parts' | null;
   recommendationLabel: string;
-  recommendationColor: 'green' | 'blue' | 'amber' | 'gray';
+  recommendationColor: 'green' | 'blue' | 'cyan' | 'amber' | 'gray';
 }
 
 function getRecommendation(totalProfit: number): Pick<SmartCustomer, 'recommendation' | 'recommendationLabel' | 'recommendationColor'> {
@@ -37,6 +38,13 @@ function getRecommendation(totalProfit: number): Pick<SmartCustomer, 'recommenda
       recommendation: 'free_wash',
       recommendationLabel: 'Free Wash',
       recommendationColor: 'amber',
+    };
+  }
+  if (totalProfit >= 750 && totalProfit < 1500) {
+    return {
+      recommendation: 'discount_5_parts',
+      recommendationLabel: '5% Off Parts',
+      recommendationColor: 'cyan',
     };
   }
   return {
@@ -102,6 +110,27 @@ export async function GET(req: NextRequest) {
       // Sort by totalProfit desc
       smart.sort((a, b) => b.totalProfit - a.totalProfit);
 
+      const format = new URL(req.url).searchParams.get('format');
+      if (format === 'excel') {
+        const rows = smart.map((c) => ({
+          Name: c.name,
+          Phone: c.phone ?? '',
+          Visits: c.totalVisits,
+          Revenue: c.totalRevenue,
+          Profit: c.totalProfit,
+          'Avg Profit/Visit': c.avgProfitPerVisit,
+          Recommendation: c.recommendationLabel,
+        }));
+        const buffer = exportToExcel(rows, 'smart-customers', 'Smart Analysis');
+        return new NextResponse(buffer, {
+          status: 200,
+          headers: {
+            'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'Content-Disposition': 'attachment; filename="smart-customers.xlsx"',
+          },
+        });
+      }
+
       return withSecurityHeaders(NextResponse.json({
         success: true,
         data: {
@@ -110,6 +139,7 @@ export async function GET(req: NextRequest) {
           thresholds: {
             free_service: { min: 3500, label: 'Free Service' },
             discount_10_labour: { min: 1500, label: '10% Off Labour (labour only, not parts)' },
+            discount_5_parts: { min: 750, max: 1500, label: '5% Off Parts' },
             free_wash: { min: 500, max: 750, label: 'Free Wash' },
           },
         },

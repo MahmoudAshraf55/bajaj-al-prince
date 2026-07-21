@@ -16,7 +16,7 @@ const SECTIONS = [
 ] as const;
 
 export default function SectionNav() {
-  const { t, isRTL } = useTranslation();
+  const { t } = useTranslation();
   const [active, setActive] = useState(0);
   const raf = useRef<number>(0);
 
@@ -43,11 +43,8 @@ export default function SectionNav() {
     };
   }, []);
 
-  const sideClass = isRTL ? 'left-3' : 'right-3';
-  const tooltipSide = isRTL ? 'left-6' : 'right-6';
-
   return (
-    <nav className={`fixed ${sideClass} top-1/2 -translate-y-1/2 z-50 hidden lg:flex flex-col items-center gap-3`}>
+    <nav className="fixed end-3 top-1/2 -translate-y-1/2 z-50 hidden lg:flex flex-col items-center gap-3">
       {SECTIONS.map((section, i) => (
         <a
           key={section.id}
@@ -60,7 +57,7 @@ export default function SectionNav() {
           className="group relative flex items-center justify-center w-5 h-5 outline-none"
           aria-label={t(section.key) || section.id}
         >
-          <span className={`absolute ${tooltipSide} opacity-0 group-hover:opacity-100 text-[10px] text-foreground/80 font-medium whitespace-nowrap bg-background/80 px-2 py-0.5 rounded border border-border/30 transition-all duration-200 pointer-events-none`}>
+          <span className="absolute start-6 opacity-0 group-hover:opacity-100 text-[10px] text-foreground/80 font-medium whitespace-nowrap bg-background/80 px-2 py-0.5 rounded border border-border/30 transition-all duration-200 pointer-events-none">
             {t(section.key) || section.id}
           </span>
           <div

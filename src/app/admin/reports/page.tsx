@@ -67,10 +67,12 @@ export default function ReportsPage() {
     }
     if (tab === 'inventory') {
       url = `/api/v1/reports/inventory/?type=${invReport}&format=excel`;
+    } else if (custReport === 'smart') {
+      url = '/api/v1/reports/customers/smart/?format=excel';
     } else {
       url = `/api/v1/reports/customers/?type=${custReport}&format=excel`;
     }
-    if (fromDate) url += `&from=${fromDate}`;
+    if (fromDate) url += `${url.includes('?') ? '&' : '?'}from=${fromDate}`;
     if (toDate) url += `&to=${toDate}`;
     window.open(url, '_blank');
   };
@@ -425,7 +427,7 @@ function SmartCustomerReport({ data, t }: { data: Record<string, unknown>; t: (k
   const customers = Array.isArray(d.customers) ? d.customers : [];
   const thresholds = (d.thresholds as Record<string, { min: number; max?: number; label: string }>) || {};
 
-  const colorMap: Record<string, string> = { green: 'bg-green-500/10 text-green-400 border-green-500/20', blue: 'bg-blue-500/10 text-blue-400 border-blue-500/20', amber: 'bg-amber-500/10 text-amber-400 border-amber-500/20', gray: 'bg-gray-500/10 text-gray-400 border-gray-500/20' };
+  const colorMap: Record<string, string> = { green: 'bg-green-500/10 text-green-400 border-green-500/20', blue: 'bg-blue-500/10 text-blue-400 border-blue-500/20', cyan: 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20', amber: 'bg-amber-500/10 text-amber-400 border-amber-500/20', gray: 'bg-gray-500/10 text-gray-400 border-gray-500/20' };
 
   return (
     <div className="space-y-4">

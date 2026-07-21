@@ -32,8 +32,8 @@ export async function GET(req: NextRequest) {
       const skip = (page - 1) * limit;
 
       const [transactions, total] = await Promise.all([
-        prisma.transaction.findMany({ skip, take: limit, orderBy: { createdAt: 'desc' } }),
-        prisma.transaction.count(),
+        prisma.transaction.findMany({ where: { isDeleted: false }, skip, take: limit, orderBy: { createdAt: 'desc' } }),
+        prisma.transaction.count({ where: { isDeleted: false } }),
       ]);
 
       return withSecurityHeaders(NextResponse.json({

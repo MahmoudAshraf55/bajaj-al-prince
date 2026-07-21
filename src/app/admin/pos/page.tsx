@@ -224,6 +224,10 @@ export default function AdminPOS() {
           createdBy: { id: '', username: '' }, createdAt: new Date().toISOString(),
         });
         setCart([]); setDiscount(0); setPaid(''); setSplitPayments([]); setNotes(''); setSelectedCustomer(null);
+        fetch('/api/v1/products/?limit=500', { credentials: 'include' })
+          .then((r) => r.json())
+          .then((pRes) => { if (pRes.success) setProducts(pRes.data.products); })
+          .catch(() => {});
         addToast('success', t('pos_sale_completed'));
       } else { addToast('error', d.error || t('pos_sale_failed')); }
     } catch { addToast('error', t('pos_sale_failed')); }
@@ -288,14 +292,17 @@ export default function AdminPOS() {
 
   const loadInvoices = useCallback(async () => {
     setInvLoading(true);
-    const params = new URLSearchParams({ page: String(invPage), limit: '20' });
-    if (invSearch) params.set('search', invSearch);
-    if (invTypeFilter) params.set('type', invTypeFilter);
-    if (invStatusFilter) params.set('status', invStatusFilter);
-    const res = await fetch(`/api/v1/invoices/?${params}`, { credentials: 'include' });
-    const d = await res.json();
-    if (d.success) { setInvoices(d.data.invoices); setInvTotalPages(d.data.meta.totalPages); }
-    setInvLoading(false);
+    try {
+      const params = new URLSearchParams({ page: String(invPage), limit: '20' });
+      if (invSearch) params.set('search', invSearch);
+      if (invTypeFilter) params.set('type', invTypeFilter);
+      if (invStatusFilter) params.set('status', invStatusFilter);
+      const res = await fetch(`/api/v1/invoices/?${params}`, { credentials: 'include' });
+      const d = await res.json();
+      if (d.success) { setInvoices(d.data.invoices); setInvTotalPages(d.data.meta.totalPages); }
+      else { addToast('error', d.error || t('pos_fetch_invoices_failed')); }
+    } catch { addToast('error', t('pos_network_error')); }
+    finally { setInvLoading(false); }
   }, [invPage, invSearch, invTypeFilter, invStatusFilter]);
 
   useEffect(() => { if (loading || activeTab !== 'invoices') return; loadInvoices(); }, [loading, activeTab, loadInvoices]);
@@ -322,11 +329,14 @@ export default function AdminPOS() {
 
   const loadTreasury = useCallback(async () => {
     setTreasuryLoading(true);
-    const today = new Date().toISOString().split('T')[0];
-    const res = await fetch(`/api/v1/accounting/treasury/?from=${today}&to=${today}`, { credentials: 'include' });
-    const d = await res.json();
-    if (d.success) setTreasuryData(d.data);
-    setTreasuryLoading(false);
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const res = await fetch(`/api/v1/accounting/treasury/?from=${today}&to=${today}`, { credentials: 'include' });
+      const d = await res.json();
+      if (d.success) setTreasuryData(d.data);
+      else { addToast('error', d.error || t('pos_fetch_treasury_failed')); }
+    } catch { addToast('error', t('pos_network_error')); }
+    finally { setTreasuryLoading(false); }
   }, []);
 
   useEffect(() => { if (loading || activeTab !== 'treasury') return; loadTreasury(); }, [loading, activeTab, loadTreasury]);
@@ -409,7 +419,7 @@ export default function AdminPOS() {
           <POSWorkOrderModal
             open={showWorkOrderSelect} onClose={() => setShowWorkOrderSelect(false)}
             workOrders={workOrders} selectedWorkOrderId={selectedWorkOrderId}
-            setSelectedWorkOrderId={setSelectedWorkOrderId} t={t}
+            setSelectedWorkOrderId={setSelectedWorkOrderId} selectedCustomer={selectedCustomer} t={t}
           />
         </>
       )}

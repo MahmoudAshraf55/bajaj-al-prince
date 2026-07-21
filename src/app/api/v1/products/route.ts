@@ -51,7 +51,7 @@ export async function GET(req: NextRequest) {
         return withSecurityHeaders(NextResponse.json({
           success: true,
           data: {
-            products: products.map((p) => ({ ...p, price: Number(p.price) })),
+            products: products.map((p) => ({ ...p, price: Number(p.price), costPrice: p.costPrice != null ? Number(p.costPrice) : null })),
             meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
           },
         }));
@@ -66,7 +66,7 @@ export async function GET(req: NextRequest) {
     return withSecurityHeaders(NextResponse.json({
       success: true,
       data: {
-        products: products.map((p) => ({ ...p, price: Number(p.price) })),
+        products: products.map((p) => ({ ...p, price: Number(p.price), costPrice: p.costPrice != null ? Number(p.costPrice) : null })),
         meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
       },
     }));
@@ -95,7 +95,7 @@ export async function POST(req: NextRequest) {
         ipAddress,
         userAgent,
       });
-      return withSecurityHeaders(NextResponse.json({ success: true, data: { product: { ...product, price: Number(product.price) } } }, { status: 201 }));
+      return withSecurityHeaders(NextResponse.json({ success: true, data: { product: { ...product, price: Number(product.price), costPrice: product.costPrice != null ? Number(product.costPrice) : null } } }, { status: 201 }));
     });
   } catch (error) {
     if (error instanceof z.ZodError) {

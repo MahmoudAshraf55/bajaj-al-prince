@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { useTranslation } from '@/components/useTranslation';
+import { useToast } from '@/components/ToastContext';
 import type { AccountingSummary, AccountingTransaction, AccountingPeriod } from '@/types';
 import {
   ArrowUpRight, ArrowDownRight, Loader2, ChevronLeft, ChevronRight,
@@ -63,6 +64,7 @@ const PERIODS: PeriodTab[] = [
 
 export default function AccountingPage() {
   const { t, language } = useTranslation();
+  const { addToast } = useToast();
   const [loading] = useState(false);
   const [periodTab, setPeriodTab] = useState<AccountingPeriod>('day');
   const [customFrom, setCustomFrom] = useState('');
@@ -100,37 +102,49 @@ export default function AccountingPage() {
   }, []);
 
   const fetchSummary = useCallback(async (period: AccountingPeriod, customF?: string, customT?: string) => {
-    const range = getDateRange(period, customF, customT);
-    const res = await fetch(`/api/v1/accounting/summary?from=${range.from}&to=${range.to}`, { credentials: 'include' });
-    const d = await res.json();
-    if (d.success) setSummary(d.data);
+    try {
+      const range = getDateRange(period, customF, customT);
+      const res = await fetch(`/api/v1/accounting/summary?from=${range.from}&to=${range.to}`, { credentials: 'include' });
+      const d = await res.json();
+      if (d.success) setSummary(d.data);
+      else { addToast('error', d.error || t('acc_fetch_summary_failed')); }
+    } catch { addToast('error', t('acc_network_error')); }
   }, [getDateRange]);
 
   const fetchTxns = useCallback(async (period: AccountingPeriod, page: number, customF?: string, customT?: string) => {
     setTxnLoading(true);
-    const range = getDateRange(period, customF, customT);
-    const res = await fetch(`/api/v1/accounting/transactions?from=${range.from}&to=${range.to}&page=${page}&limit=20`, { credentials: 'include' });
-    const d = await res.json();
-    if (d.success) { setTxns(d.data); setTxnTotal(d.meta?.total || 0); }
-    setTxnLoading(false);
+    try {
+      const range = getDateRange(period, customF, customT);
+      const res = await fetch(`/api/v1/accounting/transactions?from=${range.from}&to=${range.to}&page=${page}&limit=20`, { credentials: 'include' });
+      const d = await res.json();
+      if (d.success) { setTxns(d.data); setTxnTotal(d.meta?.total || 0); }
+      else { addToast('error', d.error || t('acc_fetch_txns_failed')); }
+    } catch { addToast('error', t('acc_network_error')); }
+    finally { setTxnLoading(false); }
   }, [getDateRange]);
 
   const fetchTrialBalance = useCallback(async (customF?: string, customT?: string) => {
     setTrialBalanceLoading(true);
-    const asOfDate = customT || new Date().toISOString().split('T')[0];
-    const res = await fetch(`/api/v1/accounting/trial-balance?asOfDate=${asOfDate}`, { credentials: 'include' });
-    const d = await res.json();
-    if (d.success) setTrialBalance(d.data);
-    setTrialBalanceLoading(false);
+    try {
+      const asOfDate = customT || new Date().toISOString().split('T')[0];
+      const res = await fetch(`/api/v1/accounting/trial-balance?asOfDate=${asOfDate}`, { credentials: 'include' });
+      const d = await res.json();
+      if (d.success) setTrialBalance(d.data);
+      else { addToast('error', d.error || t('acc_fetch_trial_failed')); }
+    } catch { addToast('error', t('acc_network_error')); }
+    finally { setTrialBalanceLoading(false); }
   }, []);
 
   const fetchBalanceSheet = useCallback(async (customF?: string, customT?: string) => {
     setBalanceSheetLoading(true);
-    const asOfDate = customT || new Date().toISOString().split('T')[0];
-    const res = await fetch(`/api/v1/accounting/balance-sheet?asOfDate=${asOfDate}`, { credentials: 'include' });
-    const d = await res.json();
-    if (d.success) setBalanceSheet(d.data);
-    setBalanceSheetLoading(false);
+    try {
+      const asOfDate = customT || new Date().toISOString().split('T')[0];
+      const res = await fetch(`/api/v1/accounting/balance-sheet?asOfDate=${asOfDate}`, { credentials: 'include' });
+      const d = await res.json();
+      if (d.success) setBalanceSheet(d.data);
+      else { addToast('error', d.error || t('acc_fetch_balance_failed')); }
+    } catch { addToast('error', t('acc_network_error')); }
+    finally { setBalanceSheetLoading(false); }
   }, []);
 
   const fetchIncomeStatement = useCallback(async (customF?: string, customT?: string) => {

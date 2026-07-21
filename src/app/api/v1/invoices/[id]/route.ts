@@ -86,14 +86,16 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
           await tx.invoice.update({ where: { id }, data: { status: 'cancelled' } });
 
           for (const item of invoice.items) {
+            const stockDelta = invoice.type === 'sale' ? item.quantity : -item.quantity;
+            const movementType = invoice.type === 'sale' ? 'in' : 'out';
             await tx.product.update({
               where: { id: item.productId },
-              data: { stock: { increment: item.quantity } },
+              data: { stock: { increment: stockDelta } },
             });
             await tx.stockMovement.create({
               data: {
                 productId: item.productId,
-                type: 'in',
+                type: movementType as 'in' | 'out',
                 quantity: item.quantity,
                 reference: `cancelled-${invoice.number}`,
                 notes: `Stock returned from cancelled invoice ${invoice.number}`,

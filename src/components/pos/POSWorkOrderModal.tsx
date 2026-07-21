@@ -9,6 +9,7 @@ interface POSWorkOrderModalProps {
   workOrders: WorkOrder[];
   selectedWorkOrderId: string | null;
   setSelectedWorkOrderId: (val: string | null) => void;
+  selectedCustomer: { id: string } | null;
   t: (key: string) => string;
 }
 
@@ -18,8 +19,13 @@ export default function POSWorkOrderModal({
   workOrders,
   selectedWorkOrderId,
   setSelectedWorkOrderId,
+  selectedCustomer,
   t,
 }: POSWorkOrderModalProps) {
+  const filtered = selectedCustomer
+    ? workOrders.filter((wo) => wo.vehicle?.customerId === selectedCustomer.id)
+    : workOrders;
+
   return (
     <Modal isOpen={open} onClose={onClose} title={t('pos_link_work_order')} contentClassName="max-w-sm">
       <div className="max-h-60 overflow-auto space-y-1">
@@ -29,7 +35,7 @@ export default function POSWorkOrderModal({
         >
           — {t('pos_no_work_order').replace(/^-- /, '')}
         </button>
-        {workOrders.map((wo) => (
+        {filtered.map((wo) => (
           <button
             key={wo.id}
             onClick={() => { setSelectedWorkOrderId(wo.id); onClose(); }}
@@ -39,8 +45,10 @@ export default function POSWorkOrderModal({
             <span className="text-muted-foreground ml-2">- {wo.description?.substring(0, 30) || t('pos_no_description')}</span>
           </button>
         ))}
-        {workOrders.length === 0 && (
-          <p className="text-center text-muted-foreground text-sm py-4">{t('pos_no_pending_work_orders')}</p>
+        {filtered.length === 0 && (
+          <p className="text-center text-muted-foreground text-sm py-4">
+            {selectedCustomer ? (t('pos_no_work_orders_for_customer') || 'No work orders for this customer') : t('pos_no_pending_work_orders')}
+          </p>
         )}
       </div>
     </Modal>

@@ -102,6 +102,7 @@ export async function GET(req: NextRequest) {
 
       const [bookings, total] = await Promise.all([
         prisma.booking.findMany({
+          where: { isDeleted: false },
           skip,
           take: limit,
           orderBy: { createdAt: 'desc' },
@@ -114,7 +115,7 @@ export async function GET(req: NextRequest) {
             },
           },
         } as Parameters<typeof prisma.booking.findMany>[0]),
-        prisma.booking.count(),
+        prisma.booking.count({ where: { isDeleted: false } }),
       ]);
 
       return NextResponse.json({

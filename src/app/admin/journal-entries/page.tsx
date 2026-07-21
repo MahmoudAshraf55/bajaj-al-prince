@@ -46,7 +46,7 @@ const typeColors: Record<string, string> = {
 export default function JournalEntriesPage() {
   const { t } = useTranslation();
   const { addToast } = useToast();
-  const [loading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [entries, setEntries] = useState<JournalEntry[]>([]);
   const [meta, setMeta] = useState({ total: 0, page: 1, limit: 20, totalPages: 1 });
@@ -87,11 +87,11 @@ export default function JournalEntriesPage() {
   }, [t]);
 
   useEffect(() => {
-    if (loading) return;
     const controller = new AbortController();
-    fetchEntries(page, search, typeFilter, controller.signal);
+    setLoading(true);
+    fetchEntries(page, search, typeFilter, controller.signal).finally(() => setLoading(false));
     return () => controller.abort();
-  }, [page, loading, search, typeFilter, fetchEntries]);
+  }, [page, search, typeFilter, fetchEntries]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

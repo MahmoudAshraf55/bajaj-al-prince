@@ -28,11 +28,18 @@ export async function GET(req: NextRequest) {
       const limit = Math.max(1, Math.min(100, parseInt(searchParams.get('limit') || '20', 10)));
       const skip = (page - 1) * limit;
       const type = searchParams.get('type')?.toUpperCase() || '';
+      const search = searchParams.get('search') || '';
       const from = searchParams.get('from');
       const to = searchParams.get('to');
 
       const where: Prisma.JournalEntryWhereInput = {};
       if (type) where.type = type as Prisma.EnumJournalEntryTypeFilter;
+      if (search) {
+        where.OR = [
+          { description: { contains: search, mode: 'insensitive' } },
+          { referenceNumber: { contains: search, mode: 'insensitive' } },
+        ];
+      }
       if (from || to) {
         where.date = {};
         if (from) where.date.gte = new Date(from);

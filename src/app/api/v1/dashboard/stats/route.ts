@@ -28,7 +28,7 @@ export async function GET(req: NextRequest) {
         }),
         prisma.product.findMany({
           where: { isDeleted: false },
-          select: { stock: true, costPrice: true, lowStockThreshold: true, available: true },
+          select: { stock: true, price: true, costPrice: true, lowStockThreshold: true, available: true },
         }),
         prisma.booking.count({ where: { status: 'pending', isDeleted: false } }),
         prisma.booking.count({ where: { isDeleted: false } }),
@@ -54,14 +54,18 @@ export async function GET(req: NextRequest) {
       ]);
 
       const todaySales = todayInvoices.reduce((s, i) => s + Number(i.total), 0);
-      const todayPaid = todayInvoices.reduce((s, i) => s + Number(i.paid), 0);
-      const cashSales = todayInvoices.filter((i) => i.paymentMethod === 'cash' || !i.paymentMethod).reduce((s, i) => s + Number(i.paid), 0);
-      const cardSales = todayInvoices.filter((i) => i.paymentMethod === 'card').reduce((s, i) => s + Number(i.paid), 0);
-      const transferSales = todayInvoices.filter((i) => i.paymentMethod === 'transfer').reduce((s, i) => s + Number(i.paid), 0);
+      const todayPaid = todayInvoices.reduce((s, i) => s + Math.min(Number(i.paid), Number(i.total)), 0);
+      const cashSales = todayInvoices.filter((i) => i.paymentMethod === 'cash' || !i.paymentMethod).reduce((s, i) => s + Math.min(Number(i.paid), Number(i.total)), 0);
+      const cardSales = todayInvoices.filter((i) => i.paymentMethod === 'card').reduce((s, i) => s + Math.min(Number(i.paid), Number(i.total)), 0);
+      const transferSales = todayInvoices.filter((i) => i.paymentMethod === 'transfer').reduce((s, i) => s + Math.min(Number(i.paid), Number(i.total)), 0);
 
       const lowStockCount = products.filter((p) => p.stock <= p.lowStockThreshold && p.available).length;
       const outOfStockCount = products.filter((p) => p.stock === 0).length;
-      const inventoryValue = products.reduce((s, p) => s + Number(p.costPrice || 0) * p.stock, 0);
+      const inventoryValue = products.reduce((s, p) => {
+        const cost = Number(p.costPrice ?? 0);
+        const unitValue = cost > 0 ? cost : Number(p.price ?? 0);
+        return s + unitValue * p.stock;
+      }, 0);
       const totalProducts = products.length;
 
       const todayIncome = todayTransactions.filter((t) => t.type === 'income').reduce((s, t) => s + Number(t.amount), 0);

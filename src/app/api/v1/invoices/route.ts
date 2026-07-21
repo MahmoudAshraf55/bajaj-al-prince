@@ -165,11 +165,6 @@ export async function POST(req: NextRequest) {
           if (!product) {
             throw new Error(`Product not found: ${item.productId}`);
           }
-          // Only enforce stock availability when deducting (sale). Purchases and
-          // returns (which restock) must never fail the insufficient-stock check (Issue 5).
-          if (data.type === 'sale' && product.stock < item.quantity) {
-            throw new Error(`Insufficient stock for ${product.name}: available ${product.stock}, requested ${item.quantity}`);
-          }
 
            const unitPrice = new Prisma.Decimal(Number(product.price));
            const costPrice = new Prisma.Decimal(Number(product.costPrice || 0));
@@ -185,14 +180,22 @@ export async function POST(req: NextRequest) {
              total,
            });
 
-           // Only deduct stock if product is not locked and not a purchase/return
            const shouldDeductStock = !product.lockInventory && data.type !== 'purchase' && data.type !== 'return';
-           const stockChange = (data.type === 'purchase' || data.type === 'return') ? item.quantity : (shouldDeductStock ? -item.quantity : 0);
-           
-           if (stockChange !== 0) {
+
+           if (shouldDeductStock) {
+             // Atomic: decrement stock ONLY WHERE stock >= quantity. If zero rows
+             // affected, another concurrent request consumed the remaining stock.
+             const affected = await tx.product.updateMany({
+               where: { id: product.id, stock: { gte: item.quantity } },
+               data: { stock: { decrement: item.quantity } },
+             });
+             if (affected.count === 0) {
+               throw new Error(`Insufficient stock for ${product.name}: available ${product.stock}, requested ${item.quantity}`);
+             }
+           } else if (data.type === 'purchase' || data.type === 'return') {
              await tx.product.update({
                where: { id: product.id },
-               data: { stock: { increment: stockChange } },
+               data: { stock: { increment: item.quantity } },
              });
            }
 
@@ -200,10 +203,10 @@ export async function POST(req: NextRequest) {
            await tx.stockMovement.create({
              data: {
                productId: product.id,
-               type: data.type === 'purchase' ? 'in' : 'out' as 'in' | 'out',
-               quantity: item.quantity,
-               reference: 'invoice',
-               notes: `Invoice ${data.type === 'purchase' ? 'purchase' : product.lockInventory ? 'service' : 'sale'}`,
+                type: (data.type === 'purchase' || data.type === 'return') ? 'in' : 'out' as 'in' | 'out',
+                quantity: item.quantity,
+                reference: 'invoice',
+                notes: `Invoice ${data.type === 'purchase' ? 'purchase' : data.type === 'return' ? 'return restock' : product.lockInventory ? 'service' : 'sale'}`,
                createdById: payload.userId,
                tenantId: getTenantId() ?? DEFAULT_TENANT_ID,
              },
@@ -277,9 +280,13 @@ export async function POST(req: NextRequest) {
         });
 
         const jeType = data.type === 'sale' ? 'SALE' as const : data.type === 'return' ? 'RETURN' as const : 'PURCHASE' as const;
+        // Use invoice total (not paid amount) for the journal entry.
+        // Overpayment (change) is returned to the customer immediately and
+        // must not inflate the cash/debit side of the entry.
+        const jeAmount = Math.min(paidAmount, Number(total));
         await createDoubleEntry(tx, {
           type: jeType,
-          amount: Number(total),
+          amount: jeAmount,
           description: `Invoice ${invoice.number}`,
           referenceType: 'invoice',
           referenceId: invoice.id,

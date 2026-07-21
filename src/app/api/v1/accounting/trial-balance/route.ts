@@ -23,8 +23,11 @@ export async function GET(req: NextRequest) {
       }));
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unauthorized';
-    const status = message === 'Forbidden' ? 403 : 401;
-    return withSecurityHeaders(NextResponse.json({ success: false, error: message }, { status }));
+    const message = error instanceof Error ? error.message : 'Internal server error';
+    if (message === 'Forbidden') {
+      return withSecurityHeaders(NextResponse.json({ success: false, error: message }, { status: 403 }));
+    }
+    console.error('Trial balance error:', error);
+    return withSecurityHeaders(NextResponse.json({ success: false, error: 'Failed to fetch trial balance' }, { status: 500 }));
   }
 }

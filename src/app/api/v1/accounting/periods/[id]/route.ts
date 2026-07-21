@@ -53,7 +53,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
       return withSecurityHeaders(NextResponse.json({ success: false, error: 'Invalid action' }, { status: 400 }));
     });
-  } catch { return withSecurityHeaders(NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })); }
+  } catch (error) {
+    console.error('Accounting period error:', error);
+    return withSecurityHeaders(NextResponse.json({ success: false, error: 'Failed to process period action' }, { status: 500 }));
+  }
 }
 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -66,5 +69,8 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
       await logAudit({ userId: payload.userId, action: 'delete', entity: 'AccountingPeriod', entityId: id, oldValue: existing ?? undefined, ipAddress, userAgent });
       return withSecurityHeaders(NextResponse.json({ success: true }));
     });
-  } catch { return withSecurityHeaders(NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })); }
+  } catch (error) {
+    console.error('Accounting period error:', error);
+    return withSecurityHeaders(NextResponse.json({ success: false, error: 'Failed to process period action' }, { status: 500 }));
+  }
 }

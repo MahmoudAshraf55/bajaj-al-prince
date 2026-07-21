@@ -59,6 +59,7 @@ async function generatePnL(from: Date, to: Date) {
   const purchaseTotal = result.purchaseEntries.reduce((s, e) => s + Number(e.amount), 0);
   const manualIncome = result.incomeEntries.reduce((s, e) => s + Number(e.amount), 0);
   const totalExpenses = result.incomeStatement.totalExpenses;
+  const operatingExpenses = totalExpenses - cogs;
   const netProfit = result.incomeStatement.netProfit;
   const netMargin = netSales > 0 ? (netProfit / netSales) * 100 : 0;
 

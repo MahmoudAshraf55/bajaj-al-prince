@@ -7,6 +7,7 @@ import { withSecurityHeaders } from '@/lib/security';
 import { getTenantId, DEFAULT_TENANT_ID } from '@/lib/tenant-context';
 import * as XLSX from 'xlsx';
 import { Prisma } from '@prisma/client';
+import type { ImportPreviewRow, ImportRowDiff, ImportDecision } from '@/types/warehouse';
 
 const MAX_ROWS = 20000;
 const MAX_FILE_SIZE = 20 * 1024 * 1024;
@@ -14,33 +15,6 @@ const UPDATE_BATCH_SIZE = 100;
 const CREATE_BATCH_SIZE = 500;
 
 export const maxDuration = 60;
-
-interface PreviewRow {
-  row: number;
-  sku: string | null;
-  barcode: string | null;
-  name: string;
-  nameAr: string | null;
-  vehicleModel: string | null;
-  category: string | null;
-  price: number | null;
-  costPrice: number | null;
-  stock: number | null;
-  unit: string | null;
-  description: string | null;
-  taxRate: number | null;
-  activeFrom: string | null;
-  expiryDate: string | null;
-}
-
-interface ParsedData {
-  headers: string[];
-  preview: PreviewRow[];
-  totalRows: number;
-  fileName: string;
-  sheetCategories: string[];
-  missingDataCount: number;
-}
 
 function isValidDateStr(val: string): boolean {
   if (!val) return false;
@@ -50,9 +24,17 @@ function isValidDateStr(val: string): boolean {
   return year >= 1900 && year <= 2100;
 }
 
+function normalizeRow(row: Record<string, string | number>): Record<string, string | number> {
+  const out: Record<string, string | number> = {};
+  for (const [k, v] of Object.entries(row)) {
+    out[k.trim().toLowerCase()] = v;
+  }
+  return out;
+}
+
 function colVal(row: Record<string, string | number>, ...keys: string[]): string {
   for (const key of keys) {
-    const v = row[key];
+    const v = row[key] ?? row[key.toLowerCase()];
     if (v !== undefined && v !== '') return String(v).trim();
   }
   return '';
@@ -73,26 +55,17 @@ function parseDateStr(row: Record<string, string | number>, ...keys: string[]): 
   return isValidDateStr(val) ? val : null;
 }
 
-function parseRow(row: Record<string, string | number>, rowNum: number): PreviewRow {
+function parseRow(row: Record<string, string | number>, rowNum: number): ImportPreviewRow {
   const partsSku = colVal(row,
     'Parts', 'SKU', 'sku', 'Part Number', 'part_number',
     'كود', 'الكود', 'رقم القطعة', 'رمز المنتج', 'كود المنتج',
     'Code', 'code',
   );
   const barcodeVal = colVal(row,
-    'Barcode', 'باركود', 'barcode',
+    'parts.1', 'Barcode', 'باركود', 'barcode',
     'الباركود', 'كود الباركود', 'باركود',
-    'Bar Code', 'bar_code',
+    'Bar Code', 'bar_code', 'parts',
   ) || partsSku;
-
-  const tax10 = parseNum(row, 'ضريبه 10%', 'tax 10%', 'tax10', 'tax_10');
-  const tax12 = parseNum(row, 'ضريبه 12%', 'tax 12%', 'tax12', 'tax_12');
-  const taxRateGeneric = parseNum(row,
-    'Tax Rate', 'taxRate', 'tax_rate', 'VAT', 'VAT rate',
-    'ضريبة', 'الضريبة', 'ضريبه',
-    'نسبة الضريبة', 'الضريبة المضافة',
-  );
-  const taxRate = tax10 ?? tax12 ?? taxRateGeneric ?? null;
 
   return {
     row: rowNum,
@@ -119,11 +92,12 @@ function parseRow(row: Record<string, string | number>, rowNum: number): Preview
       'مستهلك بالضريبة', 'price', 'سعر', 'Price', 'Price (EGP)', 'Unit Price', 'السعر', 'unit_price', 'unitPrice',
       'سعر البيع', 'سعر المنتج', 'السعر النهائي', 'سعر الوحدة', 'السعر بالضريبة', 'مستهلك', 'سعر مستهلك',
       'بيع', 'سعر البيع النهائي', 'سعر عام', 'السعر العام', 'Retail Price', 'القيمة',
+      'السعر (ج.م)', 'سعر البيع (ج.م)', 'سعر المنتج (ج.م)',
     ),
     costPrice: parseNum(row,
       'cost', 'Cost', 'Cost Price', 'Unit Cost', 'تكلفة', 'costPrice', 'سعر الشراء', 'سعر التكلفة', 'cost_price',
       'التكلفة', 'المشتريات', 'سعر التكلفة الفعلي', 'سعر الجملة', 'سعر جملة', 'تكلفة الشراء', 'شراء',
-      'Wholesale', 'wholesale', 'Purchase Price', 'سعر الشراء جملة',
+      'Wholesale', 'wholesale', 'Purchase Price', 'سعر الشراء جملة', 'سعر التكلفة (ج.م)',
     ),
     stock: parseNum(row,
       'stock', 'Stock', 'Stock Qty', 'مخزون', 'quantity', 'Qty', 'qty', 'الكمية',
@@ -138,7 +112,6 @@ function parseRow(row: Record<string, string | number>, rowNum: number): Preview
       'desc', 'Description', 'description', 'وصف', 'Notes', 'ملاحظات', 'الوصف',
       'البيان', 'تفاصيل', 'بيان', 'شرح', 'مواصفات', 'ملاحظه',
     ) || null,
-    taxRate,
     activeFrom: parseDateStr(row,
       'Start Date Active', 'activeFrom', 'date', 'Date',
       'تاريخ البدء', 'تاريخ الفعالية', 'بداية',
@@ -147,41 +120,14 @@ function parseRow(row: Record<string, string | number>, rowNum: number): Preview
       'Expiry', 'expiryDate', 'expiry', 'صلاحية',
       'تاريخ الانتهاء', 'تاريخ الصلاحية', 'نهاية',
     ),
+    isNew: true,
+    existingProductId: null,
+    existingStock: null,
+    diffs: [],
   };
 }
 
-function parseExcelSheet(buffer: Buffer, fileName: string): ParsedData {
-  const workbook = XLSX.read(buffer, { type: 'buffer' });
-  const sheetName = workbook.SheetNames[0];
-  const sheet = workbook.Sheets[sheetName];
-  const jsonData = XLSX.utils.sheet_to_json<Record<string, string | number>>(sheet, { defval: '' });
-
-  if (jsonData.length === 0) throw new Error('Excel file is empty');
-  if (jsonData.length > MAX_ROWS) throw new Error(`Excel has ${jsonData.length} rows, max allowed is ${MAX_ROWS}`);
-
-  const headers = Object.keys(jsonData[0]);
-  const allPreview: PreviewRow[] = [];
-
-  for (let i = 0; i < jsonData.length; i++) {
-    allPreview.push(parseRow(jsonData[i], i + 2));
-  }
-
-  // Collect unique categories from the sheet for review
-  const sheetCategories = [...new Set(allPreview.map((r) => r.category).filter((c): c is string => !!c))];
-  // Flag rows with missing critical data (price <= 0 or stock null)
-  const missingDataCount = allPreview.filter((r) => (r.price === null || r.price <= 0) && r.stock === null).length;
-
-  return {
-    headers,
-    preview: allPreview.slice(0, 10),
-    totalRows: allPreview.length,
-    fileName,
-    sheetCategories,
-    missingDataCount,
-  };
-}
-
-function buildCreateData(row: PreviewRow): Prisma.ProductCreateManyInput {
+function buildCreateData(row: ImportPreviewRow): Prisma.ProductCreateManyInput {
   const data: Prisma.ProductCreateManyInput = {
     name: row.name,
     nameAr: row.nameAr,
@@ -196,13 +142,28 @@ function buildCreateData(row: PreviewRow): Prisma.ProductCreateManyInput {
   if (row.costPrice != null) data.costPrice = row.costPrice;
   if (row.unit) data.unit = row.unit;
   if (row.description) data.description = row.description;
-  if (row.taxRate != null) {
-    data.taxRate = row.taxRate;
-    data.taxExempt = false;
-  }
   if (row.activeFrom) data.activeFrom = new Date(row.activeFrom);
   if (row.expiryDate) data.expiryDate = new Date(row.expiryDate);
   return data;
+}
+
+function computeDiffs(row: ImportPreviewRow, existing: { stock: number; price: number; costPrice: number | null }): ImportRowDiff[] {
+  const diffs: ImportRowDiff[] = [];
+
+  if (row.stock != null && row.stock > 0) {
+    const newStock = existing.stock + row.stock;
+    diffs.push({ field: 'stock', oldValue: existing.stock, newValue: newStock });
+  }
+
+  if (row.price != null && row.price > 0 && row.price !== existing.price) {
+    diffs.push({ field: 'price', oldValue: existing.price, newValue: row.price });
+  }
+
+  if (row.costPrice != null && row.costPrice > 0 && row.costPrice !== existing.costPrice) {
+    diffs.push({ field: 'costPrice', oldValue: existing.costPrice, newValue: row.costPrice });
+  }
+
+  return diffs;
 }
 
 export async function POST(req: NextRequest) {
@@ -215,6 +176,7 @@ export async function POST(req: NextRequest) {
       const formData = await req.formData();
       const file = formData.get('file') as File | null;
       const action = (formData.get('action') as string) || 'preview';
+      const decisionsJson = formData.get('decisions') as string | null;
 
       if (!file) {
         return withSecurityHeaders(NextResponse.json({ success: false, error: 'No file provided' }, { status: 400 }));
@@ -227,102 +189,154 @@ export async function POST(req: NextRequest) {
       const bytes = await file.arrayBuffer();
       const buffer = Buffer.from(bytes);
 
+      const workbook = XLSX.read(buffer, { type: 'buffer', cellDates: true });
+      const sheetName = workbook.SheetNames[0];
+      const sheet = workbook.Sheets[sheetName];
+      const jsonData = XLSX.utils.sheet_to_json<Record<string, string | number>>(sheet, { defval: '' });
+
+      if (jsonData.length === 0) {
+        return withSecurityHeaders(NextResponse.json({ success: false, error: 'Excel file is empty' }, { status: 400 }));
+      }
+      if (jsonData.length > MAX_ROWS) {
+        return withSecurityHeaders(NextResponse.json({ success: false, error: `Excel has ${jsonData.length} rows, max allowed is ${MAX_ROWS}` }, { status: 400 }));
+      }
+
+      const headers = Object.keys(jsonData[0]);
+      const rows: ImportPreviewRow[] = [];
+
+      for (let i = 0; i < jsonData.length; i++) {
+        rows.push(parseRow(normalizeRow(jsonData[i]), i + 2));
+      }
+
+      // Collect unique barcodes from parsed rows for DB lookup
+      const barcodeList = [...new Set(rows.map(r => r.barcode).filter((b): b is string => !!b))];
+
+      const existingProducts = barcodeList.length > 0
+        ? await prisma.product.findMany({
+            where: { barcode: { in: barcodeList }, isDeleted: false },
+            select: { id: true, barcode: true, sku: true, stock: true, price: true, costPrice: true },
+          })
+        : [];
+
+      const existingByBarcode = new Map(existingProducts.map(p => [p.barcode, {
+        id: p.id,
+        barcode: p.barcode,
+        sku: p.sku,
+        stock: p.stock,
+        price: Number(p.price),
+        costPrice: p.costPrice ? Number(p.costPrice) : null,
+      }]));
+
+      // Enrich rows with existing product data and diffs
+      let newCount = 0;
+      let existingCount = 0;
+
+      for (const row of rows) {
+        const match = row.barcode ? existingByBarcode.get(row.barcode) : null;
+        if (match) {
+          row.isNew = false;
+          row.existingProductId = match.id;
+          row.existingStock = match.stock;
+          row.diffs = computeDiffs(row, match);
+          existingCount++;
+        } else {
+          newCount++;
+        }
+      }
+
+      // Preview: return enriched data
+      if (action === 'preview') {
+        const sheetCategories = [...new Set(rows.map((r) => r.category).filter((c): c is string => !!c))];
+        const missingDataCount = rows.filter((r) => (r.price === null || r.price <= 0) && r.stock === null).length;
+
+        return withSecurityHeaders(NextResponse.json({
+          success: true,
+          data: {
+            headers,
+            rows: rows.slice(0, 20),
+            totalRows: rows.length,
+            fileName: file.name,
+            sheetCategories,
+            missingDataCount,
+            newCount,
+            existingCount,
+          },
+        }));
+      }
+
+      // Confirm: apply based on admin decisions
       if (action === 'confirm') {
-  const workbook = XLSX.read(buffer, { type: 'buffer', cellDates: true });
-        const sheetName = workbook.SheetNames[0];
-        const sheet = workbook.Sheets[sheetName];
-  const jsonData = XLSX.utils.sheet_to_json<Record<string, string | number>>(sheet, { defval: '' });
+        let decisions: Map<string, ImportDecision> = new Map();
 
-        if (jsonData.length > MAX_ROWS) {
-          return withSecurityHeaders(NextResponse.json({ success: false, error: `Excel has ${jsonData.length} rows, max allowed is ${MAX_ROWS}` }, { status: 400 }));
-        }
-
-        const rows: PreviewRow[] = [];
-        const skuList: string[] = [];
-        const barcodeList: string[] = [];
-
-        for (let i = 0; i < jsonData.length; i++) {
-          const r = parseRow(jsonData[i], i + 2);
-          rows.push(r);
-          if (r.sku) skuList.push(r.sku);
-          if (r.barcode) barcodeList.push(r.barcode);
-        }
-
-        const existingProducts = skuList.length > 0 || barcodeList.length > 0
-          ? await prisma.product.findMany({
-              where: {
-                OR: [
-                  ...(skuList.length > 0 ? [{ sku: { in: skuList } }] : []),
-                  ...(barcodeList.length > 0 ? [{ barcode: { in: barcodeList } }] : []),
-                ],
-              },
-              select: { id: true, sku: true, barcode: true, isDeleted: true },
-            })
-          : [];
-
-        const existingByBarcode = new Map<string, { id: string; isDeleted: boolean }>();
-        const existingBySku = new Map<string, { id: string; isDeleted: boolean }>();
-        for (const p of existingProducts) {
-          if (p.barcode && !existingByBarcode.has(p.barcode)) existingByBarcode.set(p.barcode, { id: p.id, isDeleted: p.isDeleted });
-          if (p.sku && !existingBySku.has(p.sku)) existingBySku.set(p.sku, { id: p.id, isDeleted: p.isDeleted });
+        if (decisionsJson) {
+          try {
+            const parsed = JSON.parse(decisionsJson) as ImportDecision[];
+            decisions = new Map(parsed.map(d => [d.barcode, d]));
+          } catch {
+            return withSecurityHeaders(NextResponse.json({ success: false, error: 'Invalid decisions format' }, { status: 400 }));
+          }
         }
 
         const toCreate: Prisma.ProductCreateManyInput[] = [];
         const toUpdate: { id: string; data: Prisma.ProductUpdateInput }[] = [];
+        let skipped = 0;
 
         for (const row of rows) {
-          const data = buildCreateData(row);
-          const match = (row.barcode && existingByBarcode.get(row.barcode))
-            || (row.sku && existingBySku.get(row.sku))
-            || null;
-
-          if (match) {
-            if (match.isDeleted) (data as Record<string, unknown>).isDeleted = false;
-            toUpdate.push({ id: match.id, data });
-          } else {
-            toCreate.push(data);
+          if (row.isNew) {
+            toCreate.push(buildCreateData(row));
+            continue;
           }
+
+          const existing = row.existingProductId ? existingByBarcode.get(row.barcode ?? '') : null;
+          if (!existing) {
+            toCreate.push(buildCreateData(row));
+            continue;
+          }
+
+          const decision = row.barcode ? decisions.get(row.barcode) : null;
+          const actionType = decision?.action || 'stock_only';
+
+          if (actionType === 'update') {
+            const updateData: Prisma.ProductUpdateInput = {};
+            if (row.price != null && row.price > 0) updateData.price = row.price;
+            if (row.costPrice != null && row.costPrice > 0) updateData.costPrice = row.costPrice;
+            if (row.stock != null && row.stock > 0) updateData.stock = existing.stock + row.stock;
+            if (row.name) updateData.name = row.name;
+            if (row.nameAr) updateData.nameAr = row.nameAr;
+            if (row.unit) updateData.unit = row.unit;
+            if (row.description) updateData.description = row.description;
+            if (row.vehicleModel) updateData.vehicleModel = row.vehicleModel;
+            if (row.category) updateData.category = row.category;
+            if (row.sku) updateData.sku = row.sku;
+            if (row.activeFrom) updateData.activeFrom = new Date(row.activeFrom);
+            if (row.expiryDate) updateData.expiryDate = new Date(row.expiryDate);
+            toUpdate.push({ id: existing.id, data: updateData });
+          } else {
+            if (row.stock != null && row.stock > 0) {
+              toUpdate.push({ id: existing.id, data: { stock: existing.stock + row.stock } });
+            }
+          }
+        }
+
+        // Deduplicate creates by barcode
+        const seenBarcodes = new Set<string | null>();
+        const dedupedCreate: Prisma.ProductCreateManyInput[] = [];
+        for (const item of toCreate) {
+          const key = item.barcode ?? null;
+          if (key !== null && seenBarcodes.has(key)) {
+            skipped++;
+            continue;
+          }
+          if (key !== null) seenBarcodes.add(key);
+          dedupedCreate.push(item);
         }
 
         let created = 0;
         let updated = 0;
-        let skipped = 0;
 
-        if (toCreate.length > 0) {
-          const barcodesToCheck = [...new Set(toCreate.map((i) => i.barcode).filter((b): b is string => !!b))];
-          if (barcodesToCheck.length > 0) {
-            const conflicting = await prisma.product.findMany({
-              where: { barcode: { in: barcodesToCheck } },
-              select: { id: true, barcode: true, isDeleted: true },
-            });
-            const conflictBarcodes = new Map(conflicting.map((p) => [p.barcode, { id: p.id, isDeleted: p.isDeleted }]));
-            const remaining: Prisma.ProductCreateManyInput[] = [];
-            for (const item of toCreate) {
-              const conflict = item.barcode ? conflictBarcodes.get(item.barcode) : null;
-              if (conflict) {
-                const updateData = (item as unknown) as Prisma.ProductUpdateInput;
-                if (conflict.isDeleted) (updateData as Record<string, unknown>).isDeleted = false;
-                toUpdate.push({ id: conflict.id, data: updateData });
-              } else {
-                remaining.push(item);
-              }
-            }
-            toCreate.length = 0;
-            toCreate.push(...remaining);
-          }
-          const seenBarcodes = new Set<string | null>();
-          const deduped: Prisma.ProductCreateManyInput[] = [];
-          for (const item of toCreate) {
-            const key = item.barcode ?? null;
-            if (key !== null && seenBarcodes.has(key)) {
-              skipped++;
-              continue;
-            }
-            if (key !== null) seenBarcodes.add(key);
-            deduped.push(item);
-          }
-          for (let i = 0; i < deduped.length; i += CREATE_BATCH_SIZE) {
-            const batch = deduped.slice(i, i + CREATE_BATCH_SIZE);
+        if (dedupedCreate.length > 0) {
+          for (let i = 0; i < dedupedCreate.length; i += CREATE_BATCH_SIZE) {
+            const batch = dedupedCreate.slice(i, i + CREATE_BATCH_SIZE);
             let batchCreated = 0;
             try {
               const result = await prisma.product.createMany({ data: batch });
@@ -372,12 +386,7 @@ export async function POST(req: NextRequest) {
         }));
       }
 
-      const parsed = parseExcelSheet(buffer, file.name);
-
-      return withSecurityHeaders(NextResponse.json({
-        success: true,
-        data: parsed,
-      }));
+      return withSecurityHeaders(NextResponse.json({ success: false, error: 'Invalid action' }, { status: 400 }));
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Import failed';

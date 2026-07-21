@@ -48,6 +48,15 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       const count = await prisma.inventoryCount.findFirst({ where: { id, isDeleted: false } });
       if (!count) return withSecurityHeaders(NextResponse.json({ success: false, error: 'Not found' }, { status: 404 }));
 
+      if (action === 'update_items' || action === 'complete') {
+        if (count.status !== 'draft' && count.status !== 'in_progress') {
+          return withSecurityHeaders(NextResponse.json(
+            { success: false, error: `Cannot modify a ${count.status} inventory count` },
+            { status: 400 },
+          ));
+        }
+      }
+
       if (action === 'update_items') {
         const parsed = updateItemSchema.array().safeParse(items);
         if (!parsed.success) return withSecurityHeaders(NextResponse.json({ success: false, error: parsed.error.errors[0].message }, { status: 400 }));

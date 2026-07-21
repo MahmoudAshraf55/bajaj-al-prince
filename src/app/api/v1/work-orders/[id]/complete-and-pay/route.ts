@@ -43,7 +43,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       }
 
       const tenantId = getTenantId() ?? DEFAULT_TENANT_ID;
-      const total = data.partsTotal + data.labourTotal;
+      const taxTotal = wo.parts.reduce((s, part) => {
+        const taxRate = Number(part.product?.taxRate ?? 0) / 100;
+        return s + Number(part.total) * taxRate;
+      }, 0);
+      const total = data.partsTotal + data.labourTotal + taxTotal;
 
       const result = await prisma.$transaction(async (tx) => {
         const now = new Date();
@@ -137,7 +141,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
             type: 'sale',
             status: 'confirmed',
             subtotal,
-            taxTotal: 0,
+            taxTotal: Math.round(taxTotal * 100) / 100,
             discount: 0,
             total,
             paid: data.amountPaid,

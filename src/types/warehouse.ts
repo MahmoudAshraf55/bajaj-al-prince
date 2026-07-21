@@ -31,12 +31,48 @@ export interface StockMovement {
   product: { id: string; name: string; barcode: string | null };
 }
 
+export interface ImportRowDiff {
+  field: string;
+  oldValue: string | number | null;
+  newValue: string | number | null;
+}
+
+export interface ImportPreviewRow {
+  row: number;
+  sku: string | null;
+  barcode: string | null;
+  name: string;
+  nameAr: string | null;
+  vehicleModel: string | null;
+  category: string | null;
+  price: number | null;
+  costPrice: number | null;
+  stock: number | null;
+  unit: string | null;
+  description: string | null;
+  activeFrom: string | null;
+  expiryDate: string | null;
+  isNew: boolean;
+  existingProductId: string | null;
+  existingStock: number | null;
+  diffs: ImportRowDiff[];
+}
+
 export interface ImportPreview {
   headers: string[];
-  preview: Array<Record<string, unknown>>;
+  rows: ImportPreviewRow[];
   totalRows: number;
+  fileName: string;
   sheetCategories?: string[];
   missingDataCount?: number;
+  newCount: number;
+  existingCount: number;
+}
+
+export interface ImportDecision {
+  row: number;
+  barcode: string;
+  action: 'update' | 'stock_only';
 }
 
 export interface ImportResult {

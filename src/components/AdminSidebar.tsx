@@ -42,10 +42,10 @@ const sections: SidebarSection[] = [
     labelKey: 'admin_quick_links',
     links: [
       {
-        href: '/admin/dashboard/?tab=messages',
-        icon: Mail,
+        href: '/admin/users',
+        icon: Users,
         labelKey: 'admin_messages',
-        isActive: (pathname, sp) => pathname === '/admin/dashboard' && sp.get('tab') === 'messages',
+        isActive: (pathname) => pathname.startsWith('/admin/users'),
       },
       {
         href: '/admin/bookings',

@@ -61,7 +61,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         ipAddress,
         userAgent,
       });
-      return withSecurityHeaders(NextResponse.json({ success: true, data: { product: { ...product, price: Number(product.price) } } }));
+      return withSecurityHeaders(NextResponse.json({ success: true, data: { product: { ...product, price: Number(product.price), costPrice: product.costPrice != null ? Number(product.costPrice) : null } } }));
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
