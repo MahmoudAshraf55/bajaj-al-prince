@@ -8,7 +8,7 @@ import { logger } from '@/lib/logger';
 import { z } from 'zod';
 import { withSecurityHeaders } from '@/lib/security';
 import { Prisma } from '@prisma/client';
-import { AccountingService } from '@/services/AccountingService';
+import { createDoubleEntry } from '@/lib/journal';
 
 const createPartSchema = z.object({
   productId: z.string().uuid(),
@@ -66,48 +66,21 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
           data: { stock: { decrement: data.quantity } },
         });
 
-        // Create accounting journal entry
+        // Create accounting journal entry (DR: COGS, CR: Inventory)
         const tenantId = getTenantId() ?? DEFAULT_TENANT_ID;
         
         try {
-          const cogsAccountId = await AccountingService.getAccountId(tx, '5100', tenantId); // COGS
-          const inventoryAccountId = await AccountingService.getAccountId(tx, '1201', tenantId); // Inventory
-
-          const journalEntry = await tx.journalEntry.create({
-            data: {
-              date: new Date(),
-              description: `Work Order Part: ${product.name} x${data.quantity}`,
-              type: 'STOCK_ADJUSTMENT',
-              amount: Number(total),
-              createdById: payload.userId,
-              tenantId,
-            },
-          });
-
-          // Debit COGS
-          await tx.journalEntryLine.create({
-            data: {
-              journalEntryId: journalEntry.id,
-              accountId: cogsAccountId,
-              debit: Number(total),
-              credit: 0,
-              tenantId,
-            },
-          });
-
-          // Credit Inventory
-          await tx.journalEntryLine.create({
-            data: {
-              journalEntryId: journalEntry.id,
-              accountId: inventoryAccountId,
-              debit: 0,
-              credit: Number(total),
-              tenantId,
-            },
+          await createDoubleEntry(tx, {
+            type: 'STOCK_ADJUSTMENT',
+            amount: Number(total),
+            description: `Work Order Part: ${product.name} x${data.quantity}`,
+            referenceType: 'work_order_part',
+            referenceId: id,
+            createdById: payload.userId,
+            tenantId,
           });
         } catch (accountingError) {
-          // If accounting fails, log but don't fail the entire transaction
-          console.error('Accounting entry creation failed:', accountingError);
+          logger.error('Accounting entry creation failed in WO parts', accountingError);
         }
 
         // Create work order part

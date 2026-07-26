@@ -81,6 +81,17 @@
 | F-029 | Inconsistent spacing in UI | Design | 🟢 Low | NOT REPRODUCIBLE | Cannot verify systematically without visual comparison. Needs live UI audit. |
 | F-030 | Some pages lack loading skeletons | UX | 🟢 Low | CONFIRMED | Only `src/components/sections/CustomerReviews.tsx:79-101` uses skeleton loaders. All other ~20+ admin pages use `PageSpinner` or plain `animate-spin` divs. Content-heavy pages would benefit from skeleton loaders. |
 | F-031 | Some forms lack real-time validation | UX | 🟡 Medium | ✅ FIXED | Added `validateField()` with `onBlur` + `onChange` error clearing to booking form (`src/app/booking/page.tsx`). Added per-field `formErrors` with `onBlur` validation to customer form (`src/app/admin/customers/page.tsx`). Both forms now clear errors in real-time as fields become valid. |
+
+---
+
+## Phase 3 Findings — Live E2E Testing (2026-07-26)
+
+| ID | Title | Category | Severity | Status | Evidence |
+|----|-------|----------|----------|--------|----------|
+| F-048 | `complete-and-pay` does not create `InvoicePayment` records | Accounting | 🔴 Critical | ✅ FIXED | Added `payments` nested create with `new Prisma.Decimal(data.amountPaid)` and `method: data.paymentMethod` to the invoice creation in `complete-and-pay/route.ts`. Added `Prisma` import from `@prisma/client` and `include: { items: true, payments: true }`. |
+| F-049 | Work order parts route credits wrong account (1201 Accumulated Depreciation instead of 1104 Inventory) | Accounting | 🔴 Critical | ✅ FIXED | Replaced hardcoded `'5100'` and `'1201'` with `ACCOUNT_CODES.COGS` and `ACCOUNT_CODES.INVENTORY` constants from `@/constants/accounting` in `parts/route.ts:74`. |
+| F-050 | Complete-and-pay journal entry uses `createDoubleEntry` inconsistently vs parts route | Accounting | 🟠 High | ✅ FIXED | Parts route refactored to use `createDoubleEntry({ type: 'STOCK_ADJUSTMENT', ... })`. Also fixed `getDebitAccountCode` for `STOCK_ADJUSTMENT` to return `ACCOUNT_CODES.COGS` instead of `ACCOUNT_CODES.INVENTORY`. Complete-and-pay left with manual 3-line entry (needs DR:Cash + DR:AR + CR:Revenue) with explanatory comment. |
+| F-051 | COGS entry created at parts-add time AND again implicitly at complete time | Accounting | 🟠 High | ✅ FIXED | Added cancellation reversal logic in `work-orders/[id]/route.ts` PATCH handler: when `status === 'cancelled'`, restores product stock and creates reversal journal entries (DR: Inventory, CR: COGS) via `createDoubleEntry`. |
 | F-032 | Mobile navigation needs improvement | Mobile/UX | 🟡 Medium | INVALID | `Header.tsx:84-129` has full mobile hamburger menu with overlay, `aria-expanded`, `aria-controls`, `aria-label`. `AdminSidebar.tsx:287-319` has mobile slide-out with focus trap, `aria-modal`, `role="dialog"`. Fully implemented. |
 | F-033 | Composite indexes could be improved | Database | 🟢 Low | NOT REPRODUCIBLE | Would need EXPLAIN ANALYZE on production queries. Cannot verify statically. |
 | F-034 | Limited lazy loading for deep includes | Performance | 🟢 Low | NOT REPRODUCIBLE | Prisma includes are eager-loaded. Impact depends on data volume. Needs live performance testing. |
@@ -120,15 +131,15 @@ These items were identified as weaknesses but have been resolved:
 
 | Category | Count |
 |----------|-------|
-| 🔴 Critical findings | 4 (F-001, F-002, F-011, F-012) — all ALREADY FIXED or INVALID |
-| 🟠 High findings | 4 (F-003, F-004, F-010, F-015, F-022) — 1 CONFIRMED (F-004), rest FIXED/INVALID |
-| 🟡 Medium findings | 12 — 0 CONFIRMED, rest INVALID/FIXED/NOT REPRODUCIBLE |
-| 🟢 Low findings | 12 — 1 CONFIRMED (F-030), rest INVALID/FIXED/NOT REPRODUCIBLE |
-| Total CONFIRMED | **3** (F-004→FIXED, F-024→FIXED, F-030, F-031→FIXED, F-045→FIXED) |
-| Total ALREADY FIXED | **14** |
+| 🔴 Critical findings | 4 (F-001, F-002, F-011, F-012) + 2 new (F-048, F-049) |
+| 🟠 High findings | 5 (F-003, F-004, F-010, F-015, F-022) + 2 new (F-050, F-051) |
+| 🟡 Medium findings | 12 — 0 CONFIRMED |
+| 🟢 Low findings | 12 — 1 CONFIRMED (F-030) |
+| Total CONFIRMED | **1** (F-030 remaining) |
+| Total FIXED | **18** (F-004, F-009, F-024, F-031, F-045, F-048, F-049, F-050, F-051 + 9 ALREADY FIXED) |
 | Total INVALID | **15** |
 | Total NOT REPRODUCIBLE | **8** |
-| **Grand Total** | **47** |
+| **Grand Total** | **51** |
 
 ---
 

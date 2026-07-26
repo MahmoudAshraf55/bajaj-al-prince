@@ -11,6 +11,7 @@ import { sendWhatsAppMessageViaService } from '@/lib/whatsapp-client';
 import { buildMessage } from '@/lib/whatsapp-templates';
 import { z } from 'zod';
 import { AccountingService } from '@/services/AccountingService';
+import { createDoubleEntry } from '@/lib/journal';
 
 import { WorkOrderService } from '@/services/WorkOrderService';
 const updateSchema = z.object({
@@ -34,8 +35,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         return withSecurityHeaders(NextResponse.json({ success: false, error: 'Work order not found' }, { status: 404 }));
       }
 
-      const isCompleting = data.status === 'completed' && existing.status !== 'completed';
-      const isCostUpdate = data.cost !== undefined && data.cost !== Number(existing.cost);
+        const isCompleting = data.status === 'completed' && existing.status !== 'completed';
+        const isCancelling = data.status === 'cancelled' && existing.status !== 'cancelled' && existing.status !== 'completed';
+        const isCostUpdate = data.cost !== undefined && data.cost !== Number(existing.cost);
       const tenantId = getTenantId() ?? DEFAULT_TENANT_ID;
 
       const workOrder = await prisma.$transaction(async (tx) => {
@@ -48,7 +50,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
           },
           include: {
             vehicle: { include: { customer: true } },
-            parts: { where: { isDeleted: false }, include: { product: { select: { id: true, name: true, costPrice: true } } } },
+            parts: { where: { isDeleted: false }, include: { product: { select: { id: true, name: true, costPrice: true, lockInventory: true } } } },
             labourLines: { where: { isDeleted: false } },
           },
         });
@@ -95,6 +97,32 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
           } catch (err) {
             logger.error('Work order completion side-effects failed, rolling back', err);
             throw err;
+          }
+        }
+
+        if (isCancelling) {
+          try {
+            // Restore stock + create reversal journal entries (DR: Inventory, CR: COGS)
+            for (const part of updated.parts) {
+              if (!part.product?.lockInventory) {
+                await tx.product.update({
+                  where: { id: part.productId },
+                  data: { stock: { increment: part.quantity } },
+                });
+              }
+              const partTotal = Number(part.unitPrice) * part.quantity;
+              await createDoubleEntry(tx, {
+                type: 'STOCK_ADJUSTMENT',
+                amount: Number(partTotal),
+                description: `WO Cancelled — Reversed: ${part.product?.name ?? 'Part'} x${part.quantity}`,
+                referenceType: 'work_order_cancellation',
+                referenceId: id,
+                createdById: payload.userId,
+                tenantId,
+              });
+            }
+          } catch (err) {
+            logger.error('Work order cancellation reversal failed', err);
           }
         }
 

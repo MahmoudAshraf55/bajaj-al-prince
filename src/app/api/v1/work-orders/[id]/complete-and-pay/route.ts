@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { Prisma } from '@prisma/client';
 import { withRole } from '@/lib/auth';
 import { checkRateLimit } from '@/lib/rate-limit';
 import { withSecurityHeaders } from '@/lib/security';
@@ -153,7 +154,16 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
             createdById: payload.userId,
             tenantId,
             items: invoiceItems.length > 0 ? { create: invoiceItems } : undefined,
+            payments: data.amountPaid > 0 ? {
+              create: [{
+                method: data.paymentMethod,
+                amount: new Prisma.Decimal(data.amountPaid),
+                reference: null,
+                tenantId,
+              }],
+            } : undefined,
           },
+          include: { items: true, payments: true },
         });
 
         // Deduct stock for parts used + create stock movements (Issue: stock movements were empty)
@@ -178,6 +188,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         }
 
         try {
+          // NOTE: createDoubleEntry() only supports 2-line entries (DR/CR).
+          // This route needs a 3-line entry for partial payments:
+          //   DR: Cash/Bank (amountPaid)
+          //   DR: Accounts Receivable (remaining)
+          //   CR: Sales Revenue (total)
           const salesRevenueAccountId = await AccountingService.getAccountId(tx, ACCOUNT_CODES.SALES_REVENUE, tenantId);
           const accountsReceivableAccountId = await AccountingService.getAccountId(tx, ACCOUNT_CODES.ACCOUNTS_RECEIVABLE, tenantId);
           let cashAccountId: string;

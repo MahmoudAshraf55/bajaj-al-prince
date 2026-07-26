@@ -100,7 +100,7 @@ export function getDebitAccountCode(input: Partial<DoubleEntryInput>): string {
     case 'EXPENSE':
       return ACCOUNT_CODES.OPERATING_EXPENSES;
     case 'STOCK_ADJUSTMENT':
-      return ACCOUNT_CODES.INVENTORY;
+      return ACCOUNT_CODES.COGS;
     default:
       return ACCOUNT_CODES.CASH;
   }
