@@ -146,6 +146,21 @@ export async function POST(req: NextRequest) {
         }
       }
 
+      if (data.customerId) {
+        const customer = await prisma.customer.findFirst({
+          where: { id: data.customerId, isDeleted: false },
+          select: { id: true },
+        });
+        if (!customer) throw new Error(`Customer ${data.customerId} not found`);
+      }
+      if (data.workOrderId) {
+        const wo = await prisma.workOrder.findFirst({
+          where: { id: data.workOrderId, isDeleted: false },
+          select: { id: true },
+        });
+        if (!wo) throw new Error(`Work order ${data.workOrderId} not found`);
+      }
+
       // F-060: Retry transaction up to 3 times on unique constraint violation
       // (invoice number race condition when two requests generate the same number)
       const createInvoiceTransaction = async () => {

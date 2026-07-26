@@ -197,6 +197,18 @@ Verified against live code from the original `New_Empty_File` (19K-line ChatGPT 
 
 ---
 
+## Phase 10 Findings — RBAC Hardening + Validation (2026-07-26)
+
+| ID | Title | Category | Severity | Status | Evidence |
+|----|-------|----------|----------|--------|----------|
+| F-175 | 7 API routes use `withAuth` only — viewers can create work orders, upload files, see financial data | Security | 🟠 High | ✅ FIXED | Changed `withAuth` → `withRole(['admin','staff'])` on: `work-orders/route.ts` (GET+POST), `upload/route.ts` (POST), `bookings/route.ts` (GET), `contact/route.ts` (GET), `accounting/treasury/route.ts` (GET), `accounting/summary/route.ts` (GET), `accounting/transactions/route.ts` (GET). POST on bookings/contact left public (intentional customer forms). |
+| F-176 | Expenses always debit OPERATING_EXPENSES — no category-level GL mapping | Accounting | 🟡 Medium | ✅ FIXED | `cashier/route.ts` + `journal.ts` — Added `category` field to cashier schema (rent/salaries/utilities/marketing/operating/other). Added `expenseCategory` to `DoubleEntryInput`. Updated `getDebitAccountCode` to map expense categories to specific GL accounts (5201-5204, 5300). |
+| F-177 | PO items route — no product tenant validation for matched products | Security | 🟠 High | ✅ FIXED | `purchase-orders/[id]/items/route.ts` — Added `findFirst` tenant-scoped product validation before creating `purchaseOrderItem`. Throws if product not found in current tenant. |
+| F-178 | Supplier delete — no check for active purchase orders | Data Integrity | 🟡 Medium | ✅ FIXED | `suppliers/[id]/route.ts` — DELETE now counts active POs (status not in cancelled/received) and rejects with 400 if any exist. |
+| F-179 | Invoice POST — no validation that customerId/workOrderId belong to tenant | Security | 🟠 High | ✅ FIXED | `invoices/route.ts` — Added `findFirst` tenant-scoped validation for both `customerId` and `workOrderId` before transaction begins. Returns 400 with descriptive error if not found. |
+
+---
+
 ## Notes
 
 1. The original ChatGPT audit conversation (`New_Empty_File`, ~19K lines) was not available in the repository. Findings were extracted from the derived reports in `مهم/`.
@@ -206,4 +218,4 @@ Verified against live code from the original `New_Empty_File` (19K-line ChatGPT 
 5. F-045 is a duplicate of F-024 — will be consolidated during verification.
 6. E2E test suite expanded from 4 to 10 scenarios covering: Auth, Full Pipeline, POS Checkout, Payment Idempotency, Add/Delete Part, Cancel WO, Credit Sale, Split Payment, Return Invoice, Full Reconciliation.
 
-*Last updated: 2026-07-26 — Phase 9 complete. 41 FIXED, 0 CONFIRMED remaining, 1 verified (F-078).*
+*Last updated: 2026-07-26 — Phase 10 complete. 50 FIXED, 0 CONFIRMED remaining, 1 verified (F-078).*

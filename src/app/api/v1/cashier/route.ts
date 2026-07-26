@@ -21,6 +21,7 @@ const transactionSchema = z.object({
     { message: 'Amount must have at most 2 decimal places' }
   ),
   description: sanitizedString(z.string().max(500)).optional(),
+  category: z.enum(['rent', 'salaries', 'utilities', 'marketing', 'operating', 'other']).optional(),
 });
 
 export async function GET(req: NextRequest) {
@@ -74,6 +75,7 @@ export async function POST(req: NextRequest) {
           referenceId: transaction.id,
           createdById: payload.userId,
           tenantId,
+          expenseCategory: data.category,
         });
         return transaction;
       });

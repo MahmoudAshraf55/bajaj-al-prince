@@ -41,6 +41,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
           if (!productId) continue;
 
+          const product = await tx.product.findFirst({
+            where: { id: productId, isDeleted: false },
+            select: { id: true },
+          });
+          if (!product) {
+            throw new Error(`Product ${productId} not found or does not belong to this tenant`);
+          }
+
           await tx.purchaseOrderItem.create({
             data: {
               purchaseOrderId: id,

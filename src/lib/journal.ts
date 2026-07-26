@@ -20,13 +20,14 @@ async function getAccountByCode(tx: Tx, code: string, tenantId: string): Promise
 export interface DoubleEntryInput {
   type: 'SALE' | 'RETURN' | 'PURCHASE' | 'EXPENSE' | 'INCOME' | 'STOCK_ADJUSTMENT';
   amount: number;
-  amountPaid?: number; // Optional: for credit/partial sales, creates DR:Cash + DR:AR + CR:Revenue
+  amountPaid?: number;
   description?: string;
   referenceType?: string;
   referenceId?: string;
   referenceNumber?: string;
   category?: string;
   paymentMethod?: string;
+  expenseCategory?: 'rent' | 'salaries' | 'utilities' | 'marketing' | 'operating' | 'other';
   createdById: string;
   date?: Date;
   tenantId?: string;
@@ -141,8 +142,16 @@ export function getDebitAccountCode(input: Partial<DoubleEntryInput>): string {
       return ACCOUNT_CODES.SALES_REVENUE;
     case 'PURCHASE':
       return ACCOUNT_CODES.INVENTORY;
-    case 'EXPENSE':
-      return ACCOUNT_CODES.OPERATING_EXPENSES;
+    case 'EXPENSE': {
+      switch (input.expenseCategory) {
+        case 'rent': return ACCOUNT_CODES.RENT_EXPENSE;
+        case 'salaries': return ACCOUNT_CODES.SALARIES_EXPENSE;
+        case 'utilities': return ACCOUNT_CODES.UTILITIES_EXPENSE;
+        case 'marketing': return ACCOUNT_CODES.MARKETING_EXPENSE;
+        case 'other': return ACCOUNT_CODES.OTHER_EXPENSES;
+        default: return ACCOUNT_CODES.OPERATING_EXPENSES;
+      }
+    }
     case 'STOCK_ADJUSTMENT':
       return ACCOUNT_CODES.COGS;
     default:

@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { withAuth } from '@/lib/auth';
+import { withRole } from '@/lib/auth';
 import { withSecurityHeaders } from '@/lib/security';
 import { parseRangeDate } from '@/lib/utils';
 
 export async function GET(req: NextRequest) {
-  return withAuth(req, async (user) => {
+  return withRole(req, ['admin', 'staff'], async (user) => {
     if (!user) return withSecurityHeaders(NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 }));
 
     const url = new URL(req.url);

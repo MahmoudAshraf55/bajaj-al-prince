@@ -88,6 +88,16 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
         return withSecurityHeaders(NextResponse.json({ success: false, error: 'Supplier not found' }, { status: 404 }));
       }
 
+      const activePOs = await prisma.purchaseOrder.count({
+        where: { supplierId: id, isDeleted: false, status: { notIn: ['cancelled', 'received'] } },
+      });
+      if (activePOs > 0) {
+        return withSecurityHeaders(NextResponse.json({
+          success: false,
+          error: `Cannot delete supplier with ${activePOs} active purchase order(s). Cancel or complete them first.`,
+        }, { status: 400 }));
+      }
+
       await prisma.supplier.update({ where: { id }, data: { isDeleted: true, deletedAt: new Date() } });
 
       const { ipAddress, userAgent } = getClientInfo(req);

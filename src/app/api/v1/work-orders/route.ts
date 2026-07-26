@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { withAuth } from '@/lib/auth';
+import { withRole } from '@/lib/auth';
 import { validateOrigin, withSecurityHeaders } from '@/lib/security';
 import { logAudit, getClientInfo } from '@/lib/audit';
 import { sanitizedString } from '@/lib/sanitize';
@@ -19,7 +19,7 @@ const workOrderSchema = z.object({
 
 export async function GET(req: NextRequest) {
   try {
-    return await withAuth(req, async () => {
+    return await withRole(req, ['admin', 'staff'], async () => {
       const { searchParams } = new URL(req.url);
       const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10));
       const limit = Math.max(1, Math.min(100, parseInt(searchParams.get('limit') || '10', 10)));
@@ -73,7 +73,7 @@ export async function POST(req: NextRequest) {
   if (originCheck) return withSecurityHeaders(originCheck);
 
   try {
-    return await withAuth(req, async () => {
+    return await withRole(req, ['admin', 'staff'], async () => {
       const body = await req.json();
       const data = workOrderSchema.parse(body);
 
