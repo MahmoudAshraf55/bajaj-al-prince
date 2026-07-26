@@ -176,6 +176,12 @@ Verified against live code from the original `New_Empty_File` (19K-line ChatGPT 
 | F-076 | Overpayment not validated (amountPaid > total silently accepted) | Accounting | 🟠 High | ✅ FIXED | `complete-and-pay/route.ts` — Added `OVERPAYMENT_TOLERANCE = 0.01` check. Returns 400 if `amountPaid > total + tolerance`. Same check added to `invoices/route.ts` inside the transaction. |
 | F-078 | Payment + Accounting must be single transaction | Accounting | 🔴 Critical | VERIFIED | Both `complete-and-pay/route.ts` and `invoices/route.ts` already wrap all logic (stock, invoice, payments, journal entries) inside `prisma.$transaction()`. No action needed. |
 
+## Phase 8 Findings — Architecture & Domain Model (2026-07-26)
+
+| ID | Title | Category | Severity | Status | Evidence |
+|----|-------|----------|----------|--------|----------|
+| F-147 | Labour product selection uses random `findFirst` instead of dedicated service product | Architecture | 🟠 High | ✅ FIXED | `complete-and-pay/route.ts` and `WorkOrderService.ts` — Both now prefer `findFirst({ where: { isService: true } })` to find a dedicated service product for labour lines, instead of picking any random product. Seed already creates `isService: true` products. |
+
 ---
 
 ## Notes
@@ -187,4 +193,4 @@ Verified against live code from the original `New_Empty_File` (19K-line ChatGPT 
 5. F-045 is a duplicate of F-024 — will be consolidated during verification.
 6. E2E test suite expanded from 4 to 10 scenarios covering: Auth, Full Pipeline, POS Checkout, Payment Idempotency, Add/Delete Part, Cancel WO, Credit Sale, Split Payment, Return Invoice, Full Reconciliation.
 
-*Last updated: 2026-07-26 — Phase 7 complete. 34 FIXED, 0 CONFIRMED remaining, 1 verified (F-078).*
+*Last updated: 2026-07-26 — Phase 8 complete. 35 FIXED, 0 CONFIRMED remaining, 1 verified (F-078).*

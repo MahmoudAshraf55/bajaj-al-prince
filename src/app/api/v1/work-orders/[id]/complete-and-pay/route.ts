@@ -118,18 +118,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
           const usedIds = new Set(wo.parts.map((p) => p.productId));
           let labourProductId: string | null | undefined;
 
-          if (usedIds.size > 0) {
-            labourProductId = (await tx.product.findFirst({
-              where: { tenantId, id: { notIn: Array.from(usedIds) }, isDeleted: false },
-              select: { id: true },
-            }))?.id;
-          }
-          if (!labourProductId) {
-            labourProductId = (await tx.product.findFirst({
-              where: { tenantId, isDeleted: false },
-              select: { id: true },
-            }))?.id;
-          }
+          // F-147: Prefer a dedicated isService product for labour lines.
+          // Previously used findFirst which could pick ANY product (e.g. Brake Pad).
+          labourProductId = (await tx.product.findFirst({
+            where: { tenantId, isService: true, isDeleted: false },
+            select: { id: true },
+          }))?.id;
           if (labourProductId && !usedIds.has(labourProductId)) {
             itemMap.set(labourProductId, {
               productName: wo.labourLines.map((l) => l.description).join(', ') || 'Labour',
