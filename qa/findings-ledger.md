@@ -135,11 +135,24 @@ These items were identified as weaknesses but have been resolved:
 | 🟠 High findings | 5 (F-003, F-004, F-010, F-015, F-022) + 2 new (F-050, F-051) |
 | 🟡 Medium findings | 12 — 0 CONFIRMED |
 | 🟢 Low findings | 12 — 1 CONFIRMED (F-030) |
-| Total CONFIRMED | **1** (F-030 remaining) |
+| Total CONFIRMED | **5** (F-030, F-052, F-053, F-054, F-055) |
 | Total FIXED | **18** (F-004, F-009, F-024, F-031, F-045, F-048, F-049, F-050, F-051 + 9 ALREADY FIXED) |
 | Total INVALID | **15** |
 | Total NOT REPRODUCIBLE | **8** |
-| **Grand Total** | **51** |
+| **Grand Total** | **55** |
+
+---
+
+## Phase 4 Findings — Full ChatGPT Audit Cross-Reference (2026-07-26)
+
+Verified against live code from the original `New_Empty_File` (19K-line ChatGPT audit conversation).
+
+| ID | Title | Category | Severity | Status | Evidence |
+|----|-------|----------|----------|--------|----------|
+| F-052 | Double stock deduction: parts route + complete-and-pay both decrement stock | Inventory | 💀 Critical | CONFIRMED | `parts/route.ts:63-67` decrements `product.stock` at add-time. `complete-and-pay/route.ts:169-178` decrements `product.stock` AGAIN at completion. Net effect: stock reduced by 2× actual consumption. |
+| F-053 | `complete-and-pay` trusts frontend-supplied totals (partsTotal, labourTotal, amountPaid) | Security/Accounting | 🔴 Critical | CONFIRMED | `complete-and-pay/route.ts:51` calculates `total = data.partsTotal + data.labourTotal + taxTotal` using client-supplied values instead of computing from WO parts/labour in DB. A malicious client can manipulate the invoice total. |
+| F-054 | DELETE Part does not restore stock or reverse accounting | Inventory | 💀 Critical | CONFIRMED | `parts/route.ts:124-144` soft-deletes the WorkOrderPart record but does NOT restore `product.stock`, does NOT reverse `stockMovement`, does NOT reverse journal entry. Stock permanently lost from inventory. |
+| F-055 | Accounting failure silently swallowed in complete-and-pay and parts routes | Accounting | 🔴 High | CONFIRMED | Both `complete-and-pay/route.ts:222-224` and `parts/route.ts:108-111` catch accounting errors and only log them, allowing the transaction to succeed with incomplete financial records. |
 
 ---
 

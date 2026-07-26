@@ -10,13 +10,13 @@
 
 | ID | Title | Module | Status | Action |
 |----|-------|--------|--------|--------|
-| F-048 | `complete-and-pay` skips `InvoicePayment` records | Accounting | ✅ FIXED | Added `payments` nested create |
-| F-049 | Parts route credits `1201` instead of `1104` | Accounting | ✅ FIXED | Changed to `ACCOUNT_CODES.INVENTORY` |
-| F-001 | Admin credentials on Vercel | Auth | INVALID | No action |
-| F-011 | Warehouse & POS crash | Warehouse/POS | ALREADY FIXED | No action |
-| F-012 | POSInvoiceDetailModal crash | POS | ALREADY FIXED | No action |
+| F-052 | Double stock deduction (parts + complete-and-pay) | Inventory | 🔴 CONFIRMED | Remove stock deduction from `parts/route.ts:63-67`. Keep only in `complete-and-pay`. |
+| F-053 | `complete-and-pay` trusts frontend totals | Security | 🔴 CONFIRMED | Compute `partsTotal`/`labourTotal` server-side from WO parts/labour in DB, ignore client values. |
+| F-054 | DELETE Part does not restore stock/accounting | Inventory | 🔴 CONFIRMED | Add stock restore + stockMovement reversal + journal reversal to DELETE handler. |
+| F-048 | ~~complete-and-pay skips InvoicePayment~~ | Accounting | ✅ FIXED | |
+| F-049 | ~~Parts route credits wrong account~~ | Accounting | ✅ FIXED | |
 
-**P0: 0 remaining** — all fixed
+**P0: 3 NEW critical bugs** (F-052, F-053, F-054)
 
 ---
 

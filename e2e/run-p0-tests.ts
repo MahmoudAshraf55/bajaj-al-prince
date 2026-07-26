@@ -211,14 +211,13 @@ async function testFullServicePipeline(): Promise<TestResult> {
   assert(addPart.status === 201, `Part added: ${addPart.status}`, evidence, failures);
   assert(addPart.json.data?.part?.quantity === 2, `Part quantity=2`, evidence, failures);
 
-  // Verify stock decremented
+  // F-052: Stock is reserved at add-time (validated) but NOT deducted until completion
   const partProductAfter = await prisma.product.findUnique({ where: { id: partProductId }, select: { stock: true } });
   const partStockAfter = partProductAfter?.stock ?? 0;
-  assert(partStockAfter === partStockBefore - 2, `Stock decremented: ${partStockBefore} → ${partStockAfter} (expected ${partStockBefore - 2})`, evidence, failures);
+  assert(partStockAfter === partStockBefore, `Stock unchanged at add-time: ${partStockBefore} → ${partStockAfter} (reserved, not deducted)`, evidence, failures);
 
-  // Verify COGS journal entry created
+  // No COGS journal entry at add-time (deferred to completion)
   const postPartJournalLines = await prisma.journalEntryLine.count({ where: { tenantId: QA_TENANT_ID } });
-  assert(postPartJournalLines > preJournalLines, `Journal entry lines created for parts: ${preJournalLines} → ${postPartJournalLines}`, evidence, failures);
 
   // Step 6: Add Labour
   const addLabour = await api('POST', `/api/v1/work-orders/${woId}/labour`, { description: 'Engine oil change labour', hours: 2, rate: 200, total: 400 });
@@ -264,7 +263,12 @@ async function testFullServicePipeline(): Promise<TestResult> {
     assert(allJE.length > 0, `At least one journal entry for WO (found ${allJE.length})`, evidence, failures);
   }
 
-  // Step 10: Verify stock movements
+  // Step 10: Verify stock deducted at completion time (F-052)
+  const partProductFinal = await prisma.product.findUnique({ where: { id: partProductId }, select: { stock: true } });
+  const partStockFinal = partProductFinal?.stock ?? 0;
+  assert(partStockFinal === partStockBefore - 2, `Stock deducted at completion: ${partStockBefore} → ${partStockFinal} (expected ${partStockBefore - 2})`, evidence, failures);
+
+  // Step 11: Verify stock movements
   const stockMovements = await prisma.stockMovement.findMany({ where: { reference: { contains: woId.slice(0, 8) }, tenantId: QA_TENANT_ID } });
   assert(stockMovements.length > 0, `Stock movement records created (${stockMovements.length})`, evidence, failures);
   assert(stockMovements.every(sm => sm.type === 'out'), 'All stock movements are type=out', evidence, failures);

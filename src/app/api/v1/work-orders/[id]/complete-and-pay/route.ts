@@ -14,8 +14,8 @@ import { z } from 'zod';
 const completeAndPaySchema = z.object({
   paymentMethod: z.enum(['cash', 'card', 'transfer']),
   amountPaid: z.number().min(0),
-  partsTotal: z.number().min(0),
-  labourTotal: z.number().min(0),
+  partsTotal: z.number().min(0).optional(), // Ignored — computed from DB
+  labourTotal: z.number().min(0).optional(), // Ignored — computed from DB
 });
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -44,11 +44,15 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       }
 
       const tenantId = getTenantId() ?? DEFAULT_TENANT_ID;
+
+      // F-053: Compute totals from DB, not from client-supplied values
+      const dbPartsTotal = wo.parts.reduce((s, p) => s + Number(p.total), 0);
+      const dbLabourTotal = wo.labourLines.reduce((s, l) => s + (l.total ? Number(l.total) : 0), 0);
       const taxTotal = wo.parts.reduce((s, part) => {
         const taxRate = Number(part.product?.taxRate ?? 0) / 100;
         return s + Number(part.total) * taxRate;
       }, 0);
-      const total = data.partsTotal + data.labourTotal + taxTotal;
+      const total = dbPartsTotal + dbLabourTotal + taxTotal;
 
       const result = await prisma.$transaction(async (tx) => {
         const now = new Date();

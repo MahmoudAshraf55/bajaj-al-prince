@@ -8,7 +8,6 @@ import { logger } from '@/lib/logger';
 import { z } from 'zod';
 import { withSecurityHeaders } from '@/lib/security';
 import { Prisma } from '@prisma/client';
-import { createDoubleEntry } from '@/lib/journal';
 
 const createPartSchema = z.object({
   productId: z.string().uuid(),
@@ -60,28 +59,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       const total = new Prisma.Decimal(unitPrice).times(data.quantity);
 
       const part = await prisma.$transaction(async (tx) => {
-        // Deduct from stock
-        await tx.product.update({
-          where: { id: data.productId },
-          data: { stock: { decrement: data.quantity } },
-        });
+        // Stock is reserved at add-time (validated above) but deducted at completion
+        // to avoid double deduction. Accounting (COGS/Inventory) is also deferred to completion.
 
-        // Create accounting journal entry (DR: COGS, CR: Inventory)
         const tenantId = getTenantId() ?? DEFAULT_TENANT_ID;
-        
-        try {
-          await createDoubleEntry(tx, {
-            type: 'STOCK_ADJUSTMENT',
-            amount: Number(total),
-            description: `Work Order Part: ${product.name} x${data.quantity}`,
-            referenceType: 'work_order_part',
-            referenceId: id,
-            createdById: payload.userId,
-            tenantId,
-          });
-        } catch (accountingError) {
-          logger.error('Accounting entry creation failed in WO parts', accountingError);
-        }
 
         // Create work order part
         return await tx.workOrderPart.create({
@@ -132,6 +113,11 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
       if (!partId) {
         return withSecurityHeaders(NextResponse.json({ success: false, error: 'partId query param required' }, { status: 400 }));
       }
+      // F-052: Stock is only deducted at completion time (complete-and-pay), not at add-time.
+      // So deleting a part before completion requires no stock restoration.
+      // NOTE: If migrating from old behavior where stock was deducted at add-time,
+      // a data migration script is needed to restore stock for soft-deleted parts
+      // on incomplete work orders.
       await prisma.workOrderPart.updateMany({
         where: { id: partId, workOrderId: id },
         data: { isDeleted: true, deletedAt: new Date() },
