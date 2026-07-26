@@ -7,6 +7,8 @@ import { logAudit, getClientInfo } from '@/lib/audit';
 import { z } from 'zod';
 import { withSecurityHeaders } from '@/lib/security';
 import { createDoubleEntry } from '@/lib/journal';
+import { AccountingService } from '@/services/AccountingService';
+import { ACCOUNT_CODES } from '@/constants/accounting';
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -116,6 +118,29 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
               paymentMethod: invoice.paymentMethod ?? 'cash',
               createdById: payload.userId,
               tenantId: getTenantId() ?? DEFAULT_TENANT_ID,
+            });
+          } else if (invoice.type === 'purchase' && Number(invoice.total) > 0) {
+            const tenantId = getTenantId() ?? DEFAULT_TENANT_ID;
+            const inventoryId = await AccountingService.getAccountId(tx, ACCOUNT_CODES.INVENTORY, tenantId);
+            const accountsPayableId = await AccountingService.getAccountId(tx, ACCOUNT_CODES.ACCOUNTS_PAYABLE, tenantId);
+            await tx.journalEntry.create({
+              data: {
+                type: 'RETURN',
+                amount: Number(invoice.total),
+                description: `Cancelled purchase invoice ${invoice.number}`,
+                referenceType: 'invoice',
+                referenceId: invoice.id,
+                referenceNumber: invoice.number,
+                date: new Date(),
+                createdById: payload.userId,
+                tenantId,
+                lines: {
+                  create: [
+                    { accountId: accountsPayableId, debit: Number(invoice.total), credit: 0, description: 'AP reversal', tenantId },
+                    { accountId: inventoryId, debit: 0, credit: Number(invoice.total), description: 'Inventory reversal', tenantId },
+                  ],
+                },
+              },
             });
           }
         });

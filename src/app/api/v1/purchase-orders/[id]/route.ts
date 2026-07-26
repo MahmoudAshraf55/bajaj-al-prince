@@ -91,18 +91,13 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         updateData.supplierId = data.supplierId;
       }
       if (data.notes !== undefined) updateData.notes = data.notes;
-      if (data.subtotal !== undefined) updateData.subtotal = data.subtotal;
-      if (data.taxTotal !== undefined) updateData.taxTotal = data.taxTotal;
-      if (data.discount !== undefined) updateData.discount = data.discount;
-      if (data.total !== undefined) updateData.total = data.total;
 
       const updated = await prisma.$transaction(async (tx) => {
         if (data.items) {
-          // F-066: Validate that all products belong to the current tenant
           const productIds = data.items.map((i) => i.productId);
           const products = await tx.product.findMany({
             where: { id: { in: productIds }, isDeleted: false },
-            select: { id: true },
+            select: { id: true, price: true },
           });
           if (products.length !== productIds.length) {
             const foundIds = new Set(products.map((p) => p.id));
@@ -110,21 +105,41 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
             throw new Error(`Products not found or belong to another tenant: ${missing.join(', ')}`);
           }
 
-          // Delete existing items
+          const productPriceMap = new Map(products.map((p) => [p.id, Number(p.price)]));
+
           await tx.purchaseOrderItem.deleteMany({ where: { purchaseOrderId: id } });
-          // Create new items
           for (const item of data.items) {
+            const serverUnitPrice = productPriceMap.get(item.productId) ?? item.unitPrice;
+            const serverTotal = serverUnitPrice * item.quantity;
             await tx.purchaseOrderItem.create({
               data: {
                 purchaseOrderId: id,
                 productId: item.productId,
                 quantity: item.quantity,
-                unitPrice: item.unitPrice,
-                total: item.total,
+                unitPrice: serverUnitPrice,
+                total: serverTotal,
               },
             });
           }
+
+          const allItems = await tx.purchaseOrderItem.findMany({ where: { purchaseOrderId: id } });
+          const recalculatedSubtotal = allItems.reduce((s, i) => s + Number(i.total), 0);
+          const currentPO = await tx.purchaseOrder.findFirst({ where: { id }, select: { taxTotal: true, discount: true } });
+          const taxTotal = Number(currentPO?.taxTotal ?? 0);
+          const discount = Number(currentPO?.discount ?? 0);
+          updateData.subtotal = recalculatedSubtotal;
+          updateData.total = recalculatedSubtotal + taxTotal - discount;
+        } else if (data.subtotal !== undefined || data.taxTotal !== undefined || data.discount !== undefined) {
+          const currentPO = await tx.purchaseOrder.findFirst({ where: { id }, select: { subtotal: true, taxTotal: true, discount: true } });
+          const sub = data.subtotal ?? Number(currentPO?.subtotal ?? 0);
+          const tax = data.taxTotal ?? Number(currentPO?.taxTotal ?? 0);
+          const disc = data.discount ?? Number(currentPO?.discount ?? 0);
+          updateData.subtotal = sub;
+          updateData.taxTotal = tax;
+          updateData.discount = disc;
+          updateData.total = sub + tax - disc;
         }
+
         return tx.purchaseOrder.update({
           where: { id },
           data: updateData,

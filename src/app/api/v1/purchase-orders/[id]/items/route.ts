@@ -62,10 +62,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
           added++;
         }
 
-        // Recalculate totals
+        // Recalculate totals (preserve existing taxTotal and discount)
         const items = await tx.purchaseOrderItem.findMany({ where: { purchaseOrderId: id } });
         const subtotal = items.reduce((s, i) => s + Number(i.total), 0);
-        await tx.purchaseOrder.update({ where: { id }, data: { subtotal, total: subtotal } });
+        const currentPO = await tx.purchaseOrder.findFirst({ where: { id }, select: { taxTotal: true, discount: true } });
+        const taxTotal = Number(currentPO?.taxTotal ?? 0);
+        const discount = Number(currentPO?.discount ?? 0);
+        await tx.purchaseOrder.update({ where: { id }, data: { subtotal, total: subtotal + taxTotal - discount } });
       });
 
       return withSecurityHeaders(NextResponse.json({ success: true, data: { added } }));
