@@ -12,7 +12,6 @@ import { Prisma } from '@prisma/client';
 const createPartSchema = z.object({
   productId: z.string().uuid(),
   quantity: z.number().int().positive(),
-  unitPrice: z.number().min(0).optional(),
 });
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -55,7 +54,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         return withSecurityHeaders(NextResponse.json({ success: false, error: 'Insufficient stock' }, { status: 400 }));
       }
 
-      const unitPrice = data.unitPrice ?? Number(product.price);
+      // F-059: Always use the product's catalog price. Client-supplied unitPrice
+      // is ignored to prevent staff from overriding prices without authorization.
+      const unitPrice = Number(product.price);
       const total = new Prisma.Decimal(unitPrice).times(data.quantity);
 
       const part = await prisma.$transaction(async (tx) => {

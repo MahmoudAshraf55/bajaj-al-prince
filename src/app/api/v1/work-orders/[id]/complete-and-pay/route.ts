@@ -18,6 +18,8 @@ const completeAndPaySchema = z.object({
   labourTotal: z.number().min(0).optional(), // Ignored — computed from DB
 });
 
+const OVERPAYMENT_TOLERANCE = 0.01;
+
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const limit = await checkRateLimit(req, 'admin');
   if (!limit.allowed) return withSecurityHeaders(limit.response!);
@@ -53,6 +55,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         return s + Number(part.total) * taxRate;
       }, 0);
       const total = dbPartsTotal + dbLabourTotal + taxTotal;
+
+      // F-076: Reject overpayment — payment must not exceed total by more than tolerance
+      if (data.amountPaid > total + OVERPAYMENT_TOLERANCE) {
+        return withSecurityHeaders(NextResponse.json({
+          success: false,
+          error: `Payment amount (${data.amountPaid}) exceeds invoice total (${total}). Overpayment is not allowed.`,
+        }, { status: 400 }));
+      }
 
       const result = await prisma.$transaction(async (tx) => {
         const now = new Date();

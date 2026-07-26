@@ -9,6 +9,7 @@ import { z } from 'zod';
 import { withSecurityHeaders } from '@/lib/security';
 import { createDoubleEntry } from '@/lib/journal';
 import { Prisma } from '@prisma/client';
+import { logger } from '@/lib/logger';
 
 const invoiceItemSchema = z.object({
   productId: z.string().uuid(),
@@ -33,12 +34,14 @@ const createInvoiceSchema = z.object({
   returnInvoiceId: z.string().uuid().optional().nullable(),
 });
 
-async function generateInvoiceNumber(): Promise<string> {
+type TxClient = Parameters<Parameters<typeof prisma.$transaction>[0]>[0];
+
+async function generateInvoiceNumber(tx: TxClient, tenantId: string): Promise<string> {
   const now = new Date();
   const dateStr = now.toISOString().slice(0, 10).replace(/-/g, '');
   const prefix = `INV-${dateStr}-`;
-  const last = await prisma.invoice.findFirst({
-    where: { number: { startsWith: prefix } },
+  const last = await tx.invoice.findFirst({
+    where: { tenantId, number: { startsWith: prefix } },
     orderBy: { number: 'desc' },
     select: { number: true },
   });
@@ -143,164 +146,189 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      const result = await prisma.$transaction(async (tx) => {
-        const productIds = data.items.map((i) => i.productId);
-        const products = await tx.product.findMany({
-          where: { id: { in: productIds }, isDeleted: false },
-        });
-        const productMap = new Map(products.map((p) => [p.id, p]));
+      // F-060: Retry transaction up to 3 times on unique constraint violation
+      // (invoice number race condition when two requests generate the same number)
+      const createInvoiceTransaction = async () => {
+        return await prisma.$transaction(async (tx) => {
+          const productIds = data.items.map((i) => i.productId);
+          const products = await tx.product.findMany({
+            where: { id: { in: productIds }, isDeleted: false },
+          });
+          const productMap = new Map(products.map((p) => [p.id, p]));
 
-        const itemsData: {
-          productId: string;
-          barcode: string | null;
-          productName: string;
-          unitPrice: Prisma.Decimal;
-          costPrice: Prisma.Decimal;
-          quantity: number;
-          total: Prisma.Decimal;
-        }[] = [];
+          const itemsData: {
+            productId: string;
+            barcode: string | null;
+            productName: string;
+            unitPrice: Prisma.Decimal;
+            costPrice: Prisma.Decimal;
+            quantity: number;
+            total: Prisma.Decimal;
+          }[] = [];
 
-        for (const item of data.items) {
-          const product = productMap.get(item.productId);
-          if (!product) {
-            throw new Error(`Product not found: ${item.productId}`);
-          }
+          for (const item of data.items) {
+            const product = productMap.get(item.productId);
+            if (!product) {
+              throw new Error(`Product not found: ${item.productId}`);
+            }
 
-           const unitPrice = new Prisma.Decimal(Number(product.price));
-           const costPrice = new Prisma.Decimal(Number(product.costPrice || 0));
-           const total = unitPrice.times(item.quantity);
+            const unitPrice = new Prisma.Decimal(Number(product.price));
+            const costPrice = new Prisma.Decimal(Number(product.costPrice || 0));
+            const total = unitPrice.times(item.quantity);
 
-           itemsData.push({
-             productId: product.id,
-             barcode: product.barcode,
-             productName: product.name,
-             unitPrice,
-             costPrice,
-             quantity: item.quantity,
-             total,
-           });
+            itemsData.push({
+              productId: product.id,
+              barcode: product.barcode,
+              productName: product.name,
+              unitPrice,
+              costPrice,
+              quantity: item.quantity,
+              total,
+            });
 
-           const shouldDeductStock = !product.lockInventory && data.type !== 'purchase' && data.type !== 'return';
+            const shouldDeductStock = !product.lockInventory && data.type !== 'purchase' && data.type !== 'return';
 
-           if (shouldDeductStock) {
-             // Atomic: decrement stock ONLY WHERE stock >= quantity. If zero rows
-             // affected, another concurrent request consumed the remaining stock.
-             const affected = await tx.product.updateMany({
-               where: { id: product.id, stock: { gte: item.quantity } },
-               data: { stock: { decrement: item.quantity } },
-             });
-             if (affected.count === 0) {
-               throw new Error(`Insufficient stock for ${product.name}: available ${product.stock}, requested ${item.quantity}`);
-             }
-           } else if (data.type === 'purchase' || data.type === 'return') {
-             await tx.product.update({
-               where: { id: product.id },
-               data: { stock: { increment: item.quantity } },
-             });
-           }
+            if (shouldDeductStock) {
+              const affected = await tx.product.updateMany({
+                where: { id: product.id, stock: { gte: item.quantity } },
+                data: { stock: { decrement: item.quantity } },
+              });
+              if (affected.count === 0) {
+                throw new Error(`Insufficient stock for ${product.name}: available ${product.stock}, requested ${item.quantity}`);
+              }
+            } else if (data.type === 'purchase' || data.type === 'return') {
+              await tx.product.update({
+                where: { id: product.id },
+                data: { stock: { increment: item.quantity } },
+              });
+            }
 
-           // Always create stock movement record for audit purposes
-           await tx.stockMovement.create({
-             data: {
-               productId: product.id,
+            await tx.stockMovement.create({
+              data: {
+                productId: product.id,
                 type: (data.type === 'purchase' || data.type === 'return') ? 'in' : 'out' as 'in' | 'out',
                 quantity: item.quantity,
                 reference: 'invoice',
                 notes: `Invoice ${data.type === 'purchase' ? 'purchase' : data.type === 'return' ? 'return restock' : product.lockInventory ? 'service' : 'sale'}`,
-               createdById: payload.userId,
-               tenantId: getTenantId() ?? DEFAULT_TENANT_ID,
-             },
-           });
-        }
-
-        const subtotal = itemsData.reduce((sum, item) => sum.plus(item.total), new Prisma.Decimal(0));
-        const discount = new Prisma.Decimal(data.discount);
-
-        let taxTotal = new Prisma.Decimal(0);
-        for (let i = 0; i < data.items.length; i++) {
-          const product = productMap.get(data.items[i].productId);
-          if (!product) continue;
-          if (product.taxExempt) continue;
-          const rate = product.taxRate != null
-            ? new Prisma.Decimal(Number(product.taxRate)).div(100)
-            : new Prisma.Decimal(0.14);
-          const itemTax = itemsData[i].total.times(rate);
-          taxTotal = taxTotal.plus(itemTax);
-        }
-
-        const afterDiscount = subtotal.minus(discount);
-        const total = afterDiscount.gte(0) ? afterDiscount.plus(taxTotal) : new Prisma.Decimal(0);
-
-        // Handle split payments: if payments array provided, use it; else fall back to single method.
-        // F-054: When paid=0 (credit sale), create NO payment record — do NOT use
-        // `data.paid || Number(total)` which would create a full payment due to JS falsy `0 || total`.
-        const payments = data.payments && data.payments.length > 0
-          ? data.payments
-          : (data.paid > 0
-            ? [{ method: data.paymentMethod || 'cash', amount: data.paid, reference: null }]
-            : []);
-
-        const paidAmount = payments.reduce((sum, p) => sum + p.amount, 0);
-        const paid = new Prisma.Decimal(paidAmount);
-        const change = paid.gte(total) ? paid.minus(total) : new Prisma.Decimal(0);
-        const primaryMethod = payments.length > 0
-          ? payments.reduce((max, p) => p.amount > max.amount ? p : max, payments[0]).method
-          : data.paymentMethod || 'cash';
-
-        const invoice = await tx.invoice.create({
-          data: {
-            number: await generateInvoiceNumber(),
-            type: data.type,
-            subtotal,
-            taxTotal,
-            discount,
-            total,
-            paid,
-            change,
-            paymentMethod: primaryMethod,
-            notes: data.notes,
-            customerId: data.customerId,
-            customerName: data.customerName,
-            workOrderId: data.workOrderId || undefined,
-            returnInvoiceId: data.returnInvoiceId || undefined,
-            createdById: payload.userId,
-            status: 'confirmed',
-            tenantId: getTenantId() ?? DEFAULT_TENANT_ID,
-            items: {
-              create: itemsData.map((item) => ({ ...item, tenantId: getTenantId() ?? DEFAULT_TENANT_ID })),
-            },
-            payments: payments.length > 0 ? {
-              create: payments.map((p) => ({
-                method: p.method,
-                amount: new Prisma.Decimal(p.amount),
-                reference: p.reference || null,
+                createdById: payload.userId,
                 tenantId: getTenantId() ?? DEFAULT_TENANT_ID,
-              })),
-            } : undefined,
-          },
-          include: { items: true, payments: true },
-        });
+              },
+            });
+          }
 
-        const jeType = data.type === 'sale' ? 'SALE' as const : data.type === 'return' ? 'RETURN' as const : 'PURCHASE' as const;
-        // Use invoice total (not paid amount) for the journal entry.
-        // Overpayment (change) is returned to the customer immediately and
-        // must not inflate the cash/debit side of the entry.
-        const jeAmount = Math.min(paidAmount, Number(total));
-        await createDoubleEntry(tx, {
-          type: jeType,
-          amount: jeAmount,
-          description: `Invoice ${invoice.number}`,
-          referenceType: 'invoice',
-          referenceId: invoice.id,
-          referenceNumber: invoice.number,
-          paymentMethod: primaryMethod,
-          category: data.items?.[0]?.productId ? undefined : undefined,
-          createdById: payload.userId,
-          tenantId: getTenantId() ?? DEFAULT_TENANT_ID,
-        });
+          const subtotal = itemsData.reduce((sum, item) => sum.plus(item.total), new Prisma.Decimal(0));
+          const discount = new Prisma.Decimal(data.discount);
 
-        return invoice;
-      });
+          let taxTotal = new Prisma.Decimal(0);
+          for (let i = 0; i < data.items.length; i++) {
+            const product = productMap.get(data.items[i].productId);
+            if (!product) continue;
+            if (product.taxExempt) continue;
+            const rate = product.taxRate != null
+              ? new Prisma.Decimal(Number(product.taxRate)).div(100)
+              : new Prisma.Decimal(0.14);
+            const itemTax = itemsData[i].total.times(rate);
+            taxTotal = taxTotal.plus(itemTax);
+          }
+
+          const afterDiscount = subtotal.minus(discount);
+          const total = afterDiscount.gte(0) ? afterDiscount.plus(taxTotal) : new Prisma.Decimal(0);
+
+          // F-076: Reject overpayment — payment must not exceed total by more than tolerance
+          const OVERPAYMENT_TOLERANCE = 0.01;
+          const totalPaidAmount = data.payments && data.payments.length > 0
+            ? data.payments.reduce((sum, p) => sum + p.amount, 0)
+            : data.paid;
+          if (totalPaidAmount > Number(total) + OVERPAYMENT_TOLERANCE) {
+            throw new Error(`Payment amount (${totalPaidAmount}) exceeds invoice total (${Number(total)}). Overpayment is not allowed.`);
+          }
+
+          const payments = data.payments && data.payments.length > 0
+            ? data.payments
+            : (data.paid > 0
+              ? [{ method: data.paymentMethod || 'cash', amount: data.paid, reference: null }]
+              : []);
+
+          const paidAmount = payments.reduce((sum, p) => sum + p.amount, 0);
+          const paid = new Prisma.Decimal(paidAmount);
+          const change = paid.gte(total) ? paid.minus(total) : new Prisma.Decimal(0);
+          const primaryMethod = payments.length > 0
+            ? payments.reduce((max, p) => p.amount > max.amount ? p : max, payments[0]).method
+            : data.paymentMethod || 'cash';
+
+          const invoice = await tx.invoice.create({
+            data: {
+              number: await generateInvoiceNumber(tx, getTenantId() ?? DEFAULT_TENANT_ID),
+              type: data.type,
+              subtotal,
+              taxTotal,
+              discount,
+              total,
+              paid,
+              change,
+              paymentMethod: primaryMethod,
+              notes: data.notes,
+              customerId: data.customerId,
+              customerName: data.customerName,
+              workOrderId: data.workOrderId || undefined,
+              returnInvoiceId: data.returnInvoiceId || undefined,
+              createdById: payload.userId,
+              status: 'confirmed',
+              tenantId: getTenantId() ?? DEFAULT_TENANT_ID,
+              items: {
+                create: itemsData.map((item) => ({ ...item, tenantId: getTenantId() ?? DEFAULT_TENANT_ID })),
+              },
+              payments: payments.length > 0 ? {
+                create: payments.map((p) => ({
+                  method: p.method,
+                  amount: new Prisma.Decimal(p.amount),
+                  reference: p.reference || null,
+                  tenantId: getTenantId() ?? DEFAULT_TENANT_ID,
+                })),
+              } : undefined,
+            },
+            include: { items: true, payments: true },
+          });
+
+          const jeType = data.type === 'sale' ? 'SALE' as const : data.type === 'return' ? 'RETURN' as const : 'PURCHASE' as const;
+          const jeAmount = Math.min(paidAmount, Number(total));
+          await createDoubleEntry(tx, {
+            type: jeType,
+            amount: jeAmount,
+            description: `Invoice ${invoice.number}`,
+            referenceType: 'invoice',
+            referenceId: invoice.id,
+            referenceNumber: invoice.number,
+            paymentMethod: primaryMethod,
+            category: data.items?.[0]?.productId ? undefined : undefined,
+            createdById: payload.userId,
+            tenantId: getTenantId() ?? DEFAULT_TENANT_ID,
+          });
+
+          return invoice;
+        });
+      };
+
+      const MAX_RETRIES = 3;
+      let lastError: unknown;
+      let result: Awaited<ReturnType<typeof createInvoiceTransaction>> | null = null;
+
+      for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+        try {
+          result = await createInvoiceTransaction();
+          break;
+        } catch (err) {
+          lastError = err;
+          const isUniqueViolation = err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002';
+          if (!isUniqueViolation || attempt === MAX_RETRIES) {
+            throw err;
+          }
+          logger.warn(`Invoice number collision on attempt ${attempt}, retrying`, { attempt });
+          await new Promise((r) => setTimeout(r, 50 * attempt));
+        }
+      }
+
+      if (!result) throw lastError;
 
       const { ipAddress, userAgent } = getClientInfo(req);
       await logAudit({

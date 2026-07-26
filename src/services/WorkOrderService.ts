@@ -13,7 +13,7 @@ export interface UpdatedWorkOrder {
     quantity: number;
     unitPrice: string | number | Prisma.Decimal;
     total: string | number | Prisma.Decimal;
-    product?: { name: string; costPrice: string | number | Prisma.Decimal | null } | null;
+    product?: { name: string; costPrice: string | number | Prisma.Decimal | null; lockInventory?: boolean } | null;
   }>;
   labourLines: Array<{ description: string; total: string | number | Prisma.Decimal }>;
   vehicle?: { customer?: { id: string; name: string } | null } | null;
@@ -31,12 +31,14 @@ export class WorkOrderService {
     const labourTotal = updatedWorkOrder.labourLines.reduce((sum: number, l) => sum + Number(l.total), 0);
     const totalCost = partsTotal + labourTotal;
 
-    // 1. Deduct stock
+    // 1. Deduct stock (skip lockInventory parts — e.g. labour-only items)
     for (const part of updatedWorkOrder.parts) {
-      await tx.product.update({
-        where: { id: part.productId },
-        data: { stock: { decrement: part.quantity } },
-      });
+      if (!part.product?.lockInventory) {
+        await tx.product.update({
+          where: { id: part.productId },
+          data: { stock: { decrement: part.quantity } },
+        });
+      }
       await tx.stockMovement.create({
         data: {
           productId: part.productId,

@@ -163,9 +163,17 @@ Verified against live code from the original `New_Empty_File` (19K-line ChatGPT 
 | F-056 | Invoice route `paid=0` creates payment for full total (JS `0 \|\| total` falsy bug) | Accounting | 🔴 Critical | ✅ FIXED | `invoices/route.ts:234-239` — Changed condition to `data.paid > 0` and removed `\|\| Number(total)` fallback. Credit sales now correctly create zero payment records. |
 | F-057 | WO cancellation incorrectly increments stock (was never deducted at add-time) | Inventory | 🟠 High | ✅ FIXED | `work-orders/[id]/route.ts:103-127` — Removed stock increment and reversal journal entries from cancellation path. Since F-052 defers stock deduction to completion, cancellation of incomplete WOs needs no restoration. |
 | F-058 | Credit sale journal entry creates zero-value entry (DR:Cash 0, CR:Revenue 0) | Accounting | 🟠 High | CONFIRMED | `invoices/route.ts:282-298` — `createDoubleEntry` with type='SALE' always debits Cash/Bank. For credit sales (paid=0), `jeAmount = min(0, total) = 0`. Needs DR:AR for credit sales. Documented in E2E-006 test. |
-| F-059 | `unitPrice` on work order parts is client-overridable | Security | 🟠 Medium | CONFIRMED | `parts/route.ts:58` — `data.unitPrice ?? Number(product.price)` allows any client-supplied price. No permission check for price override. |
-| F-060 | Invoice number generation has race condition | Architecture | 🟡 Medium | CONFIRMED | `complete-and-pay/route.ts:58-71` — `findFirst` + `+1` pattern not atomic. Two concurrent requests can generate the same number. |
-| F-061 | `WorkOrderService.completeWorkOrder` does not check `lockInventory` | Inventory | 🟠 High | CONFIRMED | `WorkOrderService.ts:35-39` — Direct `stock: { decrement }` without `lockInventory` check or atomic `updateMany` pattern. Stock can go negative. |
+| F-059 | `unitPrice` on work order parts is client-overridable | Security | 🟠 Medium | ✅ FIXED | `parts/route.ts` — Removed `unitPrice` from Zod schema. Price is now always read from `product.price`, preventing staff from overriding catalog prices without authorization. |
+| F-060 | Invoice number generation has race condition | Architecture | 🟡 Medium | ✅ FIXED | `invoices/route.ts` — `generateInvoiceNumber` now accepts `tx` client (runs inside transaction). Added retry loop (3 attempts) with exponential backoff for `P2002` unique constraint violations. Also added `logger` import. |
+| F-061 | `WorkOrderService.completeWorkOrder` does not check `lockInventory` | Inventory | 🟠 High | ✅ FIXED | `WorkOrderService.ts:34-39` — Added `if (!part.product?.lockInventory)` guard around `stock: { decrement }`. Added `lockInventory?: boolean` to the `product` type in `UpdatedWorkOrder`. |
+
+## Phase 6 Findings — Architecture & Security (2026-07-26)
+
+| ID | Title | Category | Severity | Status | Evidence |
+|----|-------|----------|----------|--------|----------|
+| F-063 | PO number uses `count()` without tenant scoping (race condition + cross-tenant) | Security/Accounting | 🔴 Critical | ✅ FIXED | `purchase-orders/route.ts:89-91` — Replaced global `count()` with tenant-scoped `findFirst({ where: { tenantId, number: { startsWith: prefix } } })` using date prefix (`PO-YYYYMMDD-NNNN`). |
+| F-076 | Overpayment not validated (amountPaid > total silently accepted) | Accounting | 🟠 High | ✅ FIXED | `complete-and-pay/route.ts` — Added `OVERPAYMENT_TOLERANCE = 0.01` check. Returns 400 if `amountPaid > total + tolerance`. Same check added to `invoices/route.ts` inside the transaction. |
+| F-078 | Payment + Accounting must be single transaction | Accounting | 🔴 Critical | VERIFIED | Both `complete-and-pay/route.ts` and `invoices/route.ts` already wrap all logic (stock, invoice, payments, journal entries) inside `prisma.$transaction()`. No action needed. |
 
 ---
 
@@ -178,4 +186,4 @@ Verified against live code from the original `New_Empty_File` (19K-line ChatGPT 
 5. F-045 is a duplicate of F-024 — will be consolidated during verification.
 6. E2E test suite expanded from 4 to 10 scenarios covering: Auth, Full Pipeline, POS Checkout, Payment Idempotency, Add/Delete Part, Cancel WO, Credit Sale, Split Payment, Return Invoice, Full Reconciliation.
 
-*Last updated: 2026-07-26 — Phase 5 complete. 24 FIXED, 1 CONFIRMED remaining (F-030), 6 NEW CONFIRMED (F-056–F-061).*
+*Last updated: 2026-07-26 — Phase 6 complete. 31 FIXED, 1 CONFIRMED remaining (F-030), 1 architectural (F-058), 1 verified (F-078).*
