@@ -231,11 +231,13 @@ export async function POST(req: NextRequest) {
         const afterDiscount = subtotal.minus(discount);
         const total = afterDiscount.gte(0) ? afterDiscount.plus(taxTotal) : new Prisma.Decimal(0);
 
-        // Handle split payments: if payments array provided, use it; else fall back to single method
+        // Handle split payments: if payments array provided, use it; else fall back to single method.
+        // F-054: When paid=0 (credit sale), create NO payment record — do NOT use
+        // `data.paid || Number(total)` which would create a full payment due to JS falsy `0 || total`.
         const payments = data.payments && data.payments.length > 0
           ? data.payments
-          : (data.paymentMethod || data.paid > 0
-            ? [{ method: data.paymentMethod || 'cash', amount: data.paid || Number(total), reference: null }]
+          : (data.paid > 0
+            ? [{ method: data.paymentMethod || 'cash', amount: data.paid, reference: null }]
             : []);
 
         const paidAmount = payments.reduce((sum, p) => sum + p.amount, 0);

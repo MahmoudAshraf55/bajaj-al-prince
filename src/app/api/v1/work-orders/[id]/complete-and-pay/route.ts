@@ -191,55 +191,52 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
           });
         }
 
-        try {
-          // NOTE: createDoubleEntry() only supports 2-line entries (DR/CR).
-          // This route needs a 3-line entry for partial payments:
-          //   DR: Cash/Bank (amountPaid)
-          //   DR: Accounts Receivable (remaining)
-          //   CR: Sales Revenue (total)
-          const salesRevenueAccountId = await AccountingService.getAccountId(tx, ACCOUNT_CODES.SALES_REVENUE, tenantId);
-          const accountsReceivableAccountId = await AccountingService.getAccountId(tx, ACCOUNT_CODES.ACCOUNTS_RECEIVABLE, tenantId);
-          let cashAccountId: string;
-          if (data.paymentMethod === 'cash') {
-            cashAccountId = await AccountingService.getAccountId(tx, ACCOUNT_CODES.CASH, tenantId);
-          } else {
-            // card و transfer → BANK (1102)
-            cashAccountId = await AccountingService.getAccountId(tx, ACCOUNT_CODES.BANK, tenantId);
-          }
+        // F-055: Accounting entry MUST succeed — if it fails, the entire transaction
+        // rolls back so no incomplete financial state is committed.
+        // NOTE: createDoubleEntry() only supports 2-line entries (DR/CR).
+        // This route needs a 3-line entry for partial payments:
+        //   DR: Cash/Bank (amountPaid)
+        //   DR: Accounts Receivable (remaining)
+        //   CR: Sales Revenue (total)
+        const salesRevenueAccountId = await AccountingService.getAccountId(tx, ACCOUNT_CODES.SALES_REVENUE, tenantId);
+        const accountsReceivableAccountId = await AccountingService.getAccountId(tx, ACCOUNT_CODES.ACCOUNTS_RECEIVABLE, tenantId);
+        let cashAccountId: string;
+        if (data.paymentMethod === 'cash') {
+          cashAccountId = await AccountingService.getAccountId(tx, ACCOUNT_CODES.CASH, tenantId);
+        } else {
+          cashAccountId = await AccountingService.getAccountId(tx, ACCOUNT_CODES.BANK, tenantId);
+        }
 
-          const journalEntry = await tx.journalEntry.create({
-            data: {
-              date: now,
-              description: `Work Order Invoice: ${wo.vehicle?.make ?? ''} ${wo.vehicle?.model ?? ''}`.trim(),
-              type: 'SALE',
-              amount: total,
-              referenceType: 'work_order',
-              referenceId: id,
-              referenceNumber: invoiceNumber,
-              paymentMethod: data.paymentMethod,
-              createdById: payload.userId,
-              tenantId,
-            },
-          });
+        const journalEntry = await tx.journalEntry.create({
+          data: {
+            date: now,
+            description: `Work Order Invoice: ${wo.vehicle?.make ?? ''} ${wo.vehicle?.model ?? ''}`.trim(),
+            type: 'SALE',
+            amount: total,
+            referenceType: 'work_order',
+            referenceId: id,
+            referenceNumber: invoiceNumber,
+            paymentMethod: data.paymentMethod,
+            createdById: payload.userId,
+            tenantId,
+          },
+        });
 
-          if (data.amountPaid > 0) {
-            await tx.journalEntryLine.create({
-              data: { journalEntryId: journalEntry.id, accountId: cashAccountId, debit: data.amountPaid, credit: 0, tenantId },
-            });
-          }
-
+        if (data.amountPaid > 0) {
           await tx.journalEntryLine.create({
-            data: { journalEntryId: journalEntry.id, accountId: salesRevenueAccountId, debit: 0, credit: total, tenantId },
+            data: { journalEntryId: journalEntry.id, accountId: cashAccountId, debit: data.amountPaid, credit: 0, tenantId },
           });
+        }
 
-          if (data.amountPaid < total) {
-            const remaining = total - data.amountPaid;
-            await tx.journalEntryLine.create({
-              data: { journalEntryId: journalEntry.id, accountId: accountsReceivableAccountId, debit: remaining, credit: 0, tenantId },
-            });
-          }
-        } catch (accountingError) {
-          logger.error('Accounting entry creation failed in complete-and-pay', accountingError);
+        await tx.journalEntryLine.create({
+          data: { journalEntryId: journalEntry.id, accountId: salesRevenueAccountId, debit: 0, credit: total, tenantId },
+        });
+
+        if (data.amountPaid < total) {
+          const remaining = total - data.amountPaid;
+          await tx.journalEntryLine.create({
+            data: { journalEntryId: journalEntry.id, accountId: accountsReceivableAccountId, debit: remaining, credit: 0, tenantId },
+          });
         }
 
         return { updatedWo, invoice };

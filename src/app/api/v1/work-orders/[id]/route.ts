@@ -102,27 +102,16 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
         if (isCancelling) {
           try {
-            // Restore stock + create reversal journal entries (DR: Inventory, CR: COGS)
-            for (const part of updated.parts) {
-              if (!part.product?.lockInventory) {
-                await tx.product.update({
-                  where: { id: part.productId },
-                  data: { stock: { increment: part.quantity } },
-                });
-              }
-              const partTotal = Number(part.unitPrice) * part.quantity;
-              await createDoubleEntry(tx, {
-                type: 'STOCK_ADJUSTMENT',
-                amount: Number(partTotal),
-                description: `WO Cancelled — Reversed: ${part.product?.name ?? 'Part'} x${part.quantity}`,
-                referenceType: 'work_order_cancellation',
-                referenceId: id,
-                createdById: payload.userId,
-                tenantId,
-              });
-            }
+            // F-052: Stock is only deducted at completion time (complete-and-pay),
+            // NOT at add-time. Since cancellation can only happen before completion,
+            // stock was never deducted — so there is nothing to restore.
+            // No reversal journal entry is needed either (COGS was never recorded).
+            //
+            // If in the future stock deduction moves to add-time, this block must
+            // be updated to increment stock and reverse the COGS entry.
+            logger.info('Work order cancelled — no stock or accounting reversal needed (deferred model)', { workOrderId: id });
           } catch (err) {
-            logger.error('Work order cancellation reversal failed', err);
+            logger.error('Work order cancellation processing failed', err);
           }
         }
 

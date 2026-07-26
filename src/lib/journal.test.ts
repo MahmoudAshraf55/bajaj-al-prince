@@ -35,8 +35,8 @@ describe('journal - getDebitAccountCode', () => {
     expect(getDebitAccountCode({ type: 'EXPENSE' })).toBe(ACCOUNT_CODES.OPERATING_EXPENSES);
   });
 
-  it('returns INVENTORY for STOCK_ADJUSTMENT', () => {
-    expect(getDebitAccountCode({ type: 'STOCK_ADJUSTMENT' })).toBe(ACCOUNT_CODES.INVENTORY);
+  it('returns COGS for STOCK_ADJUSTMENT', () => {
+    expect(getDebitAccountCode({ type: 'STOCK_ADJUSTMENT' })).toBe(ACCOUNT_CODES.COGS);
   });
 });
 

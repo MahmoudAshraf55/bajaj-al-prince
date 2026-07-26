@@ -12,6 +12,9 @@ import { PrismaClient } from '@prisma/client';
 const BASE = process.env.BASE_URL || 'http://localhost:3000';
 const QA_TENANT_ID = 'qa-test-0000-0000-000000000001';
 
+// Enable E2E_TEST bypass for rate limiting (see src/lib/rate-limit.ts:63)
+process.env.E2E_TEST = 'true';
+
 // Use raw Prisma for DB assertions (bypass tenant extension)
 const prisma = new (PrismaClient)();
 
@@ -62,6 +65,8 @@ function extractCookies(headers: Headers) {
 function getCookieString(): string {
   return Object.entries(cookieJar).map(([k, v]) => `${k}=${v}`).join('; ');
 }
+
+async function sleep(ms: number) { return new Promise(r => setTimeout(r, ms)); }
 
 async function api(method: string, path: string, body?: unknown): Promise<{ status: number; json: any; headers: Headers }> {
   const opts: RequestInit = {
@@ -143,6 +148,7 @@ async function testFullServicePipeline(): Promise<TestResult> {
 
   // Login
   await loginAs('qa-admin', 'Test@12345');
+  await sleep(200);
 
   // Snapshot pre-state
   const preProducts = await prisma.product.findMany({ where: { tenantId: QA_TENANT_ID, isDeleted: false }, select: { id: true, stock: true, name: true } });
@@ -170,6 +176,7 @@ async function testFullServicePipeline(): Promise<TestResult> {
   assert(dbCust?.tenantId === QA_TENANT_ID, `Customer scoped to QA tenant`, evidence, failures);
 
   // Step 2: Create Vehicle (unique chassis number with timestamp)
+  await sleep(150);
   const uniqueChassis = `MLHE2E${Date.now().toString(36).toUpperCase()}`;
   const veh = await api('POST', '/api/v1/vehicles', { make: 'Bajaj', model: 'Pulsar N160', year: 2024, plateNumber: `E2E-${Date.now().toString(36).slice(-4).toUpperCase()}`, chassisNumber: uniqueChassis, customerId });
   assert(veh.status === 201, `Vehicle created: ${veh.status}`, evidence, failures);
@@ -177,6 +184,7 @@ async function testFullServicePipeline(): Promise<TestResult> {
   assert(!!vehicleId, `Vehicle ID: ${vehicleId}`, evidence, failures);
 
   // Step 3: Create Booking (find a free time slot to avoid cross-tenant conflicts)
+  await sleep(150);
   const tomorrow = new Date();
   tomorrow.setDate(tomorrow.getDate() + 4);
   while (tomorrow.getDay() === 5) tomorrow.setDate(tomorrow.getDate() + 1);
@@ -194,17 +202,20 @@ async function testFullServicePipeline(): Promise<TestResult> {
       bookingTime = candidate;
       break;
     }
+    await sleep(150); // avoid rate limit on booking attempts
   }
   assert(book.status === 201, `Booking created at ${bookingTime}: ${book.status} (body: ${JSON.stringify(book.json).slice(0, 300)})`, evidence, failures);
   const bookingId = book.json.data?.booking?.id;
 
   // Step 4: Create Work Order
+  await sleep(200);
   const wo = await api('POST', '/api/v1/work-orders', { description: 'E2E Pipeline: Engine repair + oil change', status: 'in_progress', vehicleId });
   assert(wo.status === 201, `Work order created: ${wo.status}`, evidence, failures);
   const woId = wo.json.data?.workOrder?.id;
   assert(!!woId, `Work order ID: ${woId}`, evidence, failures);
 
   // Step 5: Add Parts to Work Order (use first product — Engine Oil 10W-40)
+  await sleep(200);
   const partProductId = preProducts.find(p => p.name === 'Engine Oil 10W-40')?.id || preProducts[0].id;
   const partStockBefore = preProductMap.get(partProductId) ?? 0;
   const addPart = await api('POST', `/api/v1/work-orders/${woId}/parts`, { productId: partProductId, quantity: 2, unitPrice: 350 });
@@ -225,6 +236,7 @@ async function testFullServicePipeline(): Promise<TestResult> {
   assert(Number(addLabour.json.data?.labour?.total) === 400, `Labour total=${Number(addLabour.json.data?.labour?.total)} (expected 400)`, evidence, failures);
 
   // Step 7: Complete and Pay
+  await sleep(300);
   const partsTotal = 700; // 2 × 350
   const labourTotal = 400;
   const totalDue = partsTotal + labourTotal; // 1100
@@ -426,6 +438,452 @@ async function testPaymentIdempotency(): Promise<TestResult> {
   return r;
 }
 
+// ── E2E-004: Scenario B — Add Part then Delete Part ─────────────────────
+async function testAddDeletePart(): Promise<TestResult> {
+  const r: TestResult = { name: 'E2E-004: Scenario B — Add/Delete Part', pass: true, evidence: [], failures: [] };
+  const evidence = r.evidence;
+  const failures = r.failures;
+
+  console.log('\n═══ E2E-004: Scenario B — Add/Delete Part ═══');
+
+  await loginAs('qa-admin', 'Test@12345');
+
+  const vehicles = await prisma.vehicle.findMany({ where: { tenantId: QA_TENANT_ID, isDeleted: false } });
+  const testVehicle = vehicles[0];
+  if (!testVehicle) { failures.push('  FAIL: No vehicle'); r.pass = false; return r; }
+
+  const products = await prisma.product.findMany({
+    where: { tenantId: QA_TENANT_ID, isDeleted: false, lockInventory: false, category: { not: 'Service' } },
+    select: { id: true, stock: true, name: true },
+  });
+  const testProduct = products.find(p => p.stock >= 5) || products[0];
+  if (!testProduct) { failures.push('  FAIL: No product'); r.pass = false; return r; }
+
+  const stockBefore = Number(testProduct.stock);
+
+  // Create WO
+  const wo = await api('POST', '/api/v1/work-orders', { description: 'E2E-004: Add then Delete', status: 'in_progress', vehicleId: testVehicle.id });
+  assert(wo.status === 201, `WO created: ${wo.status}`, evidence, failures);
+  const woId = wo.json.data?.workOrder?.id;
+  if (!woId) { r.pass = false; return r; }
+
+  // Add Part
+  const addRes = await api('POST', `/api/v1/work-orders/${woId}/parts`, { productId: testProduct.id, quantity: 3 });
+  assert(addRes.status === 201, `Part added: ${addRes.status}`, evidence, failures);
+  const partId = addRes.json.data?.part?.id;
+
+  // Stock should be unchanged at add-time (F-052)
+  const stockAfterAdd = Number((await prisma.product.findUnique({ where: { id: testProduct.id }, select: { stock: true } }))?.stock ?? 0);
+  assert(stockAfterAdd === stockBefore, `Stock unchanged after add: ${stockBefore} → ${stockAfterAdd}`, evidence, failures);
+
+  // Delete Part
+  assert(!!partId, `Part ID: ${partId}`, evidence, failures);
+  const delRes = await api('DELETE', `/api/v1/work-orders/${woId}/parts?partId=${partId}`);
+  assert(delRes.status === 200, `Part deleted: ${delRes.status}`, evidence, failures);
+
+  // Stock should STILL be unchanged
+  const stockAfterDel = Number((await prisma.product.findUnique({ where: { id: testProduct.id }, select: { stock: true } }))?.stock ?? 0);
+  assert(stockAfterDel === stockBefore, `Stock unchanged after delete: ${stockBefore} → ${stockAfterDel}`, evidence, failures);
+
+  // Part should be soft-deleted
+  const deletedPart = await prisma.workOrderPart.findFirst({ where: { id: partId }, select: { isDeleted: true } });
+  assert(deletedPart?.isDeleted === true, 'Part is soft-deleted', evidence, failures);
+
+  // Audit log should exist for the delete
+  const auditEntry = await prisma.auditLog.findFirst({
+    where: { entity: 'WorkOrderPart', entityId: partId, action: 'delete', tenantId: QA_TENANT_ID },
+  });
+  assert(!!auditEntry, 'Audit log exists for deleted part', evidence, failures);
+
+  r.pass = failures.length === 0;
+  return r;
+}
+
+// ── E2E-005: Scenario C — Cancel Work Order ─────────────────────────────
+async function testCancelWorkOrder(): Promise<TestResult> {
+  const r: TestResult = { name: 'E2E-005: Scenario C — Cancel WO', pass: true, evidence: [], failures: [] };
+  const evidence = r.evidence;
+  const failures = r.failures;
+
+  console.log('\n═══ E2E-005: Scenario C — Cancel WO ═══');
+
+  await loginAs('qa-admin', 'Test@12345');
+
+  const vehicles = await prisma.vehicle.findMany({ where: { tenantId: QA_TENANT_ID, isDeleted: false } });
+  const testVehicle = vehicles[0];
+  if (!testVehicle) { failures.push('  FAIL: No vehicle'); r.pass = false; return r; }
+
+  const products = await prisma.product.findMany({
+    where: { tenantId: QA_TENANT_ID, isDeleted: false, lockInventory: false, category: { not: 'Service' } },
+    select: { id: true, stock: true, name: true },
+  });
+  const testProduct = products.find(p => p.stock >= 5) || products[0];
+  if (!testProduct) { failures.push('  FAIL: No product'); r.pass = false; return r; }
+
+  const stockBefore = Number(testProduct.stock);
+
+  // Create WO
+  const wo = await api('POST', '/api/v1/work-orders', { description: 'E2E-005: Cancel test', status: 'in_progress', vehicleId: testVehicle.id });
+  assert(wo.status === 201, `WO created: ${wo.status}`, evidence, failures);
+  const woId = wo.json.data?.workOrder?.id;
+  if (!woId) { r.pass = false; return r; }
+
+  // Add Part
+  const addRes = await api('POST', `/api/v1/work-orders/${woId}/parts`, { productId: testProduct.id, quantity: 2 });
+  assert(addRes.status === 201, `Part added: ${addRes.status}`, evidence, failures);
+
+  // Stock unchanged at add-time
+  const stockAfterAdd = Number((await prisma.product.findUnique({ where: { id: testProduct.id }, select: { stock: true } }))?.stock ?? 0);
+  assert(stockAfterAdd === stockBefore, `Stock unchanged at add-time: ${stockBefore} → ${stockAfterAdd}`, evidence, failures);
+
+  // Add Labour
+  const labourRes = await api('POST', `/api/v1/work-orders/${woId}/labour`, { description: 'Cancel test labour', hours: 1, rate: 200, total: 200 });
+  assert(labourRes.status === 201, `Labour added: ${labourRes.status}`, evidence, failures);
+
+  // Cancel WO
+  const cancelRes = await api('PATCH', `/api/v1/work-orders/${woId}`, { status: 'cancelled' });
+  assert(cancelRes.status === 200, `WO cancelled: ${cancelRes.status}`, evidence, failures);
+  assert(cancelRes.json.data?.workOrder?.status === 'cancelled', 'WO status = cancelled', evidence, failures);
+
+  // Stock should still be same (was never deducted at add-time)
+  const stockAfterCancel = Number((await prisma.product.findUnique({ where: { id: testProduct.id }, select: { stock: true } }))?.stock ?? 0);
+  assert(stockAfterCancel === stockBefore, `Stock same after cancel: ${stockBefore} → ${stockAfterCancel}`, evidence, failures);
+
+  // No reversal journal entry needed — stock was never deducted (F-052 deferred model)
+  const reversalJE = await prisma.journalEntry.findFirst({
+    where: { referenceType: 'work_order_cancellation', referenceId: woId, isDeleted: false },
+  });
+  assert(!reversalJE, 'No reversal JE needed (stock was never deducted)', evidence, failures);
+
+  r.pass = failures.length === 0;
+  return r;
+}
+
+// ── E2E-006: TEST INV-02 — Credit Sale ─────────────────────────────────
+async function testCreditSale(): Promise<TestResult> {
+  const r: TestResult = { name: 'E2E-006: INV-02 — Credit Sale', pass: true, evidence: [], failures: [] };
+  const evidence = r.evidence;
+  const failures = r.failures;
+
+  console.log('\n═══ E2E-006: INV-02 — Credit Sale ═══');
+
+  await loginAs('qa-admin', 'Test@12345');
+
+  const products = await prisma.product.findMany({
+    where: { tenantId: QA_TENANT_ID, isDeleted: false, lockInventory: false, category: { not: 'Service' } },
+    select: { id: true, stock: true, name: true, price: true },
+  });
+  const testProduct = products.find(p => p.stock >= 3) || products[0];
+  if (!testProduct) { failures.push('  FAIL: No product'); r.pass = false; return r; }
+
+  const preStock = Number(testProduct.stock);
+  const unitPrice = Number(testProduct.price);
+  const qty = 2;
+  const expectedTotal = unitPrice * qty;
+
+  // Create customer first
+  const phone = `+20198${Date.now().toString().slice(-8)}`;
+  const cust = await api('POST', '/api/v1/customers', { name: 'Credit Customer', phone });
+  const customerId = cust.json?.data?.customer?.id;
+
+  // Credit sale: paid = 0
+  const inv = await api('POST', '/api/v1/invoices', {
+    type: 'sale',
+    items: [{ productId: testProduct.id, quantity: qty }],
+    paid: 0,
+    paymentMethod: 'cash',
+    customerId,
+  });
+  assert(inv.status === 201, `Invoice created: ${inv.status} (body: ${JSON.stringify(inv.json).slice(0, 200)})`, evidence, failures);
+  if (inv.status !== 201) { r.pass = false; return r; }
+
+  const invoice = inv.json.data.invoice;
+  assert(invoice.total >= expectedTotal, `Invoice total=${invoice.total} >= ${expectedTotal}`, evidence, failures);
+  assert(Number(invoice.paid) === 0, `Paid=0 (credit sale)`, evidence, failures);
+
+  // Stock decremented
+  const postStock = Number((await prisma.product.findUnique({ where: { id: testProduct.id }, select: { stock: true } }))?.stock ?? 0);
+  assert(postStock === preStock - qty, `Stock: ${preStock} → ${postStock} (expected ${preStock - qty})`, evidence, failures);
+
+  // Journal: For credit sales, createDoubleEntry with type='SALE' creates
+  // DR:Cash 0 / CR:Revenue 0 because jeAmount = min(0, total) = 0.
+  // This is a known limitation (F-054) — credit sales need DR:AR instead of DR:Cash.
+  // The journal entry exists but is effectively zero-value.
+  const invJE = await prisma.journalEntry.findFirst({ where: { referenceId: invoice.id, isDeleted: false } });
+  assert(!!invJE, 'Journal entry exists (may be zero-value for credit sales)', evidence, failures);
+  if (invJE) {
+    const lines = await prisma.journalEntryLine.findMany({ where: { journalEntryId: invJE.id } });
+    const dr = lines.reduce((s, l) => s + Number(l.debit), 0);
+    const cr = lines.reduce((s, l) => s + Number(l.credit), 0);
+    assert(Math.abs(dr - cr) < 0.01, `Journal balanced: DR=${dr} = CR=${cr}`, evidence, failures);
+    // Document: for credit sales, the journal is zero-value (known F-054 limitation)
+    if (dr === 0 && cr === 0) {
+      evidence.push('  INFO: Credit sale journal is zero-value (F-054: createDoubleEntry cannot handle AR)');
+    }
+  }
+
+  r.pass = failures.length === 0;
+  return r;
+}
+
+// ── E2E-007: TEST INV-03 — Split Payment ───────────────────────────────
+async function testSplitPayment(): Promise<TestResult> {
+  const r: TestResult = { name: 'E2E-007: INV-03 — Split Payment', pass: true, evidence: [], failures: [] };
+  const evidence = r.evidence;
+  const failures = r.failures;
+
+  console.log('\n═══ E2E-007: INV-03 — Split Payment ═══');
+
+  await loginAs('qa-admin', 'Test@12345');
+
+  const products = await prisma.product.findMany({
+    where: { tenantId: QA_TENANT_ID, isDeleted: false, lockInventory: false, category: { not: 'Service' } },
+    select: { id: true, stock: true, name: true, price: true },
+  });
+  const testProduct = products.find(p => p.stock >= 3) || products[0];
+  if (!testProduct) { failures.push('  FAIL: No product'); r.pass = false; return r; }
+
+  const unitPrice = Number(testProduct.price);
+  const qty = 2;
+  const expectedTotal = unitPrice * qty;
+  const cashAmount = Math.floor(expectedTotal / 2);
+  const cardAmount = expectedTotal - cashAmount;
+
+  // Split payment
+  const inv = await api('POST', '/api/v1/invoices', {
+    type: 'sale',
+    items: [{ productId: testProduct.id, quantity: qty }],
+    paid: expectedTotal,
+    paymentMethod: 'cash',
+    payments: [
+      { method: 'cash', amount: cashAmount },
+      { method: 'card', amount: cardAmount },
+    ],
+  });
+  assert(inv.status === 201, `Invoice created: ${inv.status}`, evidence, failures);
+  if (inv.status !== 201) { r.pass = false; return r; }
+
+  const invoice = inv.json.data.invoice;
+  assert(Number(invoice.paid) === expectedTotal, `Paid=${invoice.paid} (expected ${expectedTotal})`, evidence, failures);
+
+  // Verify payment records
+  const payments = await prisma.invoicePayment.findMany({ where: { invoiceId: invoice.id } });
+  assert(payments.length === 2, `2 payment records (${payments.length})`, evidence, failures);
+  assert(payments.some(p => p.method === 'cash' && Number(p.amount) === cashAmount), `Cash payment ${cashAmount}`, evidence, failures);
+  assert(payments.some(p => p.method === 'card' && Number(p.amount) === cardAmount), `Card payment ${cardAmount}`, evidence, failures);
+
+  // Journal should be balanced
+  const invJE = await prisma.journalEntry.findFirst({ where: { referenceId: invoice.id, isDeleted: false } });
+  assert(!!invJE, 'Journal entry exists', evidence, failures);
+  if (invJE) {
+    const lines = await prisma.journalEntryLine.findMany({ where: { journalEntryId: invJE.id } });
+    const dr = lines.reduce((s, l) => s + Number(l.debit), 0);
+    const cr = lines.reduce((s, l) => s + Number(l.credit), 0);
+    assert(Math.abs(dr - cr) < 0.01, `Journal balanced: DR=${dr} = CR=${cr}`, evidence, failures);
+  }
+
+  r.pass = failures.length === 0;
+  return r;
+}
+
+// ── E2E-008: TEST INV-04/05 — Return Invoice ───────────────────────────
+async function testReturnInvoice(): Promise<TestResult> {
+  const r: TestResult = { name: 'E2E-008: INV-04/05 — Return Invoice', pass: true, evidence: [], failures: [] };
+  const evidence = r.evidence;
+  const failures = r.failures;
+
+  console.log('\n═══ E2E-008: INV-04/05 — Return Invoice ═══');
+
+  await loginAs('qa-admin', 'Test@12345');
+
+  const products = await prisma.product.findMany({
+    where: { tenantId: QA_TENANT_ID, isDeleted: false, lockInventory: false, category: { not: 'Service' } },
+    select: { id: true, stock: true, name: true, price: true },
+  });
+  const testProduct = products.find(p => p.stock >= 5) || products[0];
+  if (!testProduct) { failures.push('  FAIL: No product'); r.pass = false; return r; }
+
+  const preStock = Number(testProduct.stock);
+  const qty = 3;
+
+  // Step 1: Create Sale Invoice
+  const sale = await api('POST', '/api/v1/invoices', {
+    type: 'sale',
+    items: [{ productId: testProduct.id, quantity: qty }],
+    paid: Number(testProduct.price) * qty,
+    paymentMethod: 'cash',
+  });
+  assert(sale.status === 201, `Sale invoice created: ${sale.status}`, evidence, failures);
+  if (sale.status !== 201) { r.pass = false; return r; }
+  const saleInv = sale.json.data.invoice;
+
+  // Stock should be decremented
+  const stockAfterSale = Number((await prisma.product.findUnique({ where: { id: testProduct.id }, select: { stock: true } }))?.stock ?? 0);
+  assert(stockAfterSale === preStock - qty, `Stock after sale: ${preStock} → ${stockAfterSale}`, evidence, failures);
+
+  // Step 2: Return 1 item (partial return)
+  const returnQty = 1;
+  const ret = await api('POST', '/api/v1/invoices', {
+    type: 'return',
+    items: [{ productId: testProduct.id, quantity: returnQty }],
+    paid: 0,
+    paymentMethod: 'cash',
+    returnInvoiceId: saleInv.id,
+  });
+  assert(ret.status === 201, `Return invoice created: ${ret.status} (body: ${JSON.stringify(ret.json).slice(0, 300)})`, evidence, failures);
+  if (ret.status !== 201) { r.pass = false; return r; }
+
+  // Stock should be incremented by returnQty
+  const stockAfterReturn = Number((await prisma.product.findUnique({ where: { id: testProduct.id }, select: { stock: true } }))?.stock ?? 0);
+  assert(stockAfterReturn === stockAfterSale + returnQty, `Stock after return: ${stockAfterSale} → ${stockAfterReturn} (+${returnQty})`, evidence, failures);
+
+  // Step 3: Try double return — should be blocked
+  const ret2 = await api('POST', '/api/v1/invoices', {
+    type: 'return',
+    items: [{ productId: testProduct.id, quantity: 1 }],
+    paid: 0,
+    paymentMethod: 'cash',
+    returnInvoiceId: saleInv.id,
+  });
+  assert(ret2.status !== 201, `Double return blocked: ${ret2.status} (expected non-201)`, evidence, failures);
+
+  r.pass = failures.length === 0;
+  return r;
+}
+
+// ── E2E-009: F-149 — Full E2E Reconciliation ───────────────────────────
+async function testFullReconciliation(): Promise<TestResult> {
+  const r: TestResult = { name: 'E2E-009: F-149 — Full Reconciliation', pass: true, evidence: [], failures: [] };
+  const evidence = r.evidence;
+  const failures = r.failures;
+
+  console.log('\n═══ E2E-009: F-149 — Full Reconciliation ═══');
+
+  await loginAs('qa-admin', 'Test@12345');
+
+  const products = await prisma.product.findMany({
+    where: { tenantId: QA_TENANT_ID, isDeleted: false, lockInventory: false, category: { not: 'Service' } },
+    select: { id: true, stock: true, name: true, price: true, costPrice: true },
+  });
+  const testProduct = products.find(p => p.stock >= 10) || products[0];
+  if (!testProduct) { failures.push('  FAIL: No product'); r.pass = false; return r; }
+
+  const stockBefore = Number(testProduct.stock);
+  const unitPrice = Number(testProduct.price);
+  const qty = 2;
+  const partsTotal = unitPrice * qty;
+  const labourAmount = 300;
+  const taxRate = 0.14;
+  const taxTotal = Math.round(partsTotal * taxRate * 100) / 100;
+  const totalDue = partsTotal + labourAmount + taxTotal;
+  const amountPaid = 500;
+  const expectedAR = totalDue - amountPaid;
+
+  // Snapshot pre-state
+  const preJELines = await prisma.journalEntryLine.count({ where: { tenantId: QA_TENANT_ID } });
+
+  // Create vehicle + WO
+  const vehicles = await prisma.vehicle.findMany({ where: { tenantId: QA_TENANT_ID, isDeleted: false } });
+  const testVehicle = vehicles[0];
+  if (!testVehicle) { failures.push('  FAIL: No vehicle'); r.pass = false; return r; }
+
+  const wo = await api('POST', '/api/v1/work-orders', { description: 'E2E-009: Full Reconciliation', status: 'in_progress', vehicleId: testVehicle.id });
+  assert(wo.status === 201, `WO created: ${wo.status}`, evidence, failures);
+  const woId = wo.json.data?.workOrder?.id;
+  if (!woId) { r.pass = false; return r; }
+
+  // Add Part x2
+  const addPart = await api('POST', `/api/v1/work-orders/${woId}/parts`, { productId: testProduct.id, quantity: qty });
+  assert(addPart.status === 201, `Part added: ${addPart.status}`, evidence, failures);
+
+  // Stock unchanged at add-time
+  const stockAddTime = Number((await prisma.product.findUnique({ where: { id: testProduct.id }, select: { stock: true } }))?.stock ?? 0);
+  assert(stockAddTime === stockBefore, `Stock at add-time: ${stockBefore} → ${stockAddTime}`, evidence, failures);
+
+  // Add Labour
+  const labour = await api('POST', `/api/v1/work-orders/${woId}/labour`, { description: 'Engine repair labour', hours: 2, rate: 150, total: labourAmount });
+  assert(labour.status === 201, `Labour added: ${labour.status}`, evidence, failures);
+
+  // Complete & Pay (partial)
+  const pay = await api('POST', `/api/v1/work-orders/${woId}/complete-and-pay`, {
+    paymentMethod: 'cash', amountPaid, partsTotal, labourTotal: labourAmount,
+  });
+  assert(pay.status === 200, `Complete-and-pay: ${pay.status} (body: ${JSON.stringify(pay.json).slice(0, 200)})`, evidence, failures);
+  if (pay.status !== 200) { r.pass = false; return r; }
+
+  const invoice = pay.json.data?.invoice;
+  assert(!!invoice, 'Invoice created', evidence, failures);
+  if (!invoice) { r.pass = false; return r; }
+
+  // ── Verify Table ──────────────────────────────────────────────────────
+  const invTotal = Number(invoice.total);
+  const invPaid = Number(invoice.paid);
+  const invChange = Number(invoice.change);
+
+  // Invoice Total should be >= partsTotal + labourTotal
+  assert(invTotal >= partsTotal + labourAmount, `Invoice total=${invTotal} >= parts+labour=${partsTotal + labourAmount}`, evidence, failures);
+  assert(invPaid === amountPaid, `Invoice paid=${invPaid} (expected ${amountPaid})`, evidence, failures);
+  assert(invChange === Math.max(0, amountPaid - invTotal), `Invoice change=${invChange}`, evidence, failures);
+
+  // Stock decremented
+  const stockFinal = Number((await prisma.product.findUnique({ where: { id: testProduct.id }, select: { stock: true } }))?.stock ?? 0);
+  assert(stockFinal === stockBefore - qty, `Stock: ${stockBefore} → ${stockFinal} (expected ${stockBefore - qty})`, evidence, failures);
+
+  // Stock movement exists
+  const sm = await prisma.stockMovement.findMany({ where: { productId: testProduct.id, tenantId: QA_TENANT_ID, type: 'out' } });
+  assert(sm.length > 0, `Stock movements: ${sm.length}`, evidence, failures);
+
+  // Journal entry balanced
+  const woJE = await prisma.journalEntry.findFirst({ where: { referenceId: woId, isDeleted: false } });
+  assert(!!woJE, 'Journal entry exists for WO', evidence, failures);
+  if (woJE) {
+    const lines = await prisma.journalEntryLine.findMany({ where: { journalEntryId: woJE.id } });
+    const dr = lines.reduce((s, l) => s + Number(l.debit), 0);
+    const cr = lines.reduce((s, l) => s + Number(l.credit), 0);
+    assert(Math.abs(dr - cr) < 0.01, `Journal balanced: DR=${dr} = CR=${cr}`, evidence, failures);
+
+    // Cash DR should be amountPaid (find the specific cash account line, not all debits)
+    const cashAccountLines = lines.filter(l => Number(l.debit) > 0 && l.accountId !== lines.find(ll => Number(ll.credit) > 0)?.accountId);
+    const cashDR = cashAccountLines.length > 0 ? cashAccountLines[0].debit : 0;
+    assert(Number(cashDR) === amountPaid, `Cash DR=${cashDR} (expected ${amountPaid})`, evidence, failures);
+
+    // Revenue CR should be total
+    const revenueCR = lines.filter(l => Number(l.credit) > 0).reduce((s, l) => s + Number(l.credit), 0);
+    assert(revenueCR >= invTotal, `Revenue CR=${revenueCR} >= total=${invTotal}`, evidence, failures);
+
+    // If partial payment, AR DR should be remaining
+    if (amountPaid < invTotal) {
+      const arDR = lines.filter(l => Number(l.debit) > 0 && l.accountId !== lines.find(ll => Number(ll.debit) > 0 && ll !== l)?.accountId)
+        .reduce((s, l) => s + Number(l.debit), 0);
+      assert(arDR > 0, `AR DR=${arDR} for partial payment`, evidence, failures);
+    }
+  }
+
+  // Payment records
+  const payments = await prisma.invoicePayment.findMany({ where: { invoiceId: invoice.id } });
+  assert(payments.length > 0, `Payment records: ${payments.length}`, evidence, failures);
+
+  // Invoice items
+  const invItems = await prisma.invoiceItem.findMany({ where: { invoiceId: invoice.id } });
+  assert(invItems.length > 0, `Invoice items: ${invItems.length}`, evidence, failures);
+
+  const postJELines = await prisma.journalEntryLine.count({ where: { tenantId: QA_TENANT_ID } });
+  assert(postJELines > preJELines, `Journal lines grew: ${preJELines} → ${postJELines}`, evidence, failures);
+
+  console.log('\n  ┌─────────────────────────────────────────────┐');
+  console.log('  │ E2E-009 Reconciliation Summary               │');
+  console.log('  ├─────────────────────────────────────────────┤');
+  console.log(`  │ Invoice Total:  ${invTotal.toFixed(2).padStart(12)}            │`);
+  console.log(`  │ Paid:           ${invPaid.toFixed(2).padStart(12)}            │`);
+  console.log(`  │ Change:         ${invChange.toFixed(2).padStart(12)}            │`);
+  console.log(`  │ Stock:          ${stockBefore} → ${stockFinal}                │`);
+  console.log(`  │ Journal DR:     ${woJE ? 'balanced' : 'N/A'.padStart(12)}            │`);
+  console.log('  └─────────────────────────────────────────────┘');
+
+  r.pass = failures.length === 0;
+  return r;
+}
+
 // ── Main ────────────────────────────────────────────────────────────────
 async function main() {
   console.log('╔══════════════════════════════════════════════════╗');
@@ -443,6 +901,12 @@ async function main() {
     results.push(await testFullServicePipeline());
     results.push(await testPOSCheckout());
     results.push(await testPaymentIdempotency());
+    results.push(await testAddDeletePart());
+    results.push(await testCancelWorkOrder());
+    results.push(await testCreditSale());
+    results.push(await testSplitPayment());
+    results.push(await testReturnInvoice());
+    results.push(await testFullReconciliation());
   } catch (e) {
     console.error('Fatal error:', e);
   }

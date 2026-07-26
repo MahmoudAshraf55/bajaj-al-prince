@@ -135,8 +135,8 @@ These items were identified as weaknesses but have been resolved:
 | 🟠 High findings | 5 (F-003, F-004, F-010, F-015, F-022) + 2 new (F-050, F-051) |
 | 🟡 Medium findings | 12 — 0 CONFIRMED |
 | 🟢 Low findings | 12 — 1 CONFIRMED (F-030) |
-| Total CONFIRMED | **5** (F-030, F-052, F-053, F-054, F-055) |
-| Total FIXED | **18** (F-004, F-009, F-024, F-031, F-045, F-048, F-049, F-050, F-051 + 9 ALREADY FIXED) |
+| Total CONFIRMED | **1** (F-030) |
+| Total FIXED | **24** (F-004, F-009, F-024, F-031, F-045, F-048, F-049, F-050, F-051, F-052, F-053, F-054, F-055 + 11 ALREADY FIXED) |
 | Total INVALID | **15** |
 | Total NOT REPRODUCIBLE | **8** |
 | **Grand Total** | **55** |
@@ -149,10 +149,23 @@ Verified against live code from the original `New_Empty_File` (19K-line ChatGPT 
 
 | ID | Title | Category | Severity | Status | Evidence |
 |----|-------|----------|----------|--------|----------|
-| F-052 | Double stock deduction: parts route + complete-and-pay both decrement stock | Inventory | 💀 Critical | CONFIRMED | `parts/route.ts:63-67` decrements `product.stock` at add-time. `complete-and-pay/route.ts:169-178` decrements `product.stock` AGAIN at completion. Net effect: stock reduced by 2× actual consumption. |
-| F-053 | `complete-and-pay` trusts frontend-supplied totals (partsTotal, labourTotal, amountPaid) | Security/Accounting | 🔴 Critical | CONFIRMED | `complete-and-pay/route.ts:51` calculates `total = data.partsTotal + data.labourTotal + taxTotal` using client-supplied values instead of computing from WO parts/labour in DB. A malicious client can manipulate the invoice total. |
-| F-054 | DELETE Part does not restore stock or reverse accounting | Inventory | 💀 Critical | CONFIRMED | `parts/route.ts:124-144` soft-deletes the WorkOrderPart record but does NOT restore `product.stock`, does NOT reverse `stockMovement`, does NOT reverse journal entry. Stock permanently lost from inventory. |
-| F-055 | Accounting failure silently swallowed in complete-and-pay and parts routes | Accounting | 🔴 High | CONFIRMED | Both `complete-and-pay/route.ts:222-224` and `parts/route.ts:108-111` catch accounting errors and only log them, allowing the transaction to succeed with incomplete financial records. |
+| F-052 | Double stock deduction: parts route + complete-and-pay both decrement stock | Inventory | 💀 Critical | ✅ FIXED | Removed stock deduction + COGS from parts route. Stock is now ONLY deducted at completion time in `complete-and-pay/route.ts`. |
+| F-053 | `complete-and-pay` trusts frontend-supplied totals (partsTotal, labourTotal, amountPaid) | Security/Accounting | 🔴 Critical | ✅ FIXED | `partsTotal` and `labourTotal` are now computed from DB (`wo.parts` and `wo.labourLines`). Client-supplied values are ignored. |
+| F-054 | DELETE Part does not restore stock or reverse accounting | Inventory | 💀 Critical | ✅ FIXED | Stock is not deducted at add-time (F-052), so no restoration needed on delete. Added audit log for delete operations. |
+| F-055 | Accounting failure silently swallowed in complete-and-pay and parts routes | Accounting | 🔴 High | ✅ FIXED | Removed try/catch around accounting entries in `complete-and-pay/route.ts`. Accounting errors now propagate and roll back the entire transaction. |
+
+---
+
+## Phase 5 Findings — E2E Test Suite + Bug Fixes (2026-07-26)
+
+| ID | Title | Category | Severity | Status | Evidence |
+|----|-------|----------|----------|--------|----------|
+| F-056 | Invoice route `paid=0` creates payment for full total (JS `0 \|\| total` falsy bug) | Accounting | 🔴 Critical | ✅ FIXED | `invoices/route.ts:234-239` — Changed condition to `data.paid > 0` and removed `\|\| Number(total)` fallback. Credit sales now correctly create zero payment records. |
+| F-057 | WO cancellation incorrectly increments stock (was never deducted at add-time) | Inventory | 🟠 High | ✅ FIXED | `work-orders/[id]/route.ts:103-127` — Removed stock increment and reversal journal entries from cancellation path. Since F-052 defers stock deduction to completion, cancellation of incomplete WOs needs no restoration. |
+| F-058 | Credit sale journal entry creates zero-value entry (DR:Cash 0, CR:Revenue 0) | Accounting | 🟠 High | CONFIRMED | `invoices/route.ts:282-298` — `createDoubleEntry` with type='SALE' always debits Cash/Bank. For credit sales (paid=0), `jeAmount = min(0, total) = 0`. Needs DR:AR for credit sales. Documented in E2E-006 test. |
+| F-059 | `unitPrice` on work order parts is client-overridable | Security | 🟠 Medium | CONFIRMED | `parts/route.ts:58` — `data.unitPrice ?? Number(product.price)` allows any client-supplied price. No permission check for price override. |
+| F-060 | Invoice number generation has race condition | Architecture | 🟡 Medium | CONFIRMED | `complete-and-pay/route.ts:58-71` — `findFirst` + `+1` pattern not atomic. Two concurrent requests can generate the same number. |
+| F-061 | `WorkOrderService.completeWorkOrder` does not check `lockInventory` | Inventory | 🟠 High | CONFIRMED | `WorkOrderService.ts:35-39` — Direct `stock: { decrement }` without `lockInventory` check or atomic `updateMany` pattern. Stock can go negative. |
 
 ---
 
@@ -163,5 +176,6 @@ Verified against live code from the original `New_Empty_File` (19K-line ChatGPT 
 3. F-001 (admin credentials) has contradictory information: reports say different passwords for local vs Vercel, but session context says `admin / Admin@123` works on Vercel. Needs live verification.
 4. F-003 (no Add to Cart) may be INVALID if the business intentionally chose browse-only for the public market (purchases via POS only). Needs clarification from project owner.
 5. F-045 is a duplicate of F-024 — will be consolidated during verification.
+6. E2E test suite expanded from 4 to 10 scenarios covering: Auth, Full Pipeline, POS Checkout, Payment Idempotency, Add/Delete Part, Cancel WO, Credit Sale, Split Payment, Return Invoice, Full Reconciliation.
 
-*Next step: Phase 2 — Re-verify each finding against current code and update Status.*
+*Last updated: 2026-07-26 — Phase 5 complete. 24 FIXED, 1 CONFIRMED remaining (F-030), 6 NEW CONFIRMED (F-056–F-061).*

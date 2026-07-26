@@ -112,7 +112,15 @@ async function seed() {
   const productPrices: number[] = [];
   for (const p of productData) {
     const existing = await raw.product.findFirst({ where: { sku: p.sku, tenantId: QA_TENANT_ID } });
-    if (existing) { productIds.push(existing.id); productPrices.push(Number(existing.price)); continue; }
+    if (existing) {
+      productIds.push(existing.id);
+      productPrices.push(Number(existing.price));
+      // Reset stock to ensure E2E tests have sufficient inventory
+      if (existing.stock !== p.stock) {
+        await raw.product.update({ where: { id: existing.id }, data: { stock: p.stock } });
+      }
+      continue;
+    }
     const created = await raw.product.create({
       data: {
         name: p.name, category: p.category, price: p.price, costPrice: p.costPrice,

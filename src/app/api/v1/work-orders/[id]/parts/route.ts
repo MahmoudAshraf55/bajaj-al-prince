@@ -107,7 +107,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   if (!limit.allowed) return withSecurityHeaders(limit.response!);
 
   try {
-    return await withRole(req, ['admin', 'staff'], async () => {
+    return await withRole(req, ['admin', 'staff'], async (payload) => {
       const { id } = await params;
       const partId = req.nextUrl.searchParams.get('partId');
       if (!partId) {
@@ -115,12 +115,23 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
       }
       // F-052: Stock is only deducted at completion time (complete-and-pay), not at add-time.
       // So deleting a part before completion requires no stock restoration.
-      // NOTE: If migrating from old behavior where stock was deducted at add-time,
-      // a data migration script is needed to restore stock for soft-deleted parts
-      // on incomplete work orders.
+      const deletedPart = await prisma.workOrderPart.findFirst({
+        where: { id: partId, workOrderId: id, isDeleted: false },
+        select: { id: true, productId: true, quantity: true, unitPrice: true },
+      });
       await prisma.workOrderPart.updateMany({
         where: { id: partId, workOrderId: id },
         data: { isDeleted: true, deletedAt: new Date() },
+      });
+      const { ipAddress, userAgent } = getClientInfo(req);
+      await logAudit({
+        userId: payload.userId,
+        action: 'delete',
+        entity: 'WorkOrderPart',
+        entityId: partId,
+        oldValue: deletedPart ? { workOrderId: id, productId: deletedPart.productId, quantity: deletedPart.quantity, unitPrice: Number(deletedPart.unitPrice) } as Record<string, unknown> : undefined,
+        ipAddress,
+        userAgent,
       });
       return withSecurityHeaders(NextResponse.json({ success: true }));
     });
