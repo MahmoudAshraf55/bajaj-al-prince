@@ -291,10 +291,12 @@ export async function POST(req: NextRequest) {
           });
 
           const jeType = data.type === 'sale' ? 'SALE' as const : data.type === 'return' ? 'RETURN' as const : 'PURCHASE' as const;
-          const jeAmount = Math.min(paidAmount, Number(total));
+          // F-058: Pass total amount (not just paidAmount) so createDoubleEntry can
+          // create proper DR:Cash + DR:AR + CR:Revenue entries for credit/partial sales.
           await createDoubleEntry(tx, {
             type: jeType,
-            amount: jeAmount,
+            amount: Number(total),
+            amountPaid: paidAmount,
             description: `Invoice ${invoice.number}`,
             referenceType: 'invoice',
             referenceId: invoice.id,

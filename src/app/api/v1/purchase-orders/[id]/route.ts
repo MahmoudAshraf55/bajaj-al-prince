@@ -79,7 +79,17 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       }
 
       const updateData: Record<string, unknown> = {};
-      if (data.supplierId !== undefined) updateData.supplierId = data.supplierId;
+      if (data.supplierId !== undefined) {
+        // F-066: Validate supplier belongs to current tenant
+        const supplier = await prisma.supplier.findFirst({
+          where: { id: data.supplierId, isDeleted: false },
+          select: { id: true },
+        });
+        if (!supplier) {
+          return withSecurityHeaders(NextResponse.json({ success: false, error: 'Supplier not found' }, { status: 400 }));
+        }
+        updateData.supplierId = data.supplierId;
+      }
       if (data.notes !== undefined) updateData.notes = data.notes;
       if (data.subtotal !== undefined) updateData.subtotal = data.subtotal;
       if (data.taxTotal !== undefined) updateData.taxTotal = data.taxTotal;
@@ -88,6 +98,18 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
       const updated = await prisma.$transaction(async (tx) => {
         if (data.items) {
+          // F-066: Validate that all products belong to the current tenant
+          const productIds = data.items.map((i) => i.productId);
+          const products = await tx.product.findMany({
+            where: { id: { in: productIds }, isDeleted: false },
+            select: { id: true },
+          });
+          if (products.length !== productIds.length) {
+            const foundIds = new Set(products.map((p) => p.id));
+            const missing = productIds.filter((id) => !foundIds.has(id));
+            throw new Error(`Products not found or belong to another tenant: ${missing.join(', ')}`);
+          }
+
           // Delete existing items
           await tx.purchaseOrderItem.deleteMany({ where: { purchaseOrderId: id } });
           // Create new items

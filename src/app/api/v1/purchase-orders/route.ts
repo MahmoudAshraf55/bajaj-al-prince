@@ -104,6 +104,30 @@ export async function POST(req: NextRequest) {
       }
       const number = `${prefix}${String(nextSeq).padStart(4, '0')}`;
 
+      // F-066: Validate that supplier and all products belong to the current tenant
+      // before creating the PO. Prevents cross-tenant relation leakage.
+      const supplier = await prisma.supplier.findFirst({
+        where: { id: data.supplierId, isDeleted: false },
+        select: { id: true },
+      });
+      if (!supplier) {
+        return withSecurityHeaders(NextResponse.json({ success: false, error: 'Supplier not found' }, { status: 400 }));
+      }
+
+      const productIds = data.items.map((i) => i.productId);
+      const products = await prisma.product.findMany({
+        where: { id: { in: productIds }, isDeleted: false },
+        select: { id: true, name: true },
+      });
+      if (products.length !== productIds.length) {
+        const foundIds = new Set(products.map((p) => p.id));
+        const missing = productIds.filter((id) => !foundIds.has(id));
+        return withSecurityHeaders(NextResponse.json({
+          success: false,
+          error: `Products not found or belong to another tenant: ${missing.join(', ')}`,
+        }, { status: 400 }));
+      }
+
       const order = await prisma.purchaseOrder.create({
         data: {
           number,
