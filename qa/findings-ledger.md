@@ -184,6 +184,19 @@ Verified against live code from the original `New_Empty_File` (19K-line ChatGPT 
 
 ---
 
+## Phase 9 Findings — Return/Cashier/Invoice/PO Audit (2026-07-26)
+
+| ID | Title | Category | Severity | Status | Evidence |
+|----|-------|----------|----------|--------|----------|
+| F-169 | Work order return — accounting failure silently swallowed | Accounting | 🔴 Critical | ✅ FIXED | `work-orders/[id]/return/route.ts:168-217` — Removed try/catch around journal entry creation. Accounting errors now propagate and roll back the entire $transaction, preventing inconsistent state (returned WO with no ledger entries). |
+| F-170 | Cashier expense/income — transaction + journal entry not atomic | Accounting | 🟠 High | ✅ FIXED | `cashier/route.ts:60-73` — Wrapped both `transaction.create` and `createDoubleEntry` inside a single `prisma.$transaction()`. Previously, a journal entry failure would leave an orphaned transaction record. |
+| F-171 | Invoice GET/PATCH — cross-tenant information disclosure via `findUnique` with `isDeleted` | Security | 🔴 Critical | ✅ FIXED | `invoices/[id]/route.ts:16,71` — Changed `findUnique({ where: { id, isDeleted: false } })` to `findFirst({ where: { id, isDeleted: false } })`. The Prisma extension's `isIdOnlyWhere` check sees two keys with `findFirst` and injects `tenantId`, blocking cross-tenant reads. |
+| F-172 | Manufacturers + Vehicle Models GET — no authentication required | Security | 🟠 High | ✅ FIXED | `manufacturers/route.ts:16` and `vehicle-models/route.ts:17` — Both GET handlers had zero auth checks. Added `withAuth()` wrapper so anonymous visitors cannot query manufacturer/model databases. |
+| F-173 | PO receive — over-receiving check uses stale `receivedQty` outside transaction | Accounting/Inventory | 🟠 High | ✅ FIXED | `purchase-orders/[id]/receive/route.ts` — Moved over-receiving validation inside the $transaction. Fresh `receivedQty` is now fetched via `findUnique` inside the transaction before allowing the receive, preventing race-condition over-receiving. |
+| F-174 | PO cancel from `partially_received` — no stock/accounting reversal | Accounting/Inventory | 🟠 High | ✅ FIXED | `purchase-orders/[id]/status/route.ts` — Added `partially_received -> cancelled` transition. On cancel, reverses all received stock (product.stock decrement + stockMovement) and creates reversal journal entry (DR:Accounts Payable, CR:Inventory) inside $transaction. |
+
+---
+
 ## Notes
 
 1. The original ChatGPT audit conversation (`New_Empty_File`, ~19K lines) was not available in the repository. Findings were extracted from the derived reports in `مهم/`.
@@ -193,4 +206,4 @@ Verified against live code from the original `New_Empty_File` (19K-line ChatGPT 
 5. F-045 is a duplicate of F-024 — will be consolidated during verification.
 6. E2E test suite expanded from 4 to 10 scenarios covering: Auth, Full Pipeline, POS Checkout, Payment Idempotency, Add/Delete Part, Cancel WO, Credit Sale, Split Payment, Return Invoice, Full Reconciliation.
 
-*Last updated: 2026-07-26 — Phase 8 complete. 35 FIXED, 0 CONFIRMED remaining, 1 verified (F-078).*
+*Last updated: 2026-07-26 — Phase 9 complete. 41 FIXED, 0 CONFIRMED remaining, 1 verified (F-078).*

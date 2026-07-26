@@ -13,7 +13,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     return await withRole(req, ['admin', 'staff'], async () => {
       const { id } = await params;
 
-      const invoice = await prisma.invoice.findUnique({
+      const invoice = await prisma.invoice.findFirst({
         where: { id, isDeleted: false },
         include: {
           items: true,
@@ -68,7 +68,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       const body = await req.json();
       const data = updateInvoiceSchema.parse(body);
 
-      const invoice = await prisma.invoice.findUnique({
+      const invoice = await prisma.invoice.findFirst({
         where: { id, isDeleted: false },
         include: { items: true },
       });

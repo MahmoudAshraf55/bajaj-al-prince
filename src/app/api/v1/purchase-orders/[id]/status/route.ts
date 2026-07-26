@@ -6,14 +6,14 @@ import { sanitizedString } from '@/lib/sanitize';
 import { logAudit, getClientInfo } from '@/lib/audit';
 import { withSecurityHeaders } from '@/lib/security';
 import { z } from 'zod';
+import { AccountingService } from '@/services/AccountingService';
+import { ACCOUNT_CODES } from '@/constants/accounting';
+import { getTenantId, DEFAULT_TENANT_ID } from '@/lib/tenant-context';
 
-// Status flow: draft -> ordered -> partially_received, received, cancelled
-//              ordered -> partially_received, received, cancelled
-//              partially_received -> received
 const validTransitions: Record<string, string[]> = {
   draft: ['ordered', 'cancelled'],
   ordered: ['partially_received', 'received', 'cancelled'],
-  partially_received: ['received'],
+  partially_received: ['received', 'cancelled'],
 };
 
 const statusSchema = z.object({
@@ -47,12 +47,85 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         }, { status: 400 }));
       }
 
-      const updated = await prisma.purchaseOrder.update({
-        where: { id },
-        data: { status: newStatus, notes: notes !== undefined ? notes : existing.notes },
-      });
+      if (newStatus === 'cancelled' && (existing.status === 'partially_received' || existing.status === 'received')) {
+        const tenantId = getTenantId() ?? DEFAULT_TENANT_ID;
 
-      // If cancelled, record audit
+        await prisma.$transaction(async (tx) => {
+          await tx.purchaseOrder.update({
+            where: { id },
+            data: { status: 'cancelled', notes: notes !== undefined ? notes : existing.notes },
+          });
+
+          const receipts = await tx.purchaseReceipt.findMany({
+            where: { purchaseOrderId: id },
+            include: { items: true },
+          });
+
+          for (const receipt of receipts) {
+            for (const ri of receipt.items) {
+              const product = await tx.product.findUnique({
+                where: { id: ri.productId },
+                select: { lockInventory: true },
+              });
+              if (product && !product.lockInventory) {
+                await tx.product.update({
+                  where: { id: ri.productId },
+                  data: { stock: { decrement: Number(ri.quantity) } },
+                });
+                await tx.stockMovement.create({
+                  data: {
+                    productId: ri.productId,
+                    type: 'out',
+                    quantity: Number(ri.quantity),
+                    reference: `PO-cancel:${existing.number}`,
+                    notes: `Stock reversed from cancelled PO ${existing.number}`,
+                    createdById: payload.userId,
+                    tenantId,
+                  },
+                });
+              }
+            }
+          }
+
+          const totalReceivedAmount = receipts.reduce(
+            (sum, r) => sum + r.items.reduce((s, ri) => s + Number(ri.total), 0),
+            0,
+          );
+
+          if (totalReceivedAmount > 0) {
+            const inventoryId = await AccountingService.getAccountId(tx, ACCOUNT_CODES.INVENTORY, tenantId);
+            const accountsPayableId = await AccountingService.getAccountId(tx, ACCOUNT_CODES.ACCOUNTS_PAYABLE, tenantId);
+
+            await tx.journalEntry.create({
+              data: {
+                type: 'RETURN',
+                amount: totalReceivedAmount,
+                description: `PO cancellation reversal: ${existing.number}`,
+                referenceType: 'purchase_order',
+                referenceId: id,
+                referenceNumber: existing.number,
+                date: new Date(),
+                createdById: payload.userId,
+                tenantId,
+                lines: {
+                  create: [
+                    { accountId: accountsPayableId, debit: totalReceivedAmount, credit: 0, description: 'AP reversal', tenantId },
+                    { accountId: inventoryId, debit: 0, credit: totalReceivedAmount, description: 'Inventory reversal', tenantId },
+                  ],
+                },
+              },
+            });
+          }
+        });
+      } else {
+        await prisma.purchaseOrder.update({
+          where: { id },
+          data: { status: newStatus, notes: notes !== undefined ? notes : existing.notes },
+        });
+      }
+
+      const updated = await prisma.purchaseOrder.findFirst({ where: { id } });
+
       const { ipAddress, userAgent } = getClientInfo(req);
       await logAudit({
         userId: payload.userId,

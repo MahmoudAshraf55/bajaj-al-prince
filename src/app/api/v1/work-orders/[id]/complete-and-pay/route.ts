@@ -116,11 +116,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         const labourTotalAmount = wo.labourLines.reduce((s, l) => s + (l.total ? Number(l.total) : 0), 0);
         if (labourTotalAmount > 0) {
           const usedIds = new Set(wo.parts.map((p) => p.productId));
-          let labourProductId: string | null | undefined;
-
-          // F-147: Prefer a dedicated isService product for labour lines.
-          // Previously used findFirst which could pick ANY product (e.g. Brake Pad).
-          labourProductId = (await tx.product.findFirst({
+          const labourProductId = (await tx.product.findFirst({
             where: { tenantId, isService: true, isDeleted: false },
             select: { id: true },
           }))?.id;

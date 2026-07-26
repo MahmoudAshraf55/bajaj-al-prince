@@ -165,56 +165,52 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
           },
         });
 
-        try {
-          const inventoryId = await AccountingService.getAccountId(tx, ACCOUNT_CODES.INVENTORY, tenantId);
-          const cogsId = await AccountingService.getAccountId(tx, ACCOUNT_CODES.COGS, tenantId);
-          const partsSalesId = await AccountingService.getAccountId(tx, ACCOUNT_CODES.PARTS_SALES, tenantId);
-          const serviceRevenueId = await AccountingService.getAccountId(tx, ACCOUNT_CODES.SERVICE_REVENUE, tenantId);
-          const cashId = await AccountingService.getAccountId(tx, ACCOUNT_CODES.CASH, tenantId);
+        const inventoryId = await AccountingService.getAccountId(tx, ACCOUNT_CODES.INVENTORY, tenantId);
+        const cogsId = await AccountingService.getAccountId(tx, ACCOUNT_CODES.COGS, tenantId);
+        const partsSalesId = await AccountingService.getAccountId(tx, ACCOUNT_CODES.PARTS_SALES, tenantId);
+        const serviceRevenueId = await AccountingService.getAccountId(tx, ACCOUNT_CODES.SERVICE_REVENUE, tenantId);
+        const cashId = await AccountingService.getAccountId(tx, ACCOUNT_CODES.CASH, tenantId);
 
-          const partsCostTotal = wo.parts.reduce((s, p) => s + (Number(p.product?.costPrice || 0) * p.quantity), 0);
-          const partsTotal = wo.parts.reduce((s, p) => s + Number(p.total), 0);
+        const partsCostTotal = wo.parts.reduce((s, p) => s + (Number(p.product?.costPrice || 0) * p.quantity), 0);
+        const partsTotal = wo.parts.reduce((s, p) => s + Number(p.total), 0);
 
-          const reversalLines: Array<{
-            accountId: string;
-            debit: number;
-            credit: number;
-            description: string;
-            tenantId: string;
-          }> = [];
+        const reversalLines: Array<{
+          accountId: string;
+          debit: number;
+          credit: number;
+          description: string;
+          tenantId: string;
+        }> = [];
 
-          reversalLines.push({ accountId: cashId, debit: 0, credit: total, description: 'Work order return reversal', tenantId });
+        reversalLines.push({ accountId: cashId, debit: 0, credit: total, description: 'Work order return reversal', tenantId });
 
-          if (partsCostTotal > 0) {
-            reversalLines.push({ accountId: inventoryId, debit: partsCostTotal, credit: 0, description: 'Stock return', tenantId });
-            reversalLines.push({ accountId: cogsId, debit: 0, credit: partsCostTotal, description: 'COGS reversal', tenantId });
-          }
-          if (partsTotal > 0) {
-            reversalLines.push({ accountId: partsSalesId, debit: partsTotal, credit: 0, description: 'Parts revenue reversal', tenantId });
-          }
-          if (labourTotalAmount > 0) {
-            reversalLines.push({ accountId: serviceRevenueId, debit: labourTotalAmount, credit: 0, description: 'Labour revenue reversal', tenantId });
-          }
-
-          await tx.journalEntry.create({
-            data: {
-              type: 'RETURN',
-              amount: total,
-              description: `Work order return: ${wo.description?.substring(0, 100) || ''}`,
-              referenceType: 'work_order',
-              referenceId: id,
-              referenceNumber: returnNumber,
-              category: undefined,
-              paymentMethod: undefined,
-              date: now,
-              createdById: payload.userId,
-              tenantId,
-              lines: { create: reversalLines },
-            },
-          });
-        } catch (accountingError) {
-          logger.error('Accounting entry creation failed in work order return', accountingError);
+        if (partsCostTotal > 0) {
+          reversalLines.push({ accountId: inventoryId, debit: partsCostTotal, credit: 0, description: 'Stock return', tenantId });
+          reversalLines.push({ accountId: cogsId, debit: 0, credit: partsCostTotal, description: 'COGS reversal', tenantId });
         }
+        if (partsTotal > 0) {
+          reversalLines.push({ accountId: partsSalesId, debit: partsTotal, credit: 0, description: 'Parts revenue reversal', tenantId });
+        }
+        if (labourTotalAmount > 0) {
+          reversalLines.push({ accountId: serviceRevenueId, debit: labourTotalAmount, credit: 0, description: 'Labour revenue reversal', tenantId });
+        }
+
+        await tx.journalEntry.create({
+          data: {
+            type: 'RETURN',
+            amount: total,
+            description: `Work order return: ${wo.description?.substring(0, 100) || ''}`,
+            referenceType: 'work_order',
+            referenceId: id,
+            referenceNumber: returnNumber,
+            category: undefined,
+            paymentMethod: undefined,
+            date: now,
+            createdById: payload.userId,
+            tenantId,
+            lines: { create: reversalLines },
+          },
+        });
 
         return { returnInvoice, returnNumber };
       });

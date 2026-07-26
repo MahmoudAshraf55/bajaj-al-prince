@@ -132,10 +132,7 @@ export class WorkOrderService {
 
         if (labourTotalAmount > 0) {
           const usedIds = new Set(updatedWorkOrder.parts.map((p) => p.productId));
-          let labourProductId: string | null | undefined;
-
-          // F-147: Prefer a dedicated isService product for labour lines.
-          labourProductId = (await tx.product.findFirst({
+          const labourProductId = (await tx.product.findFirst({
             where: { tenantId, isService: true, isDeleted: false },
             select: { id: true },
           }))?.id;

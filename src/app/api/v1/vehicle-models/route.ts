@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { withRole } from '@/lib/auth';
+import { withRole, withAuth } from '@/lib/auth';
 import { checkRateLimit } from '@/lib/rate-limit';
 import { sanitizedString } from '@/lib/sanitize';
 import { logAudit, getClientInfo } from '@/lib/audit';
@@ -16,16 +16,18 @@ const modelSchema = z.object({
 
 export async function GET(req: NextRequest) {
   try {
-    const { searchParams } = new URL(req.url);
-    const includeInactive = searchParams.get('all') === 'true';
+    return await withAuth(req, async () => {
+      const { searchParams } = new URL(req.url);
+      const includeInactive = searchParams.get('all') === 'true';
 
-    const models = await prisma.vehicleModel.findMany({
-      where: includeInactive ? undefined : { isActive: true, isDeleted: false },
-      orderBy: { name: 'asc' },
-      include: { manufacturer: { select: { id: true, name: true, nameAr: true } } },
+      const models = await prisma.vehicleModel.findMany({
+        where: includeInactive ? undefined : { isActive: true, isDeleted: false },
+        orderBy: { name: 'asc' },
+        include: { manufacturer: { select: { id: true, name: true, nameAr: true } } },
+      });
+
+      return withSecurityHeaders(NextResponse.json({ success: true, data: { models } }));
     });
-
-    return withSecurityHeaders(NextResponse.json({ success: true, data: { models } }));
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Internal server error';
     return withSecurityHeaders(NextResponse.json({ success: false, error: message }, { status: 500 }));

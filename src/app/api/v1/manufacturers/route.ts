@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { withRole } from '@/lib/auth';
+import { withRole, withAuth } from '@/lib/auth';
 import { checkRateLimit } from '@/lib/rate-limit';
 import { sanitizedString } from '@/lib/sanitize';
 import { logAudit, getClientInfo } from '@/lib/audit';
@@ -15,15 +15,17 @@ const createSchema = z.object({
 
 export async function GET(req: NextRequest) {
   try {
-    const { searchParams } = new URL(req.url);
-    const includeInactive = searchParams.get('all') === 'true';
+    return await withAuth(req, async () => {
+      const { searchParams } = new URL(req.url);
+      const includeInactive = searchParams.get('all') === 'true';
 
-    const manufacturers = await prisma.manufacturer.findMany({
-      where: includeInactive ? undefined : { isActive: true, isDeleted: false },
-      orderBy: { name: 'asc' },
+      const manufacturers = await prisma.manufacturer.findMany({
+        where: includeInactive ? undefined : { isActive: true, isDeleted: false },
+        orderBy: { name: 'asc' },
+      });
+
+      return withSecurityHeaders(NextResponse.json({ success: true, data: { manufacturers: manufacturers.map((m) => ({ ...m, name: m.name })) } }));
     });
-
-    return withSecurityHeaders(NextResponse.json({ success: true, data: { manufacturers: manufacturers.map((m) => ({ ...m, name: m.name })) } }));
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Internal server error';
     return withSecurityHeaders(NextResponse.json({ success: false, error: message }, { status: 500 }));

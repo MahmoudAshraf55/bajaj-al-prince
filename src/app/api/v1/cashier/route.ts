@@ -59,29 +59,35 @@ export async function POST(req: NextRequest) {
     return await withRole(req, ['admin', 'staff'], async (payload) => {
       const body = await req.json();
       const data = transactionSchema.parse(body);
-      const transaction = await prisma.transaction.create({
-        data: { ...data, createdById: payload.userId, tenantId: getTenantId() ?? DEFAULT_TENANT_ID },
-      });
+      const tenantId = getTenantId() ?? DEFAULT_TENANT_ID;
       const jeType = data.type === 'income' ? 'INCOME' as const : 'EXPENSE' as const;
-      await createDoubleEntry(prisma, {
-        type: jeType,
-        amount: data.amount,
-        description: data.description || `${data.type === 'income' ? 'Income' : 'Expense'} transaction`,
-        referenceType: 'transaction',
-        referenceId: transaction.id,
-        createdById: payload.userId,
+
+      const result = await prisma.$transaction(async (tx) => {
+        const transaction = await tx.transaction.create({
+          data: { ...data, createdById: payload.userId, tenantId },
+        });
+        await createDoubleEntry(tx, {
+          type: jeType,
+          amount: data.amount,
+          description: data.description || `${data.type === 'income' ? 'Income' : 'Expense'} transaction`,
+          referenceType: 'transaction',
+          referenceId: transaction.id,
+          createdById: payload.userId,
+          tenantId,
+        });
+        return transaction;
       });
       const { ipAddress, userAgent } = getClientInfo(req);
       await logAudit({
         userId: payload.userId,
         action: 'payment',
         entity: 'Transaction',
-        entityId: transaction.id,
+        entityId: result.id,
         newValue: { ...data, createdBy: payload.userId } as Record<string, unknown>,
         ipAddress,
         userAgent,
       });
-      return withSecurityHeaders(NextResponse.json({ success: true, data: { transaction: { ...transaction, amount: Number(transaction.amount) } } }, { status: 201 }));
+      return withSecurityHeaders(NextResponse.json({ success: true, data: { transaction: { ...result, amount: Number(result.amount) } } }, { status: 201 }));
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
