@@ -2,7 +2,7 @@
 
 **Generated:** 2026-07-26
 **Source:** Code review report (2026-07-14) + Live testing reports (EN/AR)
-**Status:** ✅ 54 FIXED, 0 CONFIRMED, 1 verified (F-078)
+**Status:** ✅ 55 FIXED, 0 CONFIRMED, 1 verified (F-078)
 
 ---
 
@@ -217,6 +217,7 @@ Verified against live code from the original `New_Empty_File` (19K-line ChatGPT 
 | F-182 | PO PATCH trusts client-supplied totals; POST items doesn't preserve tax/discount | Accounting | 🔴 Critical | ✅ FIXED | `purchase-orders/[id]/route.ts` — PO PATCH now server-computes item totals from `product.price × quantity` and recalculates PO `subtotal`/`total` from items. `purchase-orders/[id]/items/route.ts` — POST items now preserves existing `taxTotal`/`discount` when recalculating totals. |
 | F-183 | Purchase invoice cancellation has no accounting reversal | Accounting | 🔴 Critical | ✅ FIXED | `invoices/[id]/route.ts` — Added `PURCHASE` branch in cancellation: creates reversal journal entry (DR:Accounts Payable, CR:Inventory) for the full invoice amount when a purchase invoice is cancelled. |
 | F-184 | Accounting summary dedup bug — uses composite key of discount+tax+method instead of invoice ID | Accounting | 🟠 High | ✅ FIXED | `accounting/summary/route.ts` — Added `id` to invoice select query. Replaced composite key dedup with `Set<invoiceId>` to correctly count discount/tax once per invoice regardless of field values. |
+| F-180 | No supplier payment route exists — AP can never be reduced | Accounting/New Feature | 🔴 Critical | ✅ FIXED | NEW FEATURE: Added `paid`/`dueDate`/`paymentStatus` to `PurchaseOrder`, created `SupplierPayment` model + migration, created `POST /api/v1/supplier-payments` route (with atomic journal entry DR:AP, CR:Cash inside $transaction), created `GET /api/v1/supplier-payments` route, added `SUPPLIER_PAYMENT` to JournalEntryType enum + `createDoubleEntry`. PO receive now auto-sets 30-day dueDate. |
 
 ---
 
@@ -229,4 +230,4 @@ Verified against live code from the original `New_Empty_File` (19K-line ChatGPT 
 5. F-045 is a duplicate of F-024 — will be consolidated during verification.
 6. E2E test suite expanded from 4 to 10 scenarios covering: Auth, Full Pipeline, POS Checkout, Payment Idempotency, Add/Delete Part, Cancel WO, Credit Sale, Split Payment, Return Invoice, Full Reconciliation.
 
-*Last updated: 2026-07-26 — Phase 11 complete. 54 FIXED, 0 CONFIRMED remaining, 1 verified (F-078).*
+*Last updated: 2026-07-27 — Phase 11 complete (F-180 new feature, F-181-F-184 bug fixes). 55 FIXED, 0 CONFIRMED remaining, 1 verified (F-078).*

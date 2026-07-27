@@ -349,6 +349,7 @@ model User {
   purchaseOrders       PurchaseOrder[]
   purchaseReceipts     PurchaseReceipt[]
   scannerSessions      ScannerSession[]
+  supplierPayments     SupplierPayment[]
   stockMovements       StockMovement[]
   transactions         Transaction[]
 
@@ -882,25 +883,29 @@ model Supplier {
 }
 
 model PurchaseOrder {
-  id          String              @id @default(uuid())
-  number      String
-  supplierId  String
-  status      String              @default("draft")
-  notes       String?
-  subtotal    Decimal             @db.Decimal(10, 2)
-  taxTotal    Decimal             @default(0) @db.Decimal(10, 2)
-  discount    Decimal             @default(0) @db.Decimal(10, 2)
-  total       Decimal             @db.Decimal(10, 2)
-  createdById String
-  createdAt   DateTime            @default(now()) @db.Timestamp(6)
-  updatedAt   DateTime?           @updatedAt @db.Timestamp(6)
-  isDeleted   Boolean             @default(false)
-  deletedAt   DateTime?           @db.Timestamp(6)
-  tenantId    String?
-  createdBy   User                @relation(fields: [createdById], references: [id])
-  supplier    Supplier            @relation(fields: [supplierId], references: [id])
-  items       PurchaseOrderItem[]
-  receipts    PurchaseReceipt[]
+  id            String              @id @default(uuid())
+  number        String
+  supplierId    String
+  status        String              @default("draft")
+  notes         String?
+  subtotal      Decimal             @db.Decimal(10, 2)
+  taxTotal      Decimal             @default(0) @db.Decimal(10, 2)
+  discount      Decimal             @default(0) @db.Decimal(10, 2)
+  total         Decimal             @db.Decimal(10, 2)
+  paid          Decimal             @default(0) @db.Decimal(10, 2)
+  dueDate       DateTime?           @db.Timestamp(6)
+  paymentStatus String              @default("unpaid")
+  createdById   String
+  createdAt     DateTime            @default(now()) @db.Timestamp(6)
+  updatedAt     DateTime?           @updatedAt @db.Timestamp(6)
+  isDeleted     Boolean             @default(false)
+  deletedAt     DateTime?           @db.Timestamp(6)
+  tenantId      String?
+  createdBy     User                @relation(fields: [createdById], references: [id])
+  supplier      Supplier            @relation(fields: [supplierId], references: [id])
+  items         PurchaseOrderItem[]
+  receipts      PurchaseReceipt[]
+  payments      SupplierPayment[]
 
   @@unique([tenantId, number])
   @@unique([id, tenantId])
@@ -982,6 +987,30 @@ model PurchaseReceiptItem {
   @@index([tenantId])
 }
 
+model SupplierPayment {
+  id              String        @id @default(uuid())
+  purchaseOrderId String
+  amount          Decimal       @db.Decimal(10, 2)
+  paymentMethod   String        @default("cash")
+  notes           String?
+  date            DateTime      @default(now()) @db.Timestamp(6)
+  createdById     String
+  createdAt       DateTime      @default(now()) @db.Timestamp(6)
+  updatedAt       DateTime?     @updatedAt @db.Timestamp(6)
+  isDeleted       Boolean       @default(false)
+  deletedAt       DateTime?     @db.Timestamp(6)
+  tenantId        String?
+  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id])
+  createdBy       User          @relation(fields: [createdById], references: [id])
+
+  @@unique([id, tenantId])
+  @@index([purchaseOrderId])
+  @@index([createdById])
+  @@index([date])
+  @@index([isDeleted])
+  @@index([tenantId])
+}
+
 model Account {
   id            String             @id @default(uuid())
   code          String
@@ -1055,6 +1084,7 @@ enum JournalEntryType {
   EXPENSE
   INCOME
   STOCK_ADJUSTMENT
+  SUPPLIER_PAYMENT
 }
 
 enum PeriodStatus {

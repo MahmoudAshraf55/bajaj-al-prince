@@ -152,12 +152,22 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
          if (allReceived) newStatus = 'received';
          else if (someReceived) newStatus = 'partially_received';
 
-         if (newStatus !== order.status) {
-           await tx.purchaseOrder.update({
-             where: { id: purchaseOrderId },
-             data: { status: newStatus },
-           });
-         }
+          if (newStatus !== order.status) {
+            const updateData: Record<string, unknown> = { status: newStatus };
+            if (newStatus === 'received') {
+              const currentPO = await tx.purchaseOrder.findFirst({
+                where: { id: purchaseOrderId },
+                select: { dueDate: true },
+              });
+              if (!currentPO?.dueDate) {
+                updateData.dueDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+              }
+            }
+            await tx.purchaseOrder.update({
+              where: { id: purchaseOrderId },
+              data: updateData,
+            });
+          }
 
          // Return full receipt with items
          return tx.purchaseReceipt.findUnique({

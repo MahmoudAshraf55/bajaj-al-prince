@@ -18,7 +18,7 @@ async function getAccountByCode(tx: Tx, code: string, tenantId: string): Promise
 }
 
 export interface DoubleEntryInput {
-  type: 'SALE' | 'RETURN' | 'PURCHASE' | 'EXPENSE' | 'INCOME' | 'STOCK_ADJUSTMENT';
+  type: 'SALE' | 'RETURN' | 'PURCHASE' | 'EXPENSE' | 'INCOME' | 'STOCK_ADJUSTMENT' | 'SUPPLIER_PAYMENT';
   amount: number;
   amountPaid?: number;
   description?: string;
@@ -154,6 +154,8 @@ export function getDebitAccountCode(input: Partial<DoubleEntryInput>): string {
     }
     case 'STOCK_ADJUSTMENT':
       return ACCOUNT_CODES.COGS;
+    case 'SUPPLIER_PAYMENT':
+      return ACCOUNT_CODES.ACCOUNTS_PAYABLE;
     default:
       return ACCOUNT_CODES.CASH;
   }
@@ -181,6 +183,10 @@ export function getCreditAccountCode(input: Partial<DoubleEntryInput>): string {
         : ACCOUNT_CODES.CASH;
     case 'STOCK_ADJUSTMENT':
       return ACCOUNT_CODES.INVENTORY;
+    case 'SUPPLIER_PAYMENT':
+      return input.paymentMethod === 'card' || input.paymentMethod === 'transfer'
+        ? ACCOUNT_CODES.BANK
+        : ACCOUNT_CODES.CASH;
     default:
       return ACCOUNT_CODES.OTHER_REVENUE;
   }
