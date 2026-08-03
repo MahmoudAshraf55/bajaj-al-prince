@@ -118,8 +118,6 @@ function LoadingFallback() {
   );
 }
 
-useGLTF.preload('/models/bajaj180.glb');
-
 const MotorcycleScene = forwardRef<SceneRef>((_, ref) => {
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
