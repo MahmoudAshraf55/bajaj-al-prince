@@ -16,7 +16,7 @@ const bubbles = [
 ];
 
 const sizeMap = {
-  sm: 'w-24 h-24 text-[10px]',
+  sm: 'w-24 h-24 text-[11px]',
   md: 'w-32 h-32 text-xs',
   lg: 'w-40 h-40 text-sm',
 };

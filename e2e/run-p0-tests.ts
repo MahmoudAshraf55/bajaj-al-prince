@@ -151,7 +151,10 @@ async function testFullServicePipeline(): Promise<TestResult> {
   await sleep(200);
 
   // Snapshot pre-state
-  const preProducts = await prisma.product.findMany({ where: { tenantId: QA_TENANT_ID, isDeleted: false }, select: { id: true, stock: true, name: true } });
+  const preProducts = await prisma.product.findMany({
+    where: { tenantId: QA_TENANT_ID, isDeleted: false, lockInventory: false, category: { not: 'Service' } },
+    select: { id: true, stock: true, name: true, price: true },
+  });
   const preProductMap = new Map(preProducts.map(p => [p.id, p.stock]));
   const preJournalLines = await prisma.journalEntryLine.count({ where: { tenantId: QA_TENANT_ID } });
   const preStockMovements = await prisma.stockMovement.count({ where: { tenantId: QA_TENANT_ID } });
@@ -216,7 +219,9 @@ async function testFullServicePipeline(): Promise<TestResult> {
 
   // Step 5: Add Parts to Work Order (use first product — Engine Oil 10W-40)
   await sleep(200);
-  const partProductId = preProducts.find(p => p.name === 'Engine Oil 10W-40')?.id || preProducts[0].id;
+  const partProductId = preProducts.find(p => p.name === 'Engine Oil 10W-40')?.id
+    || preProducts.find(p => Number(p.stock) >= 2 && Number(p.price) > 0)?.id
+    || preProducts[0]?.id;
   const partStockBefore = preProductMap.get(partProductId) ?? 0;
   const addPart = await api('POST', `/api/v1/work-orders/${woId}/parts`, { productId: partProductId, quantity: 2, unitPrice: 350 });
   assert(addPart.status === 201, `Part added: ${addPart.status}`, evidence, failures);
@@ -302,7 +307,7 @@ async function testPOSCheckout(): Promise<TestResult> {
   // Pre-state
   const preProducts = await prisma.product.findMany({
     where: { tenantId: QA_TENANT_ID, isDeleted: false, lockInventory: false, category: { not: 'Service' } },
-    select: { id: true, stock: true, name: true },
+    select: { id: true, stock: true, name: true, price: true },
   });
   const testProduct = preProducts.find(p => p.stock >= 3) || preProducts[0];
   if (!testProduct) {
@@ -316,8 +321,8 @@ async function testPOSCheckout(): Promise<TestResult> {
 
   // Create invoice directly (POS flow: sale with items + payment)
   const qty = 3;
-  const unitPrice = 350; // Engine Oil
-  const totalExpected = unitPrice * qty; // 1050
+  const unitPrice = Number(testProduct.price);
+  const totalExpected = Math.round(unitPrice * qty * 100) / 100;
 
   const invoiceRes = await api('POST', '/api/v1/invoices', {
     type: 'sale',
@@ -400,16 +405,32 @@ async function testPaymentIdempotency(): Promise<TestResult> {
   assert(wo.status === 201, `WO created: ${wo.status}`, evidence, failures);
   const woId = wo.json.data?.workOrder?.id;
 
+  // Build a real WO total (parts + labour + tax) so payment is accepted
+  const products = await prisma.product.findMany({
+    where: { tenantId: QA_TENANT_ID, isDeleted: false, lockInventory: false, category: { not: 'Service' } },
+    select: { id: true, stock: true, price: true, taxRate: true },
+  });
+  const partProduct = products.find(p => Number(p.stock) >= 2) || products[0];
+  const partUnit = Number(partProduct.price);
+  const labourAmount = 200;
+  const addPart = await api('POST', `/api/v1/work-orders/${woId}/parts`, { productId: partProduct.id, quantity: 1 });
+  assert(addPart.status === 201, `Part added: ${addPart.status}`, evidence, failures);
+  const addLabour = await api('POST', `/api/v1/work-orders/${woId}/labour`, { description: 'Labour line', hours: 2, rate: 100, total: labourAmount });
+  assert(addLabour.status === 201, `Labour added: ${addLabour.status}`, evidence, failures);
+
+  const tax = Math.round(partUnit * (Number(partProduct.taxRate) / 100) * 100) / 100;
+  const woTotal = Math.round((partUnit + labourAmount + tax) * 100) / 100;
+
   // First complete-and-pay
   const pay1 = await api('POST', `/api/v1/work-orders/${woId}/complete-and-pay`, {
-    paymentMethod: 'cash', amountPaid: 500, partsTotal: 300, labourTotal: 200,
+    paymentMethod: 'cash', amountPaid: woTotal, partsTotal: partUnit, labourTotal: labourAmount,
   });
   assert(pay1.status === 200, `First payment: ${pay1.status} (body: ${JSON.stringify(pay1.json).slice(0, 300)})`, evidence, failures);
   assert(pay1.json.data?.workOrder?.status === 'completed', 'WO completed after first payment', evidence, failures);
 
   // Second attempt (should fail — WO already completed)
   const pay2 = await api('POST', `/api/v1/work-orders/${woId}/complete-and-pay`, {
-    paymentMethod: 'cash', amountPaid: 500, partsTotal: 300, labourTotal: 200,
+    paymentMethod: 'cash', amountPaid: woTotal, partsTotal: partUnit, labourTotal: labourAmount,
   });
   assert(pay2.status === 400, `Second payment blocked: ${pay2.status} (expected 400)`, evidence, failures);
   assert(pay2.json.error?.includes('already completed') || pay2.json.success === false,
@@ -426,7 +447,7 @@ async function testPaymentIdempotency(): Promise<TestResult> {
   }
   const payments = await prisma.invoicePayment.findMany({ where: { invoiceId: invoices[0].id } });
   const totalPaid = payments.reduce((s, p) => s + Number(p.amount), 0);
-  assert(totalPaid === 500, `Total paid=${totalPaid} (expected 500, not double). Payments: ${JSON.stringify(payments.map(p => ({ method: p.method, amount: Number(p.amount) })))}`, evidence, failures);
+  assert(totalPaid === woTotal, `Total paid=${totalPaid} (expected ${woTotal}, not double). Payments: ${JSON.stringify(payments.map(p => ({ method: p.method, amount: Number(p.amount) })))}`, evidence, failures);
 
   // Verify journal entries: should be exactly 1 set for this WO
   const jeCount = await prisma.journalEntry.count({

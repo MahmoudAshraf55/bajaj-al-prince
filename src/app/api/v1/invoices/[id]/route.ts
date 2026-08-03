@@ -19,6 +19,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         where: { id, isDeleted: false },
         include: {
           items: true,
+          payments: { where: { isDeleted: false } },
           createdBy: { select: { id: true, username: true } },
           customer: { select: { id: true, name: true, phone: true } },
         },
@@ -44,6 +45,10 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
               unitPrice: Number(item.unitPrice),
               costPrice: Number(item.costPrice),
               total: Number(item.total),
+            })),
+            payments: invoice.payments.map((p) => ({
+              ...p,
+              amount: Number(p.amount),
             })),
           },
         },
@@ -108,9 +113,13 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
           }
 
           if (invoice.type === 'sale' && Number(invoice.total) > 0) {
+            // F-076: Pass amountPaid so RETURN reversal correctly reverses
+            // all three legs (Revenue, Cash, AR) for partial payments
+            const paid = Number(invoice.paid);
             await createDoubleEntry(tx, {
               type: 'RETURN',
               amount: Number(invoice.total),
+              amountPaid: paid > 0 && paid < Number(invoice.total) ? paid : undefined,
               description: `Cancelled invoice ${invoice.number}`,
               referenceType: 'invoice',
               referenceId: invoice.id,
@@ -160,7 +169,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
       const updated = await prisma.invoice.findUnique({
         where: { id },
-        include: { items: true },
+        include: { items: true, payments: { where: { isDeleted: false } } },
       });
 
       return withSecurityHeaders(NextResponse.json({
@@ -179,6 +188,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
               unitPrice: Number(item.unitPrice),
               costPrice: Number(item.costPrice),
               total: Number(item.total),
+            })),
+            payments: updated!.payments.map((p) => ({
+              ...p,
+              amount: Number(p.amount),
             })),
           },
         },

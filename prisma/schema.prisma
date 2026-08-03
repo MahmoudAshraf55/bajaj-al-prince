@@ -109,7 +109,7 @@ model Product {
 
 model Invoice {
   id              String           @id @default(uuid())
-  number          String           @unique
+  number          String
   type            InvoiceType      @default(sale)
   status          InvoiceStatus    @default(draft)
   subtotal        Decimal          @db.Decimal(10, 2)
@@ -739,7 +739,7 @@ model ReminderLog {
 }
 
 model WhatsAppSettings {
-  id        String   @id @default("default")
+  id        String   @default("default")
   delayMin  Int      @default(60)
   delayMax  Int      @default(120)
   dailyCap  Int      @default(50)
@@ -747,14 +747,13 @@ model WhatsAppSettings {
   updatedAt DateTime @updatedAt @db.Timestamp(6)
   tenantId  String
 
-  @@unique([tenantId, id])
-  @@unique([id, tenantId])
+  @@id([tenantId, id])
   @@index([tenantId])
 }
 
 model WhatsAppMessageTemplate {
   id        String    @id @default(cuid())
-  event     String    @unique
+  event     String
   message   String
   isActive  Boolean   @default(true)
   updatedAt DateTime  @updatedAt @db.Timestamp(6)

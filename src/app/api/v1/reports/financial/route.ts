@@ -52,7 +52,7 @@ async function generatePnL(from: Date, to: Date) {
 
   const revenue = result.incomeStatement.totalRevenue;
   const netSales = revenue;
-  const cogs = result.incomeStatement.expenses.find((e) => e.code === '5100')?.balance || 0;
+  const cogs = result.incomeStatement.expenses.find((e) => e.code === ACCOUNT_CODES.COGS)?.balance || 0;
   const grossProfit = netSales - cogs;
   const grossMargin = netSales > 0 ? (grossProfit / netSales) * 100 : 0;
 
@@ -124,8 +124,8 @@ async function generateBalanceSheet(from: Date, to: Date) {
   const accountsPayable = Math.max(0, totalPurchases - totalPurchasePaid);
   const cashBalance = result.cashJeLines.reduce((s, l) => s + Number(l.debit) - Number(l.credit), 0);
 
-  const cash = result.balanceSheet.assets.find((a) => a.code === '1101')?.balance || cashBalance;
-  const totalAssets = (result.balanceSheet.assets.find((a) => a.code === '1101')?.balance || 0) +
+  const cash = result.balanceSheet.assets.find((a) => a.code === ACCOUNT_CODES.CASH)?.balance || cashBalance;
+  const totalAssets = (result.balanceSheet.assets.find((a) => a.code === ACCOUNT_CODES.CASH)?.balance || 0) +
     accountsReceivable + inventoryValue;
   const totalLiabilities = accountsPayable;
   const equity = result.balanceSheet.equity.reduce((s, e) => s + e.balance, 0);

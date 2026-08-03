@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { withRole } from '@/lib/auth';
 import { withSecurityHeaders } from '@/lib/security';
 import { parseRangeDate } from '@/lib/utils';
+import { ACCOUNT_CODES } from '@/constants/accounting';
 
 export async function GET(req: NextRequest) {
   return withRole(req, ['admin', 'staff'], async (user) => {
@@ -44,7 +45,7 @@ export async function GET(req: NextRequest) {
         prisma.journalEntryLine.findMany({
           where: {
             journalEntry: { type: 'SALE', isDeleted: false, date: { gte: fromDate, lte: toDate } },
-            account: { code: '5100' },
+            account: { code: ACCOUNT_CODES.COGS },
             isDeleted: false,
           },
           select: { debit: true, credit: true },

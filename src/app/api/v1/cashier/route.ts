@@ -63,9 +63,13 @@ export async function POST(req: NextRequest) {
       const tenantId = getTenantId() ?? DEFAULT_TENANT_ID;
       const jeType = data.type === 'income' ? 'INCOME' as const : 'EXPENSE' as const;
 
+      // Transaction model has no category column — category is only used for
+      // the journal entry (expenseCategory). Strip it before persisting.
+      const { category: _category, ...transactionData } = data;
+
       const result = await prisma.$transaction(async (tx) => {
         const transaction = await tx.transaction.create({
-          data: { ...data, createdById: payload.userId, tenantId },
+          data: { ...transactionData, createdById: payload.userId, tenantId },
         });
         await createDoubleEntry(tx, {
           type: jeType,

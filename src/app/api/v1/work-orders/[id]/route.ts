@@ -12,6 +12,7 @@ import { buildMessage } from '@/lib/whatsapp-templates';
 import { z } from 'zod';
 import { AccountingService } from '@/services/AccountingService';
 import { createDoubleEntry } from '@/lib/journal';
+import { ACCOUNT_CODES } from '@/constants/accounting';
 
 import { WorkOrderService } from '@/services/WorkOrderService';
 const updateSchema = z.object({
@@ -59,8 +60,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         if (isCostUpdate && data.cost != null) {
           const costDifference = Number(data.cost) - (Number(existing.cost) || 0);
           if (costDifference !== 0) {
-            const workOrderCostAccountId = await AccountingService.getAccountId(tx, '5201', tenantId); // RENT_EXPENSE (using as work order expense)
-            const cashAccountId = await AccountingService.getAccountId(tx, '1101', tenantId); // CASH
+            const workOrderCostAccountId = await AccountingService.getAccountId(tx, ACCOUNT_CODES.RENT_EXPENSE, tenantId); // RENT_EXPENSE (using as work order expense)
+            const cashAccountId = await AccountingService.getAccountId(tx, ACCOUNT_CODES.CASH, tenantId);
 
             const journalEntry = await tx.journalEntry.create({
               data: {

@@ -269,7 +269,7 @@ export default function AdminWarehouse() {
     );
   }
 
-  const categories = [...new Set(products.map((p) => p.category))].sort();
+  const categories = [...new Set(products.map((p) => { const c = p.category.trim(); return c.charAt(0).toUpperCase() + c.slice(1); }))].sort().filter(Boolean);
 
   const filtered = products.filter((p) => {
     if (!p) return false;

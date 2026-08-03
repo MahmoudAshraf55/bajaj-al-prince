@@ -51,6 +51,8 @@ export async function POST(req: NextRequest) {
       return withSecurityHeaders(NextResponse.json({ success: false, errors: error.issues }, { status: 400 }));
     }
     const message = error instanceof Error ? error.message : 'AI description failed';
-    return withSecurityHeaders(NextResponse.json({ success: false, error: message }, { status: 502 }));
+    const status = message === 'Unauthorized' || message === 'Invalid token' ? 401
+      : message === 'Forbidden' ? 403 : 502;
+    return withSecurityHeaders(NextResponse.json({ success: false, error: message }, { status }));
   }
 }

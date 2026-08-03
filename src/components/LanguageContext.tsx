@@ -29,9 +29,19 @@ async function loadDictionary(lang: Language): Promise<Dictionary> {
   return mod.default as Dictionary;
 }
 
-export function LanguageProvider({ children, scope }: { children: ReactNode; scope: LangScope }) {
-  const [language, setLanguageState] = useState<Language>('en');
-  const [dictionary, setDictionary] = useState<Dictionary>({});
+export function LanguageProvider({
+  children,
+  scope,
+  initialLanguage = 'en',
+  initialDictionary = {},
+}: {
+  children: ReactNode;
+  scope: LangScope;
+  initialLanguage?: Language;
+  initialDictionary?: Dictionary;
+}) {
+  const [language, setLanguageState] = useState<Language>(initialLanguage);
+  const [dictionary, setDictionary] = useState<Dictionary>(initialDictionary);
   const key = storageKey(scope);
 
   useEffect(() => {

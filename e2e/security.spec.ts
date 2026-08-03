@@ -91,22 +91,32 @@ test.describe('Security — Rate Limiting', () => {
     // ✅ تحسين: مع timeout أطول
     const maxWaitTime = 60000; // 60 seconds
     let lastStatus = 0;
-    
-    for (let i = 0; i < 6; i++) {
-      const res = await request.post('/api/auth/login/', {
-        data: { username: 'admin', password: `wrong${i}` },
-      });
-      lastStatus = res.status();
-      
-      // ✅ إذا حصلنا على 429، تأكد من أنها rate limit
-      if (lastStatus === 429) {
-        console.log(`✅ Rate limit hit at attempt ${i + 1}`);
-        break;
+
+    try {
+      for (let i = 0; i < 6; i++) {
+        const res = await request.post('/api/auth/login/', {
+          data: { username: 'admin', password: `wrong${i}` },
+        });
+        lastStatus = res.status();
+        
+        // ✅ إذا حصلنا على 429، تأكد من أنها rate limit
+        if (lastStatus === 429) {
+          console.log(`✅ Rate limit hit at attempt ${i + 1}`);
+          break;
+        }
       }
+    } finally {
+      const { PrismaClient } = await import('@prisma/client');
+      const prisma = new PrismaClient();
+      await prisma.user.updateMany({
+        where: { username: 'admin' },
+        data: { failedAttempts: 0, lockedUntil: null },
+      });
+      await prisma.$disconnect();
     }
     
-    // ✅ تحسين: قبول 401 أو 429
-    expect([429, 401]).toContain(lastStatus);
+    // ✅ تحسين: قبول 401 (invalid creds), 423 (account locked after 3 attempts) أو 429 (rate limited)
+    expect([429, 401, 423]).toContain(lastStatus);
   });
 });
 

@@ -36,8 +36,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       if (!order) {
         return withSecurityHeaders(NextResponse.json({ success: false, error: 'Purchase order not found' }, { status: 404 }));
       }
-      if (order.status === 'cancelled' || order.status === 'received') {
-        return withSecurityHeaders(NextResponse.json({ success: false, error: `Cannot receive a ${order.status} order` }, { status: 400 }));
+      if (!['ordered', 'partially_received'].includes(order.status)) {
+        return withSecurityHeaders(NextResponse.json({ success: false, error: `Cannot receive a '${order.status}' order. Order must be 'ordered' or 'partially_received'.` }, { status: 400 }));
       }
 
       for (const ri of data.items) {
@@ -155,13 +155,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
           if (newStatus !== order.status) {
             const updateData: Record<string, unknown> = { status: newStatus };
             if (newStatus === 'received') {
-              const currentPO = await tx.purchaseOrder.findFirst({
-                where: { id: purchaseOrderId },
-                select: { dueDate: true },
-              });
-              if (!currentPO?.dueDate) {
-                updateData.dueDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
-              }
+              updateData.dueDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
             }
             await tx.purchaseOrder.update({
               where: { id: purchaseOrderId },

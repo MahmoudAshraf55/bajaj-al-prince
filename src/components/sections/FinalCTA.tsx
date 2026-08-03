@@ -56,7 +56,7 @@ export default function FinalCTA() {
                 transition={{ duration: 0.5, delay: 0.1 * i }}
                 className={`inline-flex items-center gap-2 px-6 py-3.5 rounded-full font-semibold text-sm transition-all duration-300 hover:-translate-y-0.5 ${
                   action.primary
-                    ? 'bg-linear-to-r from-primary to-secondary text-white shadow-lg shadow-primary/30 hover:shadow-primary/50'
+                    ? 'bg-linear-to-r from-primary to-secondary text-primary-foreground shadow-lg shadow-primary/30 hover:shadow-primary/50'
                     : 'glass border border-border/60 text-foreground hover:border-primary/30 hover:bg-white/5'
                 }`}
               >

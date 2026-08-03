@@ -146,6 +146,7 @@ export async function POST(req: NextRequest) {
               quantity: item.quantity,
               unitPrice: item.unitPrice,
               total: item.total,
+              tenantId: getTenantId() ?? DEFAULT_TENANT_ID,
             })),
           },
         },

@@ -48,6 +48,13 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       }
 
       if (newStatus === 'cancelled' && (existing.status === 'partially_received' || existing.status === 'received')) {
+        if (Number(existing.paid) > 0) {
+          return withSecurityHeaders(NextResponse.json({
+            success: false,
+            error: `Cannot cancel a purchase order with outstanding payments (paid: ${existing.paid}). Reverse supplier payments first.`,
+          }, { status: 400 }));
+        }
+
         const tenantId = getTenantId() ?? DEFAULT_TENANT_ID;
 
         await prisma.$transaction(async (tx) => {

@@ -132,10 +132,26 @@ export class WorkOrderService {
 
         if (labourTotalAmount > 0) {
           const usedIds = new Set(updatedWorkOrder.parts.map((p) => p.productId));
-          const labourProductId = (await tx.product.findFirst({
+          let labourProductId = (await tx.product.findFirst({
             where: { tenantId, isService: true, isDeleted: false },
             select: { id: true },
           }))?.id;
+          if (!labourProductId) {
+            labourProductId = (await tx.product.create({
+              data: {
+                name: 'Labour',
+                barcode: `SVC-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+                isService: true,
+                price: 0,
+                costPrice: 0,
+                stock: 0,
+                category: 'Services',
+                tenantId,
+                isDeleted: false,
+              },
+              select: { id: true },
+            })).id;
+          }
           if (labourProductId && !usedIds.has(labourProductId)) {
             itemMap.set(labourProductId, {
               productName: labourDescriptions || 'Labour',

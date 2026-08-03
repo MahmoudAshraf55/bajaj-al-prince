@@ -48,8 +48,13 @@ export async function createDoubleEntry(
   //   DR: Cash/Bank (amountPaid)
   //   DR: Accounts Receivable (amount - amountPaid)
   //   CR: Revenue (amount)
+  // F-076 (cancel): For RETURN with partial payment, reverse all three legs:
+  //   DR: Revenue (amount)
+  //   CR: Cash/Bank (amountPaid)
+  //   CR: Accounts Receivable (amount - amountPaid)
   const paidAmount = input.amountPaid != null ? Math.round(input.amountPaid * 100) / 100 : null;
   const hasPartialPayment = input.type === 'SALE' && paidAmount !== null && paidAmount < amount;
+  const hasPartialReturn = input.type === 'RETURN' && paidAmount !== null && paidAmount < amount;
 
   const lines: Array<{ accountId: string; debit: number; credit: number; description?: string; tenantId: string }> = [];
   let arAccountId: string | null = null;
@@ -77,6 +82,40 @@ export async function createDoubleEntry(
         paymentMethod: input.paymentMethod,
         debitAccountId: cashAccountId,
         creditAccountId: revenueAccountId,
+        createdById: input.createdById,
+        date,
+        tenantId,
+        lines: { create: lines },
+      },
+    });
+
+    return { id: entry.id, amount: Number(entry.amount) };
+  }
+
+  // F-076: For RETURN with partial payment, reverse all three legs
+  if (hasPartialReturn) {
+    const revenueAccountId = await getAccountByCode(tx, debitAccountCode, tenantId);
+    const cashAccountId = await getAccountByCode(tx, creditAccountCode, tenantId);
+    arAccountId = await getAccountByCode(tx, ACCOUNT_CODES.ACCOUNTS_RECEIVABLE, tenantId);
+
+    lines.push({ accountId: revenueAccountId, debit: amount, credit: 0, description: input.description, tenantId });
+    if (paidAmount! > 0) {
+      lines.push({ accountId: cashAccountId, debit: 0, credit: paidAmount!, description: input.description, tenantId });
+    }
+    lines.push({ accountId: arAccountId, debit: 0, credit: amount - paidAmount!, description: input.description, tenantId });
+
+    const entry = await tx.journalEntry.create({
+      data: {
+        type: input.type,
+        amount,
+        description: input.description,
+        referenceType: input.referenceType,
+        referenceId: input.referenceId,
+        referenceNumber: input.referenceNumber,
+        category: input.category,
+        paymentMethod: input.paymentMethod,
+        debitAccountId: revenueAccountId,
+        creditAccountId: cashAccountId,
         createdById: input.createdById,
         date,
         tenantId,

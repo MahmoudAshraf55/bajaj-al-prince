@@ -5,6 +5,7 @@ import { checkRateLimit } from '@/lib/rate-limit';
 import { sanitizedString } from '@/lib/sanitize';
 import { logAudit, getClientInfo } from '@/lib/audit';
 import { withSecurityHeaders } from '@/lib/security';
+import { getTenantId, DEFAULT_TENANT_ID } from '@/lib/tenant-context';
 import { z } from 'zod';
 
 const purchaseOrderItemSchema = z.object({
@@ -118,6 +119,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
                 quantity: item.quantity,
                 unitPrice: serverUnitPrice,
                 total: serverTotal,
+                tenantId: getTenantId() ?? DEFAULT_TENANT_ID,
               },
             });
           }

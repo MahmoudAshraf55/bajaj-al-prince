@@ -144,6 +144,20 @@ export async function POST(req: NextRequest) {
         if (existing) {
           throw new Error(`Invoice already returned by return ${existing.number}`);
         }
+
+        // Validate the original sale invoice exists and belongs to the same tenant.
+        const originalInvoice = await prisma.invoice.findFirst({
+          where: {
+            id: data.returnInvoiceId,
+            type: 'sale',
+            isDeleted: false,
+            tenantId: getTenantId() ?? DEFAULT_TENANT_ID,
+          },
+          select: { id: true },
+        });
+        if (!originalInvoice) {
+          throw new Error('Original sale invoice not found or does not belong to this tenant');
+        }
       }
 
       if (data.customerId) {
@@ -388,7 +402,7 @@ export async function POST(req: NextRequest) {
       return withSecurityHeaders(NextResponse.json({ success: false, errors: error.issues }, { status: 400 }));
     }
     const message = error instanceof Error ? error.message : 'Internal server error';
-    const status = message === 'Unauthorized' || message === 'Invalid token' ? 401 : message === 'Forbidden' ? 403 : message.startsWith('Insufficient') || message.startsWith('Product not found') || message.startsWith('Invoice already returned') ? 400 : 500;
+    const status = message === 'Unauthorized' || message === 'Invalid token' ? 401 : message === 'Forbidden' ? 403 : message.startsWith('Insufficient') || message.startsWith('Product not found') || message.startsWith('Invoice already returned') || message.startsWith('Payment amount') ? 400 : 500;
     return withSecurityHeaders(NextResponse.json({ success: false, error: status === 500 ? 'Internal server error' : message }, { status }));
   }
 }

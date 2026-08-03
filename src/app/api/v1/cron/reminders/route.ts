@@ -9,10 +9,11 @@ import { logger } from '@/lib/logger';
 import { getTenantId, DEFAULT_TENANT_ID } from '@/lib/tenant-context';
 
 async function getWhatsAppSettings() {
-  let settings = await prisma.whatsAppSettings.findUnique({ where: { id: 'default' } });
+  const tenantId = getTenantId() ?? DEFAULT_TENANT_ID;
+  let settings = await prisma.whatsAppSettings.findUnique({ where: { tenantId_id: { tenantId, id: 'default' } } });
   if (!settings) {
     settings = await prisma.whatsAppSettings.create({
-      data: { id: 'default', delayMin: 60, delayMax: 120, dailyCap: 50, batchSize: 5, tenantId: getTenantId() ?? DEFAULT_TENANT_ID },
+      data: { id: 'default', delayMin: 60, delayMax: 120, dailyCap: 50, batchSize: 5, tenantId },
     });
   }
   return settings;

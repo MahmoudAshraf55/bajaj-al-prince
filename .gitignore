@@ -78,3 +78,6 @@ Bajaj_Ghabbour_*.pptx
 worktree-*/
 *-test.html
 /zod/
+# 11. Working artifacts (not source of truth)
+/prisma/schema-live.prisma
+/qa/user&pass

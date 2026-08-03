@@ -16,7 +16,7 @@ export default function LanguageSwitcher({ className }: LanguageSwitcherProps) {
     <button
       onClick={toggleLanguage}
       className={cn(
-        'relative inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold transition-all duration-300 border border-border/60 hover:border-primary/40',
+        'relative inline-flex items-center gap-2 px-3 py-1.5 min-h-11 rounded-full text-xs font-semibold transition-all duration-300 border border-border/60 hover:border-primary/40',
         className
       )}
       aria-label={t('aria_toggle_language')}

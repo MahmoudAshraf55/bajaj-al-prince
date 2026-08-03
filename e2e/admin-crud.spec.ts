@@ -5,7 +5,7 @@ async function loginAsAdmin(page: Page) {
   await page.waitForSelector('input[type="text"]', { state: 'visible' });
   await page.locator('input[type="text"]').fill('admin');
   await page.locator('input[type="password"]').fill('Admin@123');
-  await page.getByRole('button', { name: /Sign In/i }).click();
+  await page.locator('form button[type="submit"]').click();
   await expect(page.getByText(/Admin Dashboard/i)).toBeVisible({ timeout: 20000 });
 }
 
@@ -14,7 +14,7 @@ async function loginAsStaff(page: Page) {
   await page.waitForSelector('input[type="text"]', { state: 'visible' });
   await page.locator('input[type="text"]').fill('staff');
   await page.locator('input[type="password"]').fill('Staff@123');
-  await page.getByRole('button', { name: /Sign In/i }).click();
+  await page.locator('form button[type="submit"]').click();
   await expect(page.getByText(/Admin Dashboard/i)).toBeVisible({ timeout: 20000 });
 }
 
@@ -33,13 +33,14 @@ test.describe('Admin CRUD — Suppliers', () => {
     await page.goto('/admin/suppliers/');
     await page.waitForSelector('button:has-text("Add")', { state: 'visible' });
     await page.getByRole('button', { name: /Add Supplier/i }).click();
-    await expect(page.getByRole('dialog')).toBeVisible();
+    const supplierDialog = page.locator('[role="dialog"]').filter({ hasText: 'Add New Supplier' });
+    await expect(supplierDialog).toBeVisible();
 
     const unique = Date.now().toString();
     await page.locator('input[placeholder="Supplier Name"]').fill(`Test Supplier ${unique}`);
     await page.locator('input[placeholder="+20 123 456 7890"]').fill('+201001234567');
     await page.locator('input[placeholder="supplier@example.com"]').fill(`supplier${unique}@test.com`);
-    await page.getByRole('dialog').getByRole('button', { name: /Add Supplier/i }).click();
+    await supplierDialog.getByRole('button', { name: /Add Supplier/i }).click();
 
     await expect(page.getByText(/created successfully/i)).toBeVisible({ timeout: 10000 });
   });
@@ -91,12 +92,16 @@ test.describe('Admin CRUD — Chart of Accounts', () => {
 
   test('accounts show default seeded accounts', async ({ page }) => {
     await page.goto('/admin/accounts/');
-    await page.waitForTimeout(1000);
-    await expect(page.locator('text=Assets')).toBeVisible();
-    await expect(page.locator('text=Liabilities')).toBeVisible();
-    await expect(page.locator('text=Equity')).toBeVisible();
-    await expect(page.locator('text=Revenue')).toBeVisible();
-    await expect(page.locator('text=Expenses')).toBeVisible();
+    await expect(page.locator('text=1000')).toBeVisible({ timeout: 15000 });
+    await expect(page.locator('text=2000')).toBeVisible({ timeout: 15000 });
+    await expect(page.locator('text=3000')).toBeVisible({ timeout: 15000 });
+    await expect(page.locator('text=4000')).toBeVisible({ timeout: 15000 });
+    await expect(page.locator('text=5000')).toBeVisible({ timeout: 15000 });
+    await expect(page.locator('text=Asset').first()).toBeVisible();
+    await expect(page.locator('text=Liability').first()).toBeVisible();
+    await expect(page.locator('text=Equity').first()).toBeVisible();
+    await expect(page.locator('text=Revenue').first()).toBeVisible();
+    await expect(page.locator('text=Expense').first()).toBeVisible();
   });
 });
 
@@ -120,9 +125,9 @@ test.describe('Admin CRUD — Reports', () => {
   test('reports page loads with 3 tabs', async ({ page }) => {
     await page.goto('/admin/reports/');
     await expect(page.getByRole('heading', { name: /Reports/i })).toBeVisible({ timeout: 10000 });
-    await expect(page.locator('button:has-text("Financial")')).toBeVisible();
-    await expect(page.locator('button:has-text("Inventory")')).toBeVisible();
-    await expect(page.locator('button:has-text("Customers")')).toBeVisible();
+    await expect(page.locator('button:has-text("Financial Reports")')).toBeVisible();
+    await expect(page.locator('button:has-text("Inventory Reports")')).toBeVisible();
+    await expect(page.locator('button:has-text("Customer Reports")')).toBeVisible();
     await page.screenshot({ path: 'e2e/screenshots/admin-reports.png' });
   });
 
@@ -154,7 +159,7 @@ test.describe('Admin — Dashboard KPIs', () => {
   test('quick action links visible', async ({ page }) => {
     await page.goto('/admin/dashboard/');
     await page.waitForTimeout(1000);
-    await expect(page.locator('a[href="/admin/pos/"]')).toBeVisible();
-    await expect(page.locator('a[href="/admin/reports/"]')).toBeVisible();
+    await expect(page.locator('a[href="/admin/pos/"]').first()).toBeVisible();
+    await expect(page.locator('a[href="/admin/reports/"]').first()).toBeVisible();
   });
 });

@@ -64,7 +64,17 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         }, { status: 400 }));
       }
 
-      const result = await prisma.$transaction(async (tx) => {
+      // Retry loop for invoice number race condition.
+      // Two concurrent C&P calls may read the same last invoice number
+      // and compute the same nextSeq. On P2002 (unique constraint),
+      // the whole transaction retries with fresh reads.
+      const MAX_RETRIES = 5;
+      let lastError: unknown;
+      let result: { updatedWo: Awaited<ReturnType<typeof prisma.workOrder.findUniqueOrThrow>>; invoice: Awaited<ReturnType<typeof prisma.invoice.create>> } | null = null;
+
+      for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+        try {
+          result = await prisma.$transaction(async (tx) => {
         const now = new Date();
         const dateStr = now.toISOString().slice(0, 10).replace(/-/g, '');
         const prefix = `INV-${dateStr}-`;
@@ -116,10 +126,26 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         const labourTotalAmount = wo.labourLines.reduce((s, l) => s + (l.total ? Number(l.total) : 0), 0);
         if (labourTotalAmount > 0) {
           const usedIds = new Set(wo.parts.map((p) => p.productId));
-          const labourProductId = (await tx.product.findFirst({
+          let labourProductId = (await tx.product.findFirst({
             where: { tenantId, isService: true, isDeleted: false },
             select: { id: true },
           }))?.id;
+          if (!labourProductId) {
+            labourProductId = (await tx.product.create({
+              data: {
+                name: 'Labour',
+                barcode: `SVC-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+                isService: true,
+                price: 0,
+                costPrice: 0,
+                stock: 0,
+                category: 'Services',
+                tenantId,
+                isDeleted: false,
+              },
+              select: { id: true },
+            })).id;
+          }
           if (labourProductId && !usedIds.has(labourProductId)) {
             itemMap.set(labourProductId, {
               productName: wo.labourLines.map((l) => l.description).join(', ') || 'Labour',
@@ -207,40 +233,61 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
           cashAccountId = await AccountingService.getAccountId(tx, ACCOUNT_CODES.BANK, tenantId);
         }
 
-        const journalEntry = await tx.journalEntry.create({
-          data: {
-            date: now,
-            description: `Work Order Invoice: ${wo.vehicle?.make ?? ''} ${wo.vehicle?.model ?? ''}`.trim(),
-            type: 'SALE',
-            amount: total,
-            referenceType: 'work_order',
-            referenceId: id,
-            referenceNumber: invoiceNumber,
-            paymentMethod: data.paymentMethod,
-            createdById: payload.userId,
-            tenantId,
-          },
-        });
+          // F-076: Cap cash debit to total to prevent imbalance on overpayment
+          const cashAmount = Math.min(data.amountPaid, total);
 
-        if (data.amountPaid > 0) {
-          await tx.journalEntryLine.create({
-            data: { journalEntryId: journalEntry.id, accountId: cashAccountId, debit: data.amountPaid, credit: 0, tenantId },
+          const journalEntry = await tx.journalEntry.create({
+            data: {
+              date: now,
+              description: `Work Order Invoice: ${wo.vehicle?.make ?? ''} ${wo.vehicle?.model ?? ''}`.trim(),
+              type: 'SALE',
+              amount: total,
+              referenceType: 'work_order',
+              referenceId: id,
+              referenceNumber: invoiceNumber,
+              paymentMethod: data.paymentMethod,
+              createdById: payload.userId,
+              tenantId,
+            },
           });
-        }
 
-        await tx.journalEntryLine.create({
-          data: { journalEntryId: journalEntry.id, accountId: salesRevenueAccountId, debit: 0, credit: total, tenantId },
-        });
+          if (cashAmount > 0) {
+            await tx.journalEntryLine.create({
+              data: { journalEntryId: journalEntry.id, accountId: cashAccountId, debit: cashAmount, credit: 0, tenantId },
+            });
+          }
 
-        if (data.amountPaid < total) {
-          const remaining = total - data.amountPaid;
           await tx.journalEntryLine.create({
-            data: { journalEntryId: journalEntry.id, accountId: accountsReceivableAccountId, debit: remaining, credit: 0, tenantId },
+            data: { journalEntryId: journalEntry.id, accountId: salesRevenueAccountId, debit: 0, credit: total, tenantId },
           });
-        }
+
+          if (data.amountPaid < total) {
+            const remaining = total - data.amountPaid;
+            await tx.journalEntryLine.create({
+              data: { journalEntryId: journalEntry.id, accountId: accountsReceivableAccountId, debit: remaining, credit: 0, tenantId },
+            });
+          }
 
         return { updatedWo, invoice };
       });
+
+          break;
+        } catch (e) {
+          lastError = e;
+          if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
+            if (attempt < MAX_RETRIES - 1) {
+              continue;
+            }
+            logger.error('Complete and Pay: invoice number retries exhausted', e);
+          }
+          throw e;
+        }
+      }
+
+      // Ensure result exists (retries succeeded)
+      if (!result) {
+        throw lastError ?? new Error('Failed to complete and pay after retries');
+      }
 
       const { ipAddress, userAgent } = getClientInfo(req);
       await logAudit({
@@ -263,7 +310,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     if (error instanceof z.ZodError) {
       return withSecurityHeaders(NextResponse.json({ success: false, errors: error.issues }, { status: 400 }));
     }
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    return withSecurityHeaders(NextResponse.json({ success: false, error: errorMessage }, { status: 500 }));
+    return withSecurityHeaders(NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 }));
   }
 }

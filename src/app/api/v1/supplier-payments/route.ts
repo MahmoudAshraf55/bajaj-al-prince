@@ -28,23 +28,30 @@ export async function POST(req: NextRequest) {
       const data = createSupplierPaymentSchema.parse(body);
       const tenantId = getTenantId() ?? DEFAULT_TENANT_ID;
 
-      const po = await prisma.purchaseOrder.findFirst({
-        where: { id: data.purchaseOrderId, isDeleted: false },
-        select: { id: true, total: true, paid: true, number: true, status: true },
-      });
-      if (!po) {
-        return withSecurityHeaders(NextResponse.json({ success: false, error: 'Purchase order not found' }, { status: 404 }));
-      }
-
-      const currentPaid = Number(po.paid);
-      const newPaid = currentPaid + data.amount;
-      if (newPaid > Number(po.total) + 0.01) {
-        return withSecurityHeaders(NextResponse.json({ success: false, error: `Payment exceeds remaining balance. Total: ${po.total}, Already paid: ${currentPaid}` }, { status: 400 }));
-      }
-
-      const paymentStatus = newPaid >= Number(po.total) - 0.01 ? 'paid' : 'partial';
-
       const result = await prisma.$transaction(async (tx) => {
+        const poRows = await tx.$queryRawUnsafe<Array<{ id: string; total: string; paid: string; number: string; status: string }>>(
+          'SELECT id, total::text, paid::text, number, status FROM "PurchaseOrder" WHERE id = $1 AND "isDeleted" = false AND "tenantId" = $2 FOR UPDATE',
+          data.purchaseOrderId,
+          tenantId,
+        );
+        const po = poRows[0];
+
+        if (!po) {
+          throw new Error('Purchase order not found');
+        }
+
+        if (po.status === 'cancelled' || po.status === 'draft') {
+          throw new Error(`Cannot make payment for a ${po.status} purchase order`);
+        }
+
+        const currentPaid = Number(po.paid);
+        const newPaid = currentPaid + data.amount;
+        if (newPaid > Number(po.total) + 0.01) {
+          throw new Error(`Payment exceeds remaining balance. Total: ${po.total}, Already paid: ${currentPaid}`);
+        }
+
+        const paymentStatus = newPaid >= Number(po.total) - 0.01 ? 'paid' : 'partial';
+
         const payment = await tx.supplierPayment.create({
           data: {
             purchaseOrderId: data.purchaseOrderId,
@@ -99,7 +106,12 @@ export async function POST(req: NextRequest) {
       return withSecurityHeaders(NextResponse.json({ success: false, errors: error.issues }, { status: 400 }));
     }
     const message = error instanceof Error ? error.message : 'Internal server error';
-    const status = message === 'Forbidden' ? 403 : message === 'Unauthorized' ? 401 : 500;
+    // Business-rule rejections (e.g. overpayment, cancelled/draft PO) are client
+    // errors and must surface as 400, not be masked as a server failure.
+    const status = message === 'Forbidden' ? 403
+      : message === 'Unauthorized' || message === 'Invalid token' ? 401
+      : message === 'Payment exceeds remaining balance.' || message.startsWith('Payment exceeds remaining balance')
+        || message.startsWith('Cannot make payment for a') ? 400 : 500;
     return withSecurityHeaders(NextResponse.json({ success: false, error: status === 500 ? 'Internal server error' : message }, { status }));
   }
 }

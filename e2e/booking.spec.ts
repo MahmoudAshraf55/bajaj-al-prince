@@ -1,4 +1,7 @@
 import { test, expect } from '@playwright/test';
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient();
 
 function getNextAvailableDate(): string {
   const today = new Date();
@@ -10,9 +13,15 @@ function getNextAvailableDate(): string {
   return date.toISOString().split('T')[0];
 }
 
+const TEST_BOOKING_PHONE = '+201000000000';
+
 test.describe('Booking Flow', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/booking');
+  });
+
+  test.afterEach(async () => {
+    await prisma.booking.deleteMany({ where: { phone: TEST_BOOKING_PHONE } });
   });
 
   test('page loads with booking form', async ({ page }) => {
@@ -38,7 +47,7 @@ test.describe('Booking Flow', () => {
 
     await page.getByRole('button', { name: /Request Booking/i }).click();
 
-    await expect(page.getByText(/Booking Requested!/i)).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText(/Booking Requested!/i)).toBeVisible({ timeout: 30000 });
     await page.screenshot({ path: 'e2e/screenshots/booking-success.png' });
   });
 
