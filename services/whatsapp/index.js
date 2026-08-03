@@ -134,9 +134,13 @@ async function initializeWhatsApp() {
           state.error = 'Session logged out. Please scan QR again.';
           cleanupAuthFolder();
         } else {
-          if (reconnectTimer) clearTimeout(reconnectTimer);
-          reconnectTimer = setTimeout(() => initializeWhatsApp(), 5000);
+          state.error = errorMessage || 'Disconnected';
         }
+
+        // Always schedule a fresh initialization so a new QR is generated
+        // automatically (no manual restart needed after logout/conflict).
+        if (reconnectTimer) clearTimeout(reconnectTimer);
+        reconnectTimer = setTimeout(() => initializeWhatsApp(), 5000);
       }
     });
   } catch (err) {
@@ -180,7 +184,9 @@ async function disconnectWhatsApp() {
 
 // API Routes
 app.get('/status', (req, res) => {
-  if (state.status === 'initializing' && !sock && !isInitializing) {
+  // Trigger (re)initialization on idle or disconnected states so a QR is
+  // always available on the next poll — no manual service restart required.
+  if (!sock && !isInitializing && (state.status === 'initializing' || state.status === 'disconnected')) {
     initializeWhatsApp().catch(() => {});
   }
   res.json({ success: true, data: { ...state } });
