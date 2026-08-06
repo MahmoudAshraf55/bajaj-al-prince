@@ -197,8 +197,16 @@ async function seed() {
   for (const b of bookingData) {
     const existing = await raw.booking.findFirst({ where: { phone: b.phone, date: b.date, tenantId: QA_TENANT_ID } });
     if (existing) { bookingIds.push(existing.id); continue; }
-    const created = await raw.booking.create({ data: { ...b, tenantId: QA_TENANT_ID } });
-    bookingIds.push(created.id);
+    try {
+      const created = await raw.booking.create({ data: { ...b, tenantId: QA_TENANT_ID } });
+      bookingIds.push(created.id);
+    } catch (err) {
+      // A same-tenant slot already exists (unique (tenantId,date,time)); reuse it
+      // so the seed stays idempotent across reruns.
+      const collision = await raw.booking.findFirst({ where: { date: b.date, time: b.time, tenantId: QA_TENANT_ID } });
+      if (collision) { bookingIds.push(collision.id); continue; }
+      throw err;
+    }
   }
   console.log(`[OK] ${bookingIds.length} bookings created`);
 
