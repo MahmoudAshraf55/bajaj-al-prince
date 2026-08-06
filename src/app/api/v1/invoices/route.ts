@@ -10,6 +10,7 @@ import { withSecurityHeaders } from '@/lib/security';
 import { createDoubleEntry } from '@/lib/journal';
 import { Prisma } from '@prisma/client';
 import { logger } from '@/lib/logger';
+import { computeTaxTotal, nextInvoiceNumber } from '@/lib/order-totals';
 
 const invoiceItemSchema = z.object({
   productId: z.string().uuid(),
@@ -33,25 +34,6 @@ const createInvoiceSchema = z.object({
   workOrderId: z.string().uuid().optional().nullable(),
   returnInvoiceId: z.string().uuid().optional().nullable(),
 });
-
-type TxClient = Parameters<Parameters<typeof prisma.$transaction>[0]>[0];
-
-async function generateInvoiceNumber(tx: TxClient, tenantId: string): Promise<string> {
-  const now = new Date();
-  const dateStr = now.toISOString().slice(0, 10).replace(/-/g, '');
-  const prefix = `INV-${dateStr}-`;
-  const last = await tx.invoice.findFirst({
-    where: { tenantId, number: { startsWith: prefix } },
-    orderBy: { number: 'desc' },
-    select: { number: true },
-  });
-  let nextSeq = 1;
-  if (last) {
-    const parts = last.number.split('-');
-    nextSeq = parseInt(parts[parts.length - 1], 10) + 1;
-  }
-  return `${prefix}${String(nextSeq).padStart(4, '0')}`;
-}
 
 export async function GET(req: NextRequest) {
   try {
@@ -248,29 +230,18 @@ export async function POST(req: NextRequest) {
           const subtotal = itemsData.reduce((sum, item) => sum.plus(item.total), new Prisma.Decimal(0));
           const discount = new Prisma.Decimal(data.discount);
 
-          let taxTotal = new Prisma.Decimal(0);
-          for (let i = 0; i < data.items.length; i++) {
+          // Tax: per-product rate, exempt products skipped, general 14% fallback.
+          const taxTotal = new Prisma.Decimal(computeTaxTotal(itemsData.map((item, i) => {
             const product = productMap.get(data.items[i].productId);
-            if (!product) continue;
-            if (product.taxExempt) continue;
-            const rate = product.taxRate != null
-              ? new Prisma.Decimal(Number(product.taxRate)).div(100)
-              : new Prisma.Decimal(0.14);
-            const itemTax = itemsData[i].total.times(rate);
-            taxTotal = taxTotal.plus(itemTax);
-          }
+            return {
+              amount: Number(item.total),
+              taxRate: product?.taxRate,
+              taxExempt: product?.taxExempt,
+            };
+          })));
 
           const afterDiscount = subtotal.minus(discount);
           const total = afterDiscount.gte(0) ? afterDiscount.plus(taxTotal) : new Prisma.Decimal(0);
-
-          // F-076: Reject overpayment — payment must not exceed total by more than tolerance
-          const OVERPAYMENT_TOLERANCE = 0.01;
-          const totalPaidAmount = data.payments && data.payments.length > 0
-            ? data.payments.reduce((sum, p) => sum + p.amount, 0)
-            : data.paid;
-          if (totalPaidAmount > Number(total) + OVERPAYMENT_TOLERANCE) {
-            throw new Error(`Payment amount (${totalPaidAmount}) exceeds invoice total (${Number(total)}). Overpayment is not allowed.`);
-          }
 
           const payments = data.payments && data.payments.length > 0
             ? data.payments
@@ -287,7 +258,7 @@ export async function POST(req: NextRequest) {
 
           const invoice = await tx.invoice.create({
             data: {
-              number: await generateInvoiceNumber(tx, getTenantId() ?? DEFAULT_TENANT_ID),
+              number: await nextInvoiceNumber(tx, getTenantId() ?? DEFAULT_TENANT_ID, 'INV'),
               type: data.type,
               subtotal,
               taxTotal,
@@ -402,7 +373,7 @@ export async function POST(req: NextRequest) {
       return withSecurityHeaders(NextResponse.json({ success: false, errors: error.issues }, { status: 400 }));
     }
     const message = error instanceof Error ? error.message : 'Internal server error';
-    const status = message === 'Unauthorized' || message === 'Invalid token' ? 401 : message === 'Forbidden' ? 403 : message.startsWith('Insufficient') || message.startsWith('Product not found') || message.startsWith('Invoice already returned') || message.startsWith('Payment amount') ? 400 : 500;
+    const status = message === 'Unauthorized' || message === 'Invalid token' ? 401 : message === 'Forbidden' ? 403 : message.startsWith('Insufficient') || message.startsWith('Product not found') || message.startsWith('Invoice already returned') ? 400 : 500;
     return withSecurityHeaders(NextResponse.json({ success: false, error: status === 500 ? 'Internal server error' : message }, { status }));
   }
 }

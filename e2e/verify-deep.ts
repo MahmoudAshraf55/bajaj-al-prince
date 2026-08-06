@@ -28,6 +28,17 @@ function fail(msg: string, d?: string) { failCount++; failures.push(`${msg}${d ?
 
 function withSlash(p: string) { return p.endsWith('/') ? p : `${p}/`; }
 
+// Unified tax rule (mirrors src/lib/order-totals.ts): exempt → 0,
+// per-product taxRate when set, else general 14% fallback.
+function effTaxRate(p: { taxRate?: unknown; taxExempt?: boolean }): number {
+  if (p.taxExempt) return 0;
+  const r = p.taxRate == null ? 0 : Number(p.taxRate);
+  return r > 0 ? r : 14;
+}
+function priceTax(p: { price: unknown }, qty: number): number {
+  return Number(p.price) * qty * (effTaxRate(p as { taxRate?: unknown; taxExempt?: boolean }) / 100);
+}
+
 async function api(method: string, path: string, body?: unknown) {
   const h: Record<string, string> = { 'Content-Type': 'application/json' };
   if (adminCookies) h['Cookie'] = adminCookies;
@@ -222,7 +233,7 @@ async function testFullWorkflow() {
   const p1total = Number(p1.price) * 2;
   const p2total = Number(p2.price) * 1;
   const labourTotal = 1.5 * 200;
-  const tax = Math.round((p1total + p2total) * 0.14 * 100) / 100;
+  const tax = Math.round((priceTax(p1, 2) + priceTax(p2, 1)) * 100) / 100;
   const total = Math.round((p1total + p2total + labourTotal + tax) * 100) / 100;
 
   const cap = await api('POST', `/api/v1/work-orders/${woId}/complete-and-pay`, { paymentMethod: 'cash', amountPaid: total });
@@ -304,7 +315,7 @@ async function testOverpayment() {
 
   await api('POST', `/api/v1/work-orders/${woId}/parts`, { productId: prod.id, quantity: 1 });
 
-  const total = Math.round(Number(prod.price) * 1.14 * 100) / 100;
+  const total = Math.round(Number(prod.price) * (1 + effTaxRate(prod) / 100) * 100) / 100;
   const overpay = total + 0.01;
   console.log(`   Total=${total}, Overpaying=${overpay} (+$0.01)`);
 
@@ -351,7 +362,7 @@ async function testPartialPayment() {
 
   await api('POST', `/api/v1/work-orders/${woId}/parts`, { productId: prod.id, quantity: 1 });
 
-  const total = Math.round(Number(prod.price) * 1.14 * 100) / 100;
+  const total = Math.round(Number(prod.price) * (1 + effTaxRate(prod) / 100) * 100) / 100;
   const paid = Math.round(total * 0.5 * 100) / 100;
 
   const cap = await api('POST', `/api/v1/work-orders/${woId}/complete-and-pay`, { paymentMethod: 'cash', amountPaid: paid });

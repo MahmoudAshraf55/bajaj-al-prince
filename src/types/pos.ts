@@ -10,6 +10,8 @@ export interface Product {
   available: boolean;
   isService?: boolean;
   lockInventory?: boolean;
+  taxRate?: number | null;
+  taxExempt?: boolean;
 }
 
 export interface CartItem {
@@ -19,6 +21,8 @@ export interface CartItem {
   unitPrice: number;
   quantity: number;
   total: number;
+  taxRate?: number | null;
+  taxExempt?: boolean;
 }
 
 export interface Customer {

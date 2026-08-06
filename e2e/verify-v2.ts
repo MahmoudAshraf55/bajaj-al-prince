@@ -177,7 +177,7 @@ async function main() {
   const dbPartsTotal = rawParts.reduce((s, p) => s + Number(p.total), 0);
   const dbLabourTotal = woLabour.reduce((s, l) => s + Number(l.total), 0);
   const taxTotal = rawParts.reduce((s, part) => {
-    const taxRate = Number(part.product?.taxRate ?? 0) / 100;
+    const taxRate = part.product?.taxExempt ? 0 : (part.product?.taxRate != null ? Number(part.product.taxRate) : 14) / 100;
     return s + Number(part.total) * taxRate;
   }, 0);
   const total = Math.round((dbPartsTotal + dbLabourTotal + taxTotal) * 100) / 100;
@@ -232,7 +232,10 @@ async function main() {
   const opLab = await raw.workOrderLabour.findMany({ where: { workOrderId: owId, isDeleted: false } });
   const opPartsT = opRawParts.reduce((s, p) => s + Number(p.total), 0);
   const opLabT = opLab.reduce((s, l) => s + Number(l.total), 0);
-  const opTax = opRawParts.reduce((s, part) => s + Number(part.total) * (Number(part.product?.taxRate ?? 0) / 100), 0);
+  const opTax = opRawParts.reduce((s, part) => {
+    const rate = part.product?.taxExempt ? 0 : (part.product?.taxRate != null ? Number(part.product.taxRate) : 14) / 100;
+    return s + Number(part.total) * rate;
+  }, 0);
   const opTotal = Math.round((opPartsT + opLabT + opTax) * 100) / 100;
   const overpay = opTotal + 0.01;
   console.log(`   OP: total=${opTotal}, paying=${overpay}`);
@@ -284,7 +287,10 @@ async function main() {
   const ppLab = await raw.workOrderLabour.findMany({ where: { workOrderId: pwId, isDeleted: false } });
   const ppPartsT = ppRawParts.reduce((s, p) => s + Number(p.total), 0);
   const ppLabT = ppLab.reduce((s, l) => s + Number(l.total), 0);
-  const ppTax = ppRawParts.reduce((s, part) => s + Number(part.total) * (Number(part.product?.taxRate ?? 0) / 100), 0);
+  const ppTax = ppRawParts.reduce((s, part) => {
+    const rate = part.product?.taxExempt ? 0 : (part.product?.taxRate != null ? Number(part.product.taxRate) : 14) / 100;
+    return s + Number(part.total) * rate;
+  }, 0);
   const ppTotal = Math.round((ppPartsT + ppLabT + ppTax) * 100) / 100;
   const ppPaid = Math.round(ppTotal * 0.5 * 100) / 100;
 
@@ -459,7 +465,10 @@ async function main() {
   const woTotals = await Promise.all(woIds.map(async (wid) => {
     const rp = await raw.workOrderPart.findMany({ where: { workOrderId: wid, isDeleted: false }, include: { product: true } });
     const pts = rp.reduce((s, p) => s + Number(p.total), 0);
-    const tx = rp.reduce((s, p) => s + Number(p.total) * (Number(p.product?.taxRate ?? 0) / 100), 0);
+    const tx = rp.reduce((s, p) => {
+      const rate = p.product?.taxExempt ? 0 : (p.product?.taxRate != null ? Number(p.product.taxRate) : 14) / 100;
+      return s + Number(p.total) * rate;
+    }, 0);
     return { wid, total: Math.round((pts + tx) * 100) / 100 };
   }));
   const results = await Promise.allSettled(

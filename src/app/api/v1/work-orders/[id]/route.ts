@@ -11,7 +11,6 @@ import { sendWhatsAppMessageViaService } from '@/lib/whatsapp-client';
 import { buildMessage } from '@/lib/whatsapp-templates';
 import { z } from 'zod';
 import { AccountingService } from '@/services/AccountingService';
-import { createDoubleEntry } from '@/lib/journal';
 import { ACCOUNT_CODES } from '@/constants/accounting';
 
 import { WorkOrderService } from '@/services/WorkOrderService';

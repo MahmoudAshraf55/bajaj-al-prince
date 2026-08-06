@@ -10,15 +10,15 @@ import { logger } from '@/lib/logger';
 import { AccountingService } from '@/services/AccountingService';
 import { ACCOUNT_CODES } from '@/constants/accounting';
 import { z } from 'zod';
+import { computeWorkOrderTotals, nextInvoiceNumber } from '@/lib/order-totals';
 
 const completeAndPaySchema = z.object({
   paymentMethod: z.enum(['cash', 'card', 'transfer']),
   amountPaid: z.number().min(0),
   partsTotal: z.number().min(0).optional(), // Ignored — computed from DB
   labourTotal: z.number().min(0).optional(), // Ignored — computed from DB
+  discount: z.number().min(0).default(0),
 });
-
-const OVERPAYMENT_TOLERANCE = 0.01;
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const limit = await checkRateLimit(req, 'admin');
@@ -47,22 +47,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
       const tenantId = getTenantId() ?? DEFAULT_TENANT_ID;
 
-      // F-053: Compute totals from DB, not from client-supplied values
-      const dbPartsTotal = wo.parts.reduce((s, p) => s + Number(p.total), 0);
-      const dbLabourTotal = wo.labourLines.reduce((s, l) => s + (l.total ? Number(l.total) : 0), 0);
-      const taxTotal = wo.parts.reduce((s, part) => {
-        const taxRate = Number(part.product?.taxRate ?? 0) / 100;
-        return s + Number(part.total) * taxRate;
-      }, 0);
-      const total = dbPartsTotal + dbLabourTotal + taxTotal;
-
-      // F-076: Reject overpayment — payment must not exceed total by more than tolerance
-      if (data.amountPaid > total + OVERPAYMENT_TOLERANCE) {
-        return withSecurityHeaders(NextResponse.json({
-          success: false,
-          error: `Payment amount (${data.amountPaid}) exceeds invoice total (${total}). Overpayment is not allowed.`,
-        }, { status: 400 }));
-      }
+      // F-053: Compute totals from DB, not from client-supplied values.
+      // Tax applies to parts only, per-product rate, exempt products skipped.
+      const totals = computeWorkOrderTotals(wo.parts, wo.labourLines, data.discount);
+      const { taxTotal, total, discountAmount } = totals;
 
       // Retry loop for invoice number race condition.
       // Two concurrent C&P calls may read the same last invoice number
@@ -76,19 +64,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         try {
           result = await prisma.$transaction(async (tx) => {
         const now = new Date();
-        const dateStr = now.toISOString().slice(0, 10).replace(/-/g, '');
-        const prefix = `INV-${dateStr}-`;
-        const lastInvoice = await tx.invoice.findFirst({
-          where: { tenantId, number: { startsWith: prefix } },
-          orderBy: { number: 'desc' },
-          select: { number: true },
-        });
-        let nextSeq = 1;
-        if (lastInvoice) {
-          const invParts = lastInvoice.number.split('-');
-          nextSeq = parseInt(invParts[invParts.length - 1], 10) + 1;
-        }
-        const invoiceNumber = `${prefix}${String(nextSeq).padStart(4, '0')}`;
+        const invoiceNumber = await nextInvoiceNumber(tx, tenantId, 'INV');
 
         const updatedWo = await tx.workOrder.update({
           where: { id },
@@ -173,7 +149,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
             status: 'confirmed',
             subtotal,
             taxTotal: Math.round(taxTotal * 100) / 100,
-            discount: 0,
+            discount: discountAmount,
             total,
             paid: data.amountPaid,
             change: Math.max(0, data.amountPaid - total),

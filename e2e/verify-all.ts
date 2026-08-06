@@ -28,6 +28,8 @@ const ALT_TENANT_ID = 'alt-test-0000-0000-000000000002';
 
 const raw = new PrismaClient();
 
+function delay(ms: number) { return new Promise(r => setTimeout(r, ms)); }
+
 let passCount = 0;
 let failCount = 0;
 const failures: string[] = [];
@@ -73,6 +75,14 @@ async function doLogin(user: string, pw: string) {
       body: JSON.stringify({ username: user, password: pw }),
       redirect: 'follow', signal: ac.signal,
     });
+    // Login is rate-limited per-IP (5/min); the auth module issues several
+    // rapid logins, so wait out Retry-After and retry rather than failing.
+    if (res.status === 429) {
+      const retryAfter = Number(res.headers.get('retry-after') || '10');
+      console.log(`   [retry] login rate-limited — waiting ${retryAfter}s`);
+      await delay(retryAfter * 1000 + 500);
+      return doLogin(user, pw);
+    }
     const sc = res.headers.get('set-cookie') || '';
     const body = await res.json().catch(() => null);
     return { status: res.status, cookies: sc, body };
@@ -419,19 +429,22 @@ async function m11Invoices() {
   const prod = await raw.product.findFirst({ where: { tenantId: QA_TENANT_ID, isDeleted: false, lockInventory: false, category: { not: 'Service' }, stock: { gte: 5 } } });
   if (!prod) { fail('Invoices', 'no product'); return; }
   const unit = Number(prod.price);
-  const preStock = Number(prod.stock);
 
-  const overpay = await api('POST', '/api/v1/invoices/', { type: 'sale', items: [{ productId: prod.id, quantity: 1 }], paid: unit + 100, paymentMethod: 'cash', customerId: null });
-  if (overpay.status === 400) ok('Overpayment rejected → 400 (F-076)');
-  else fail('Overpayment guard', `${overpay.status}`);
+  // Overpayment is now allowed (payment may exceed total; change is returned).
+  const effRate = prod.taxExempt ? 0 : prod.taxRate && Number(prod.taxRate) > 0 ? Number(prod.taxRate) : 14;
+  const lineTotal = Math.round(unit * (1 + effRate / 100) * 100) / 100;
+  const overpay = await api('POST', '/api/v1/invoices/', { type: 'sale', items: [{ productId: prod.id, quantity: 1 }], paid: lineTotal + 100, paymentMethod: 'cash', customerId: null });
+  if (overpay.status === 201 && Math.round(Number(overpay.body?.data?.invoice?.change)) === 100) ok('Overpayment accepted, change returned');
+  else fail('Overpayment handling', `${overpay.status}: ${JSON.stringify(overpay.body).slice(0, 160)}`);
 
+  const preStock2 = Number((await raw.product.findUnique({ where: { id: prod.id } }))?.stock ?? -1);
   const sale = await api('POST', '/api/v1/invoices/', { type: 'sale', items: [{ productId: prod.id, quantity: 2 }], paid: unit * 2, paymentMethod: 'cash', customerId: null });
   const invId = pickId(sale.body, ['invoice', 'id'], ['id']);
   if (sale.status === 201 && invId) ok('Sale invoice created');
   else { fail('Sale invoice', `${sale.status}: ${JSON.stringify(sale.body).slice(0, 160)}`); return; }
   const postStock = Number((await raw.product.findUnique({ where: { id: prod.id } }))?.stock ?? -1);
-  if (postStock === preStock - 2) ok('Stock decremented on sale');
-  else fail('Stock after sale', `${preStock}→${postStock}`);
+  if (postStock === preStock2 - 2) ok('Stock decremented on sale');
+  else fail('Stock after sale', `${preStock2}→${postStock}`);
   const je = await raw.journalEntry.findFirst({ where: { referenceId: invId } });
   if (je) {
     const lines = await raw.journalEntryLine.findMany({ where: { journalEntryId: je.id } });

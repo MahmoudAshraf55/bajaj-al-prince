@@ -408,7 +408,7 @@ async function testPaymentIdempotency(): Promise<TestResult> {
   // Build a real WO total (parts + labour + tax) so payment is accepted
   const products = await prisma.product.findMany({
     where: { tenantId: QA_TENANT_ID, isDeleted: false, lockInventory: false, category: { not: 'Service' } },
-    select: { id: true, stock: true, price: true, taxRate: true },
+    select: { id: true, stock: true, price: true, taxRate: true, taxExempt: true },
   });
   const partProduct = products.find(p => Number(p.stock) >= 2) || products[0];
   const partUnit = Number(partProduct.price);
@@ -418,7 +418,8 @@ async function testPaymentIdempotency(): Promise<TestResult> {
   const addLabour = await api('POST', `/api/v1/work-orders/${woId}/labour`, { description: 'Labour line', hours: 2, rate: 100, total: labourAmount });
   assert(addLabour.status === 201, `Labour added: ${addLabour.status}`, evidence, failures);
 
-  const tax = Math.round(partUnit * (Number(partProduct.taxRate) / 100) * 100) / 100;
+  const ratePct = partProduct.taxExempt ? 0 : (partProduct.taxRate != null ? Number(partProduct.taxRate) : 14);
+  const tax = Math.round(partUnit * (ratePct / 100) * 100) / 100;
   const woTotal = Math.round((partUnit + labourAmount + tax) * 100) / 100;
 
   // First complete-and-pay
@@ -784,7 +785,7 @@ async function testFullReconciliation(): Promise<TestResult> {
 
   const products = await prisma.product.findMany({
     where: { tenantId: QA_TENANT_ID, isDeleted: false, lockInventory: false, category: { not: 'Service' } },
-    select: { id: true, stock: true, name: true, price: true, costPrice: true },
+    select: { id: true, stock: true, name: true, price: true, costPrice: true, taxRate: true, taxExempt: true },
   });
   const testProduct = products.find(p => p.stock >= 10) || products[0];
   if (!testProduct) { failures.push('  FAIL: No product'); r.pass = false; return r; }
@@ -794,8 +795,8 @@ async function testFullReconciliation(): Promise<TestResult> {
   const qty = 2;
   const partsTotal = unitPrice * qty;
   const labourAmount = 300;
-  const taxRate = 0.14;
-  const taxTotal = Math.round(partsTotal * taxRate * 100) / 100;
+  const effRate = testProduct.taxExempt ? 0 : testProduct.taxRate && Number(testProduct.taxRate) > 0 ? Number(testProduct.taxRate) : 14;
+  const taxTotal = Math.round(partsTotal * (effRate / 100) * 100) / 100;
   const totalDue = partsTotal + labourAmount + taxTotal;
   const amountPaid = 500;
   const expectedAR = totalDue - amountPaid;
