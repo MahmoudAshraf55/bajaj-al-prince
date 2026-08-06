@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { withAuth } from '@/lib/auth';
+import { withRole } from '@/lib/auth';
 import { checkRateLimit } from '@/lib/rate-limit';
 import { validateOrigin, withSecurityHeaders } from '@/lib/security';
 import { sanitizedString } from '@/lib/sanitize';
@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
 
 export async function GET(req: NextRequest) {
   try {
-    return await withAuth(req, async () => {
+    return await withRole(req, ['admin', 'staff'], async () => {
       const { searchParams } = new URL(req.url);
       const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10));
       const limit = Math.max(1, Math.min(100, parseInt(searchParams.get('limit') || '10', 10)));

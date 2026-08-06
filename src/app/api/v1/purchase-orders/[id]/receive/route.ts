@@ -36,21 +36,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       if (!order) {
         return withSecurityHeaders(NextResponse.json({ success: false, error: 'Purchase order not found' }, { status: 404 }));
       }
-      if (order.status === 'cancelled' || order.status === 'received') {
-        return withSecurityHeaders(NextResponse.json({ success: false, error: `Cannot receive a ${order.status} order` }, { status: 400 }));
+      if (!['ordered', 'partially_received'].includes(order.status)) {
+        return withSecurityHeaders(NextResponse.json({ success: false, error: `Cannot receive a '${order.status}' order. Order must be 'ordered' or 'partially_received'.` }, { status: 400 }));
       }
 
-      // Validate items belong to this order
       for (const ri of data.items) {
         const orderItem = order.items.find((oi) => oi.id === ri.orderItemId);
         if (!orderItem) {
           return withSecurityHeaders(NextResponse.json({ success: false, error: `Item ${ri.orderItemId} not found in order` }, { status: 400 }));
-        }
-        if (ri.quantity + orderItem.receivedQty > orderItem.quantity) {
-          return withSecurityHeaders(NextResponse.json({
-            success: false,
-            error: `Receiving ${ri.quantity} for item ${orderItem.productId} exceeds ordered quantity (ordered: ${orderItem.quantity}, already received: ${orderItem.receivedQty})`,
-          }, { status: 400 }));
         }
       }
 
@@ -74,7 +67,19 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
          // Create receipt items + update order item receivedQty + create stock movements
          for (const ri of data.items) {
            const orderItem = order.items.find((oi) => oi.id === ri.orderItemId)!;
-           const itemTotal = Number(orderItem.unitPrice) * ri.quantity;
+
+           const freshItem = await tx.purchaseOrderItem.findUnique({
+             where: { id: ri.orderItemId },
+             select: { receivedQty: true, quantity: true, unitPrice: true, productId: true },
+           });
+           if (!freshItem) {
+             throw new Error(`Purchase order item ${ri.orderItemId} not found`);
+           }
+           if (ri.quantity + Number(freshItem.receivedQty) > Number(freshItem.quantity)) {
+             throw new Error(`Receiving ${ri.quantity} for item ${orderItem.productId} exceeds ordered quantity (ordered: ${freshItem.quantity}, already received: ${freshItem.receivedQty})`);
+           }
+
+           const itemTotal = Number(freshItem.unitPrice) * ri.quantity;
            totalAmount += itemTotal;
 
            await tx.purchaseReceiptItem.create({
@@ -147,12 +152,16 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
          if (allReceived) newStatus = 'received';
          else if (someReceived) newStatus = 'partially_received';
 
-         if (newStatus !== order.status) {
-           await tx.purchaseOrder.update({
-             where: { id: purchaseOrderId },
-             data: { status: newStatus },
-           });
-         }
+          if (newStatus !== order.status) {
+            const updateData: Record<string, unknown> = { status: newStatus };
+            if (newStatus === 'received') {
+              updateData.dueDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+            }
+            await tx.purchaseOrder.update({
+              where: { id: purchaseOrderId },
+              data: updateData,
+            });
+          }
 
          // Return full receipt with items
          return tx.purchaseReceipt.findUnique({

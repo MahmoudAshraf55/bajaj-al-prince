@@ -17,12 +17,12 @@ export default function Home() {
     const html = document.documentElement;
     const body = document.body;
     
-    html.classList.add('snap-y', 'snap-mandatory', 'scroll-smooth');
-    body.classList.add('snap-y', 'snap-mandatory');
+    html.classList.add('snap-y', 'snap-proximity', 'scroll-smooth');
+    body.classList.add('snap-y', 'snap-proximity');
 
     return () => {
-      html.classList.remove('snap-y', 'snap-mandatory', 'scroll-smooth');
-      body.classList.remove('snap-y', 'snap-mandatory');
+      html.classList.remove('snap-y', 'snap-proximity', 'scroll-smooth');
+      body.classList.remove('snap-y', 'snap-proximity');
     };
   }, []);
 

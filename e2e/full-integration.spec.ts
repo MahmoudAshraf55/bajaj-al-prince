@@ -94,8 +94,14 @@ test.describe('End-to-End System Integration Flow', () => {
 
     try {
       // ✅ 0. Public User creates a Booking
-      const bookingDate = new Date(Date.now() + 86400000 * 7).toISOString().split('T')[0];
-      
+      const rawDate = new Date(Date.now() + 86400000 * 7);
+      while (rawDate.getDay() === 5) {
+        rawDate.setDate(rawDate.getDate() + 1);
+      }
+      const bookingDate = rawDate.toISOString().split('T')[0];
+
+      await prisma.booking.deleteMany({ where: { phone: '+201112223334', date: bookingDate } });
+
       console.log(`📅 [Booking] Creating for date: ${bookingDate}`);
       const publicBookingRes = await request.post('/api/v1/bookings/', {
         data: {
@@ -211,7 +217,7 @@ test.describe('End-to-End System Integration Flow', () => {
       });
       console.log(`💰 [Invoice] Created: ${invoice?.id}, Total: ${invoice?.total}, Items: ${invoice?.items.length}`);
       expect(invoice).not.toBeNull();
-      expect(invoice?.total).toBe(250);
+      expect(Number(invoice?.total)).toBe(250);
 
       console.log('🎉 [Test] ALL CHECKS PASSED! Integration complete.');
 

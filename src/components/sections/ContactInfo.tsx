@@ -112,7 +112,7 @@ export default function ContactInfo() {
                 <div className="w-12 h-12 rounded-xl bg-linear-to-br from-primary/20 to-primary/5 border border-primary/20 flex items-center justify-center group-hover:scale-110 transition-transform duration-500">
                   <contact.icon className="w-5 h-5 text-primary" />
                 </div>
-                <span className="text-[10px] text-accent uppercase tracking-wider font-semibold">{t(contact.action)}</span>
+                <span className="text-[11px] text-accent uppercase tracking-wider font-semibold">{t(contact.action)}</span>
               </div>
               <p className="text-muted-foreground text-xs uppercase tracking-wider mb-1">{t(`contact_${contact.label.toLowerCase().replace(' ', '')}_label`)}</p>
               <p className="text-foreground font-bold text-lg">{contact.value}</p>

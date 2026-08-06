@@ -18,14 +18,16 @@ async function getAccountByCode(tx: Tx, code: string, tenantId: string): Promise
 }
 
 export interface DoubleEntryInput {
-  type: 'SALE' | 'RETURN' | 'PURCHASE' | 'EXPENSE' | 'INCOME' | 'STOCK_ADJUSTMENT';
+  type: 'SALE' | 'RETURN' | 'PURCHASE' | 'EXPENSE' | 'INCOME' | 'STOCK_ADJUSTMENT' | 'SUPPLIER_PAYMENT';
   amount: number;
+  amountPaid?: number;
   description?: string;
   referenceType?: string;
   referenceId?: string;
   referenceNumber?: string;
   category?: string;
   paymentMethod?: string;
+  expenseCategory?: 'rent' | 'salaries' | 'utilities' | 'marketing' | 'operating' | 'other';
   createdById: string;
   date?: Date;
   tenantId?: string;
@@ -41,6 +43,88 @@ export async function createDoubleEntry(
 
   const debitAccountCode = getDebitAccountCode(input);
   const creditAccountCode = getCreditAccountCode(input);
+
+  // F-058: For credit/partial sales (amountPaid < amount), create a 3-line entry:
+  //   DR: Cash/Bank (amountPaid)
+  //   DR: Accounts Receivable (amount - amountPaid)
+  //   CR: Revenue (amount)
+  // F-076 (cancel): For RETURN with partial payment, reverse all three legs:
+  //   DR: Revenue (amount)
+  //   CR: Cash/Bank (amountPaid)
+  //   CR: Accounts Receivable (amount - amountPaid)
+  const paidAmount = input.amountPaid != null ? Math.round(input.amountPaid * 100) / 100 : null;
+  const hasPartialPayment = input.type === 'SALE' && paidAmount !== null && paidAmount < amount;
+  const hasPartialReturn = input.type === 'RETURN' && paidAmount !== null && paidAmount < amount;
+
+  const lines: Array<{ accountId: string; debit: number; credit: number; description?: string; tenantId: string }> = [];
+  let arAccountId: string | null = null;
+
+  if (hasPartialPayment) {
+    const cashAccountId = await getAccountByCode(tx, debitAccountCode, tenantId);
+    arAccountId = await getAccountByCode(tx, ACCOUNT_CODES.ACCOUNTS_RECEIVABLE, tenantId);
+    const revenueAccountId = await getAccountByCode(tx, creditAccountCode, tenantId);
+
+    if (paidAmount! > 0) {
+      lines.push({ accountId: cashAccountId, debit: paidAmount!, credit: 0, description: input.description, tenantId });
+    }
+    lines.push({ accountId: arAccountId, debit: amount - paidAmount!, credit: 0, description: input.description, tenantId });
+    lines.push({ accountId: revenueAccountId, debit: 0, credit: amount, description: input.description, tenantId });
+
+    const entry = await tx.journalEntry.create({
+      data: {
+        type: input.type,
+        amount,
+        description: input.description,
+        referenceType: input.referenceType,
+        referenceId: input.referenceId,
+        referenceNumber: input.referenceNumber,
+        category: input.category,
+        paymentMethod: input.paymentMethod,
+        debitAccountId: cashAccountId,
+        creditAccountId: revenueAccountId,
+        createdById: input.createdById,
+        date,
+        tenantId,
+        lines: { create: lines },
+      },
+    });
+
+    return { id: entry.id, amount: Number(entry.amount) };
+  }
+
+  // F-076: For RETURN with partial payment, reverse all three legs
+  if (hasPartialReturn) {
+    const revenueAccountId = await getAccountByCode(tx, debitAccountCode, tenantId);
+    const cashAccountId = await getAccountByCode(tx, creditAccountCode, tenantId);
+    arAccountId = await getAccountByCode(tx, ACCOUNT_CODES.ACCOUNTS_RECEIVABLE, tenantId);
+
+    lines.push({ accountId: revenueAccountId, debit: amount, credit: 0, description: input.description, tenantId });
+    if (paidAmount! > 0) {
+      lines.push({ accountId: cashAccountId, debit: 0, credit: paidAmount!, description: input.description, tenantId });
+    }
+    lines.push({ accountId: arAccountId, debit: 0, credit: amount - paidAmount!, description: input.description, tenantId });
+
+    const entry = await tx.journalEntry.create({
+      data: {
+        type: input.type,
+        amount,
+        description: input.description,
+        referenceType: input.referenceType,
+        referenceId: input.referenceId,
+        referenceNumber: input.referenceNumber,
+        category: input.category,
+        paymentMethod: input.paymentMethod,
+        debitAccountId: revenueAccountId,
+        creditAccountId: cashAccountId,
+        createdById: input.createdById,
+        date,
+        tenantId,
+        lines: { create: lines },
+      },
+    });
+
+    return { id: entry.id, amount: Number(entry.amount) };
+  }
 
   const [debitAccountId, creditAccountId] = await Promise.all([
     getAccountByCode(tx, debitAccountCode, tenantId),
@@ -97,10 +181,20 @@ export function getDebitAccountCode(input: Partial<DoubleEntryInput>): string {
       return ACCOUNT_CODES.SALES_REVENUE;
     case 'PURCHASE':
       return ACCOUNT_CODES.INVENTORY;
-    case 'EXPENSE':
-      return ACCOUNT_CODES.OPERATING_EXPENSES;
+    case 'EXPENSE': {
+      switch (input.expenseCategory) {
+        case 'rent': return ACCOUNT_CODES.RENT_EXPENSE;
+        case 'salaries': return ACCOUNT_CODES.SALARIES_EXPENSE;
+        case 'utilities': return ACCOUNT_CODES.UTILITIES_EXPENSE;
+        case 'marketing': return ACCOUNT_CODES.MARKETING_EXPENSE;
+        case 'other': return ACCOUNT_CODES.OTHER_EXPENSES;
+        default: return ACCOUNT_CODES.OPERATING_EXPENSES;
+      }
+    }
     case 'STOCK_ADJUSTMENT':
-      return ACCOUNT_CODES.INVENTORY;
+      return ACCOUNT_CODES.COGS;
+    case 'SUPPLIER_PAYMENT':
+      return ACCOUNT_CODES.ACCOUNTS_PAYABLE;
     default:
       return ACCOUNT_CODES.CASH;
   }
@@ -128,6 +222,10 @@ export function getCreditAccountCode(input: Partial<DoubleEntryInput>): string {
         : ACCOUNT_CODES.CASH;
     case 'STOCK_ADJUSTMENT':
       return ACCOUNT_CODES.INVENTORY;
+    case 'SUPPLIER_PAYMENT':
+      return input.paymentMethod === 'card' || input.paymentMethod === 'transfer'
+        ? ACCOUNT_CODES.BANK
+        : ACCOUNT_CODES.CASH;
     default:
       return ACCOUNT_CODES.OTHER_REVENUE;
   }

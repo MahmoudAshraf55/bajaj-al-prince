@@ -123,9 +123,16 @@ export default function WorkOrdersPage() {
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'transfer'>('cash');
   const [paymentAmount, setPaymentAmount] = useState('');
   const [processingPayment, setProcessingPayment] = useState(false);
-  const [taxRate, setTaxRate] = useState(14);
   const [discount, setDiscount] = useState(0);
   const [discountType, setDiscountType] = useState<'amount' | 'percent'>('amount');
+  const [serverTotals, setServerTotals] = useState<{
+    partsTotal: number;
+    labourTotal: number;
+    subtotal: number;
+    discountAmount: number;
+    taxTotal: number;
+    total: number;
+  } | null>(null);
 
   const statusLabels: Record<string, string> = {
     pending: t('wo_status_pending'),
@@ -206,6 +213,17 @@ export default function WorkOrdersPage() {
     setProductSearch('');
     setShowProductPicker(false);
     setAddLabourOpen(false);
+    loadServerTotals(wo.id);
+  };
+
+  const loadServerTotals = async (woId: string) => {
+    try {
+      const res = await fetch(`/api/v1/work-orders/${woId}/totals/`, { credentials: 'include' });
+      const json = await res.json();
+      if (json.success) setServerTotals(json.data);
+    } catch {
+      setServerTotals(null);
+    }
   };
 
   const addPart = async (product: SimpleProduct) => {
@@ -222,6 +240,7 @@ export default function WorkOrdersPage() {
       if (json.success) {
         setManageParts((prev) => [...prev, json.data.part]);
         addToast('success', t('wo_part_added', { name: product.name }));
+        loadServerTotals(manageWo.id);
       } else {
         addToast('error', json.error || t('wo_failed'));
       }
@@ -240,6 +259,7 @@ export default function WorkOrdersPage() {
     });
     if (res.ok) {
       setManageParts((prev) => prev.filter((p) => p.id !== partId));
+      if (manageWo) loadServerTotals(manageWo.id);
     } else {
       addToast('error', t('wo_failed_remove_part'));
     }
@@ -269,6 +289,7 @@ export default function WorkOrdersPage() {
         setLabourForm({ description: '', hours: '', rate: '', total: '' });
         setAddLabourOpen(false);
         addToast('success', t('wo_labour_added'));
+        loadServerTotals(manageWo.id);
       } else {
         addToast('error', json.error || t('wo_failed'));
       }
@@ -286,6 +307,7 @@ export default function WorkOrdersPage() {
     });
     if (res.ok) {
       setManageLabour((prev) => prev.filter((l) => l.id !== labourId));
+      if (manageWo) loadServerTotals(manageWo.id);
     } else {
       addToast('error', t('wo_failed_remove_labour'));
     }
@@ -293,11 +315,11 @@ export default function WorkOrdersPage() {
 
   const partsTotal = manageParts.reduce((sum, p) => sum + Number(p.total), 0);
   const labourTotal = manageLabour.reduce((sum, l) => sum + Number(l.total), 0);
-  const subtotalBeforeDisc = partsTotal + labourTotal;
+  const subtotalBeforeDisc = serverTotals?.subtotal ?? (partsTotal + labourTotal);
   const discountAmount = discountType === 'percent' ? subtotalBeforeDisc * (discount / 100) : discount;
-  const afterDiscount = Math.max(0, subtotalBeforeDisc - discountAmount);
-  const taxAmount = afterDiscount * (taxRate / 100);
-  const grandTotal = afterDiscount + taxAmount;
+  const taxAmount = serverTotals?.taxTotal ?? 0;
+  const totalBeforeDiscount = serverTotals?.total ?? (Math.max(0, subtotalBeforeDisc - discountAmount) + taxAmount);
+  const grandTotal = Math.max(0, totalBeforeDiscount - discountAmount);
   const paidNum = parseFloat(paymentAmount) || 0;
   const change = paidNum > grandTotal ? paidNum - grandTotal : 0;
 
@@ -312,11 +334,7 @@ export default function WorkOrdersPage() {
         body: JSON.stringify({
           paymentMethod,
           amountPaid: parseFloat(paymentAmount),
-          partsTotal,
-          labourTotal,
-          taxRate,
           discount: discountAmount,
-          total: grandTotal,
         }),
       });
       const json = await res.json();
@@ -334,9 +352,9 @@ export default function WorkOrdersPage() {
               ${manageLabour.map(l => `<div>${l.description} - ${Number(l.total).toFixed(2)} EGP</div>`).join('')}
               <hr><div>${t('pos_subtotal')}: ${subtotalBeforeDisc.toFixed(2)} EGP</div>
               ${discountAmount > 0 ? `<div>${t('pos_discount')}: -${discountAmount.toFixed(2)} EGP</div>` : ''}
-              <div>${t('pos_tax')} (${taxRate}%): ${taxAmount.toFixed(2)} EGP</div>
+              <div>${t('pos_tax')}: ${taxAmount.toFixed(2)} EGP</div>
               <div class="total">${t('pos_total')}: ${grandTotal.toFixed(2)} EGP</div>
-              <div>${t('pos_paid')}: ${grandTotal.toFixed(2)} EGP</div>
+              <div>${t('pos_paid')}: ${paidNum.toFixed(2)} EGP</div>
               ${change > 0 ? `<div>${t('pos_change')}: ${change.toFixed(2)} EGP</div>` : ''}
               <hr><small>${new Date().toLocaleString()}</small>
               </body></html>`);
@@ -347,6 +365,7 @@ export default function WorkOrdersPage() {
         }
         setShowPaymentModal(false);
         setManageWo(null);
+        setServerTotals(null);
         mutateWo();
       } else {
         addToast('error', json.error || t('wo_failed_complete'));
@@ -461,7 +480,7 @@ export default function WorkOrdersPage() {
                   )}
                   {wo.status === 'in_progress' && (
                     <>
-                      <button onClick={() => { setShowPaymentModal(true); setManageWo(wo); }}
+                      <button onClick={() => { setShowPaymentModal(true); setManageWo(wo); loadServerTotals(wo.id); }}
                         className="px-3 py-1.5 rounded-lg bg-green-500/10 text-green-400 text-xs font-medium hover:bg-green-500/20">
                         {t('wo_complete_pay')}
                       </button>
@@ -486,7 +505,7 @@ export default function WorkOrdersPage() {
         )}
       </div>
 
-      <Modal isOpen={!!manageWo} onClose={() => { setManageWo(null); mutateWo(); }} title={`${manageWo?.vehicle.make ?? ''} ${manageWo?.vehicle.model ?? ''}`} contentClassName="max-w-2xl max-h-[85vh] overflow-auto">
+      <Modal isOpen={!!manageWo} onClose={() => { setManageWo(null); setServerTotals(null); mutateWo(); }} title={`${manageWo?.vehicle.make ?? ''} ${manageWo?.vehicle.model ?? ''}`} contentClassName="max-w-2xl max-h-[85vh] overflow-auto">
         {manageWo && (<>
         <p className="text-sm text-muted-foreground bg-white/5 rounded-lg p-3 mb-4">{manageWo.description}</p>
 
@@ -658,15 +677,6 @@ export default function WorkOrdersPage() {
                   </div>
                 </div>
                 {discountAmount > 0 && <div className="flex justify-between text-green-400"><span>{t('pos_discount')}</span><span>-{discountAmount.toFixed(2)} EGP</span></div>}
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">{t('pos_tax')}</span>
-                  <div className="flex items-center gap-1">
-                    <input type="number" min="0" max="100" step="1" value={taxRate}
-                      onChange={(e) => setTaxRate(parseFloat(e.target.value) || 0)}
-                      className="w-16 text-right px-2 py-1 rounded-lg bg-input border border-border text-xs" />
-                    <span className="text-xs text-muted-foreground">%</span>
-                  </div>
-                </div>
                 <div className="flex justify-between"><span className="text-muted-foreground">{t('pos_tax')}</span><span>{taxAmount.toFixed(2)} EGP</span></div>
                 <hr className="border-border" />
                 <div className="flex justify-between text-lg font-bold"><span>{t('pos_total')}</span><span>{grandTotal.toFixed(2)} EGP</span></div>

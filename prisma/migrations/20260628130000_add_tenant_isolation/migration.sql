@@ -90,37 +90,50 @@ ALTER TABLE "TenantFeatureFlag" ALTER COLUMN "tenantId" SET NOT NULL;
 ALTER TABLE "Permission" ALTER COLUMN "tenantId" SET NOT NULL;
 ALTER TABLE "RolePermission" ALTER COLUMN "tenantId" SET NOT NULL;
 
--- Replace global unique constraints with tenant-scoped composites
+-- Replace global unique constraints with tenant-scoped composites.
+-- NOTE: Prisma creates @unique as a unique INDEX (`CREATE UNIQUE INDEX "..._key"`),
+-- not a table constraint, so `DROP CONSTRAINT` alone silently leaves the stale
+-- global index behind. Drop both forms so fresh databases never regress.
 ALTER TABLE "Product" DROP CONSTRAINT IF EXISTS "Product_barcode_key";
+DROP INDEX IF EXISTS "Product_barcode_key";
 CREATE UNIQUE INDEX "Product_tenantId_barcode_key" ON "Product"("tenantId", "barcode");
 
 ALTER TABLE "Invoice" DROP CONSTRAINT IF EXISTS "Invoice_number_key";
+DROP INDEX IF EXISTS "Invoice_number_key";
 CREATE UNIQUE INDEX "Invoice_tenantId_number_key" ON "Invoice"("tenantId", "number");
 
 ALTER TABLE "VehicleModel" DROP CONSTRAINT IF EXISTS "VehicleModel_name_key";
+DROP INDEX IF EXISTS "VehicleModel_name_key";
 CREATE UNIQUE INDEX "VehicleModel_tenantId_name_key" ON "VehicleModel"("tenantId", "name");
 
 ALTER TABLE "WhatsAppMessageTemplate" DROP CONSTRAINT IF EXISTS "WhatsAppMessageTemplate_event_key";
+DROP INDEX IF EXISTS "WhatsAppMessageTemplate_event_key";
 CREATE UNIQUE INDEX "WhatsAppMessageTemplate_tenantId_event_key" ON "WhatsAppMessageTemplate"("tenantId", "event");
 
 ALTER TABLE "AppSetting" DROP CONSTRAINT IF EXISTS "AppSetting_key_key";
+DROP INDEX IF EXISTS "AppSetting_key_key";
 CREATE UNIQUE INDEX "AppSetting_tenantId_key_key" ON "AppSetting"("tenantId", "key");
 
 ALTER TABLE "FeatureFlag" DROP CONSTRAINT IF EXISTS "FeatureFlag_key_key";
+DROP INDEX IF EXISTS "FeatureFlag_key_key";
 CREATE UNIQUE INDEX "FeatureFlag_tenantId_key_key" ON "FeatureFlag"("tenantId", "key");
 
 ALTER TABLE "Permission" DROP CONSTRAINT IF EXISTS "Permission_key_key";
+DROP INDEX IF EXISTS "Permission_key_key";
 CREATE UNIQUE INDEX "Permission_tenantId_key_key" ON "Permission"("tenantId", "key");
 
 CREATE UNIQUE INDEX "WhatsAppSettings_tenantId_id_key" ON "WhatsAppSettings"("tenantId", "id");
 
 ALTER TABLE "Booking" DROP CONSTRAINT IF EXISTS "Booking_date_time_unique";
+DROP INDEX IF EXISTS "Booking_date_time_key";
 CREATE UNIQUE INDEX "Booking_tenantId_date_time_unique" ON "Booking"("tenantId", "date", "time");
 
 ALTER TABLE "ScannerSession" DROP CONSTRAINT IF EXISTS "ScannerSession_token_key";
+DROP INDEX IF EXISTS "ScannerSession_token_key";
 CREATE UNIQUE INDEX "ScannerSession_tenantId_token_key" ON "ScannerSession"("tenantId", "token");
 
 ALTER TABLE "UniqueVisitor" DROP CONSTRAINT IF EXISTS "UniqueVisitor_ipHash_key";
+DROP INDEX IF EXISTS "UniqueVisitor_ipHash_key";
 CREATE UNIQUE INDEX "UniqueVisitor_tenantId_ipHash_key" ON "UniqueVisitor"("tenantId", "ipHash");
 
 -- InvoiceItem uniqueness

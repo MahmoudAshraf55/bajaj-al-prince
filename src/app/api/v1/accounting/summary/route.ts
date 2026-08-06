@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { withAuth } from '@/lib/auth';
+import { withRole } from '@/lib/auth';
 import { withSecurityHeaders } from '@/lib/security';
 import { parseRangeDate } from '@/lib/utils';
+import { ACCOUNT_CODES } from '@/constants/accounting';
 
 export async function GET(req: NextRequest) {
-  return withAuth(req, async (user) => {
+  return withRole(req, ['admin', 'staff'], async (user) => {
     if (!user) return withSecurityHeaders(NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 }));
 
     const url = new URL(req.url);
@@ -44,7 +45,7 @@ export async function GET(req: NextRequest) {
         prisma.journalEntryLine.findMany({
           where: {
             journalEntry: { type: 'SALE', isDeleted: false, date: { gte: fromDate, lte: toDate } },
-            account: { code: '5100' },
+            account: { code: ACCOUNT_CODES.COGS },
             isDeleted: false,
           },
           select: { debit: true, credit: true },
@@ -54,7 +55,7 @@ export async function GET(req: NextRequest) {
             invoice: { type: 'sale', status: 'confirmed', isDeleted: false, createdAt: { gte: fromDate, lte: toDate } },
             isDeleted: false,
           },
-          select: { costPrice: true, quantity: true, total: true, productId: true, invoice: { select: { discount: true, taxTotal: true, paymentMethod: true } }, product: { select: { category: true } } },
+          select: { costPrice: true, quantity: true, total: true, productId: true, invoice: { select: { id: true, discount: true, taxTotal: true, paymentMethod: true } }, product: { select: { category: true } } },
         }),
         prisma.product.findMany({ where: { isDeleted: false }, select: { id: true, category: true } }),
       ]);
@@ -74,24 +75,13 @@ export async function GET(req: NextRequest) {
 
       // Deduplicate discount/tax per invoice (invoiceItems are per-line-item, so an
       // invoice with 5 items would count its discount 5x without dedup).
-      const invoiceDedup = new Map<string, { discount: number; taxTotal: number }>();
-      for (const item of invoiceItems) {
-        const key = item.invoice.discount + '|' + item.invoice.taxTotal;
-        if (!invoiceDedup.has(key) || !invoiceDedup.get(key)) {
-          invoiceDedup.set(key, { discount: Number(item.invoice.discount || 0), taxTotal: Number(item.invoice.taxTotal || 0) });
-        }
-      }
-      // Use unique invoice references to count discount/tax once per invoice
       const seenInvoiceIds = new Set<string>();
       let discounts = 0;
       let taxes = 0;
       for (const item of invoiceItems) {
-        // Each invoiceItem has an invoice relation; group by the discount+tax tuple
-        // to avoid double-counting. Since we don't have invoice.id in the select,
-        // use a composite key of all invoice fields that identify a unique invoice.
-        const invKey = `${item.invoice.discount}-${item.invoice.taxTotal}-${item.invoice.paymentMethod}`;
-        if (!seenInvoiceIds.has(invKey)) {
-          seenInvoiceIds.add(invKey);
+        const invoiceId = item.invoice.id;
+        if (!seenInvoiceIds.has(invoiceId)) {
+          seenInvoiceIds.add(invoiceId);
           discounts += Number(item.invoice.discount || 0);
           taxes += Number(item.invoice.taxTotal || 0);
         }

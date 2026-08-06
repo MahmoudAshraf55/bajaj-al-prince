@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { cookies } from 'next/headers';
 import "./globals.css";
 import { SettingsProvider } from "@/components/SettingsContext";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Analytics } from "@vercel/analytics/next";
+import { getSiteLocale } from "@/lib/site-locale";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -85,9 +85,7 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const cookieStore = await cookies();
-  const lang = (cookieStore.get('el-prince-lang-site')?.value === 'ar' ? 'ar' : 'en') as 'en' | 'ar';
-  const dir = lang === 'ar' ? 'rtl' : 'ltr';
+  const { lang, dir } = await getSiteLocale();
 
   return (
     <html

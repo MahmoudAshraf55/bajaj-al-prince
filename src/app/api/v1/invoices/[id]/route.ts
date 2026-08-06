@@ -7,16 +7,19 @@ import { logAudit, getClientInfo } from '@/lib/audit';
 import { z } from 'zod';
 import { withSecurityHeaders } from '@/lib/security';
 import { createDoubleEntry } from '@/lib/journal';
+import { AccountingService } from '@/services/AccountingService';
+import { ACCOUNT_CODES } from '@/constants/accounting';
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     return await withRole(req, ['admin', 'staff'], async () => {
       const { id } = await params;
 
-      const invoice = await prisma.invoice.findUnique({
+      const invoice = await prisma.invoice.findFirst({
         where: { id, isDeleted: false },
         include: {
           items: true,
+          payments: { where: { isDeleted: false } },
           createdBy: { select: { id: true, username: true } },
           customer: { select: { id: true, name: true, phone: true } },
         },
@@ -43,6 +46,10 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
               costPrice: Number(item.costPrice),
               total: Number(item.total),
             })),
+            payments: invoice.payments.map((p) => ({
+              ...p,
+              amount: Number(p.amount),
+            })),
           },
         },
       }));
@@ -68,7 +75,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       const body = await req.json();
       const data = updateInvoiceSchema.parse(body);
 
-      const invoice = await prisma.invoice.findUnique({
+      const invoice = await prisma.invoice.findFirst({
         where: { id, isDeleted: false },
         include: { items: true },
       });
@@ -106,9 +113,13 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
           }
 
           if (invoice.type === 'sale' && Number(invoice.total) > 0) {
+            // F-076: Pass amountPaid so RETURN reversal correctly reverses
+            // all three legs (Revenue, Cash, AR) for partial payments
+            const paid = Number(invoice.paid);
             await createDoubleEntry(tx, {
               type: 'RETURN',
               amount: Number(invoice.total),
+              amountPaid: paid > 0 && paid < Number(invoice.total) ? paid : undefined,
               description: `Cancelled invoice ${invoice.number}`,
               referenceType: 'invoice',
               referenceId: invoice.id,
@@ -116,6 +127,29 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
               paymentMethod: invoice.paymentMethod ?? 'cash',
               createdById: payload.userId,
               tenantId: getTenantId() ?? DEFAULT_TENANT_ID,
+            });
+          } else if (invoice.type === 'purchase' && Number(invoice.total) > 0) {
+            const tenantId = getTenantId() ?? DEFAULT_TENANT_ID;
+            const inventoryId = await AccountingService.getAccountId(tx, ACCOUNT_CODES.INVENTORY, tenantId);
+            const accountsPayableId = await AccountingService.getAccountId(tx, ACCOUNT_CODES.ACCOUNTS_PAYABLE, tenantId);
+            await tx.journalEntry.create({
+              data: {
+                type: 'RETURN',
+                amount: Number(invoice.total),
+                description: `Cancelled purchase invoice ${invoice.number}`,
+                referenceType: 'invoice',
+                referenceId: invoice.id,
+                referenceNumber: invoice.number,
+                date: new Date(),
+                createdById: payload.userId,
+                tenantId,
+                lines: {
+                  create: [
+                    { accountId: accountsPayableId, debit: Number(invoice.total), credit: 0, description: 'AP reversal', tenantId },
+                    { accountId: inventoryId, debit: 0, credit: Number(invoice.total), description: 'Inventory reversal', tenantId },
+                  ],
+                },
+              },
             });
           }
         });
@@ -135,7 +169,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
       const updated = await prisma.invoice.findUnique({
         where: { id },
-        include: { items: true },
+        include: { items: true, payments: { where: { isDeleted: false } } },
       });
 
       return withSecurityHeaders(NextResponse.json({
@@ -154,6 +188,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
               unitPrice: Number(item.unitPrice),
               costPrice: Number(item.costPrice),
               total: Number(item.total),
+            })),
+            payments: updated!.payments.map((p) => ({
+              ...p,
+              amount: Number(p.amount),
             })),
           },
         },

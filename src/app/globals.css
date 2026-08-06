@@ -6,7 +6,7 @@
   --color-card: #080B12;
   --color-card-foreground: #F8FAFC;
   --color-primary: #F97316;
-  --color-primary-foreground: #FFFFFF;
+  --color-primary-foreground: #04060A;
   --color-secondary: #EA580C;
   --color-secondary-foreground: #04060A;
   --color-muted: #080B12;
@@ -26,7 +26,7 @@
   --card: #080B12;
   --card-foreground: #F8FAFC;
   --primary: #F97316;
-  --primary-foreground: #FFFFFF;
+  --primary-foreground: #04060A;
   --secondary: #EA580C;
   --secondary-foreground: #04060A;
   --muted: #080B12;
@@ -40,6 +40,7 @@
 
 html {
   scroll-behavior: smooth;
+  overflow-x: clip;
 }
 
 @media (prefers-reduced-motion: reduce) {

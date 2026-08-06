@@ -86,9 +86,47 @@ export async function POST(req: NextRequest) {
       const body = await req.json();
       const data = createPurchaseOrderSchema.parse(body);
 
-      // Generate PO number
-      const count = await prisma.purchaseOrder.count();
-      const number = `PO-${String(count + 1).padStart(6, '0')}`;
+      // F-063: Generate PO number using tenant-scoped sequence (not global count).
+      // count() was not tenant-scoped, and was vulnerable to race conditions.
+      const tenantId = getTenantId() ?? DEFAULT_TENANT_ID;
+      const now = new Date();
+      const dateStr = now.toISOString().slice(0, 10).replace(/-/g, '');
+      const prefix = `PO-${dateStr}-`;
+      const lastPO = await prisma.purchaseOrder.findFirst({
+        where: { tenantId, number: { startsWith: prefix } },
+        orderBy: { number: 'desc' },
+        select: { number: true },
+      });
+      let nextSeq = 1;
+      if (lastPO) {
+        const parts = lastPO.number.split('-');
+        nextSeq = parseInt(parts[parts.length - 1], 10) + 1;
+      }
+      const number = `${prefix}${String(nextSeq).padStart(4, '0')}`;
+
+      // F-066: Validate that supplier and all products belong to the current tenant
+      // before creating the PO. Prevents cross-tenant relation leakage.
+      const supplier = await prisma.supplier.findFirst({
+        where: { id: data.supplierId, isDeleted: false },
+        select: { id: true },
+      });
+      if (!supplier) {
+        return withSecurityHeaders(NextResponse.json({ success: false, error: 'Supplier not found' }, { status: 400 }));
+      }
+
+      const productIds = data.items.map((i) => i.productId);
+      const products = await prisma.product.findMany({
+        where: { id: { in: productIds }, isDeleted: false },
+        select: { id: true, name: true },
+      });
+      if (products.length !== productIds.length) {
+        const foundIds = new Set(products.map((p) => p.id));
+        const missing = productIds.filter((id) => !foundIds.has(id));
+        return withSecurityHeaders(NextResponse.json({
+          success: false,
+          error: `Products not found or belong to another tenant: ${missing.join(', ')}`,
+        }, { status: 400 }));
+      }
 
       const order = await prisma.purchaseOrder.create({
         data: {
@@ -108,6 +146,7 @@ export async function POST(req: NextRequest) {
               quantity: item.quantity,
               unitPrice: item.unitPrice,
               total: item.total,
+              tenantId: getTenantId() ?? DEFAULT_TENANT_ID,
             })),
           },
         },

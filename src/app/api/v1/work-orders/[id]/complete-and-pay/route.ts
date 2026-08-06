@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { Prisma } from '@prisma/client';
 import { withRole } from '@/lib/auth';
 import { checkRateLimit } from '@/lib/rate-limit';
 import { withSecurityHeaders } from '@/lib/security';
@@ -9,12 +10,14 @@ import { logger } from '@/lib/logger';
 import { AccountingService } from '@/services/AccountingService';
 import { ACCOUNT_CODES } from '@/constants/accounting';
 import { z } from 'zod';
+import { computeWorkOrderTotals, nextInvoiceNumber } from '@/lib/order-totals';
 
 const completeAndPaySchema = z.object({
   paymentMethod: z.enum(['cash', 'card', 'transfer']),
   amountPaid: z.number().min(0),
-  partsTotal: z.number().min(0),
-  labourTotal: z.number().min(0),
+  partsTotal: z.number().min(0).optional(), // Ignored — computed from DB
+  labourTotal: z.number().min(0).optional(), // Ignored — computed from DB
+  discount: z.number().min(0).default(0),
 });
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -43,27 +46,25 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       }
 
       const tenantId = getTenantId() ?? DEFAULT_TENANT_ID;
-      const taxTotal = wo.parts.reduce((s, part) => {
-        const taxRate = Number(part.product?.taxRate ?? 0) / 100;
-        return s + Number(part.total) * taxRate;
-      }, 0);
-      const total = data.partsTotal + data.labourTotal + taxTotal;
 
-      const result = await prisma.$transaction(async (tx) => {
+      // F-053: Compute totals from DB, not from client-supplied values.
+      // Tax applies to parts only, per-product rate, exempt products skipped.
+      const totals = computeWorkOrderTotals(wo.parts, wo.labourLines, data.discount);
+      const { taxTotal, total, discountAmount } = totals;
+
+      // Retry loop for invoice number race condition.
+      // Two concurrent C&P calls may read the same last invoice number
+      // and compute the same nextSeq. On P2002 (unique constraint),
+      // the whole transaction retries with fresh reads.
+      const MAX_RETRIES = 5;
+      let lastError: unknown;
+      let result: { updatedWo: Awaited<ReturnType<typeof prisma.workOrder.findUniqueOrThrow>>; invoice: Awaited<ReturnType<typeof prisma.invoice.create>> } | null = null;
+
+      for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+        try {
+          result = await prisma.$transaction(async (tx) => {
         const now = new Date();
-        const dateStr = now.toISOString().slice(0, 10).replace(/-/g, '');
-        const prefix = `INV-${dateStr}-`;
-        const lastInvoice = await tx.invoice.findFirst({
-          where: { tenantId, number: { startsWith: prefix } },
-          orderBy: { number: 'desc' },
-          select: { number: true },
-        });
-        let nextSeq = 1;
-        if (lastInvoice) {
-          const invParts = lastInvoice.number.split('-');
-          nextSeq = parseInt(invParts[invParts.length - 1], 10) + 1;
-        }
-        const invoiceNumber = `${prefix}${String(nextSeq).padStart(4, '0')}`;
+        const invoiceNumber = await nextInvoiceNumber(tx, tenantId, 'INV');
 
         const updatedWo = await tx.workOrder.update({
           where: { id },
@@ -101,19 +102,25 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         const labourTotalAmount = wo.labourLines.reduce((s, l) => s + (l.total ? Number(l.total) : 0), 0);
         if (labourTotalAmount > 0) {
           const usedIds = new Set(wo.parts.map((p) => p.productId));
-          let labourProductId: string | null | undefined;
-
-          if (usedIds.size > 0) {
-            labourProductId = (await tx.product.findFirst({
-              where: { tenantId, id: { notIn: Array.from(usedIds) }, isDeleted: false },
-              select: { id: true },
-            }))?.id;
-          }
+          let labourProductId = (await tx.product.findFirst({
+            where: { tenantId, isService: true, isDeleted: false },
+            select: { id: true },
+          }))?.id;
           if (!labourProductId) {
-            labourProductId = (await tx.product.findFirst({
-              where: { tenantId, isDeleted: false },
+            labourProductId = (await tx.product.create({
+              data: {
+                name: 'Labour',
+                barcode: `SVC-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+                isService: true,
+                price: 0,
+                costPrice: 0,
+                stock: 0,
+                category: 'Services',
+                tenantId,
+                isDeleted: false,
+              },
               select: { id: true },
-            }))?.id;
+            })).id;
           }
           if (labourProductId && !usedIds.has(labourProductId)) {
             itemMap.set(labourProductId, {
@@ -142,7 +149,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
             status: 'confirmed',
             subtotal,
             taxTotal: Math.round(taxTotal * 100) / 100,
-            discount: 0,
+            discount: discountAmount,
             total,
             paid: data.amountPaid,
             change: Math.max(0, data.amountPaid - total),
@@ -153,7 +160,16 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
             createdById: payload.userId,
             tenantId,
             items: invoiceItems.length > 0 ? { create: invoiceItems } : undefined,
+            payments: data.amountPaid > 0 ? {
+              create: [{
+                method: data.paymentMethod,
+                amount: new Prisma.Decimal(data.amountPaid),
+                reference: null,
+                tenantId,
+              }],
+            } : undefined,
           },
+          include: { items: true, payments: true },
         });
 
         // Deduct stock for parts used + create stock movements (Issue: stock movements were empty)
@@ -177,16 +193,24 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
           });
         }
 
-        try {
-          const salesRevenueAccountId = await AccountingService.getAccountId(tx, ACCOUNT_CODES.SALES_REVENUE, tenantId);
-          const accountsReceivableAccountId = await AccountingService.getAccountId(tx, ACCOUNT_CODES.ACCOUNTS_RECEIVABLE, tenantId);
-          let cashAccountId: string;
-          if (data.paymentMethod === 'cash') {
-            cashAccountId = await AccountingService.getAccountId(tx, ACCOUNT_CODES.CASH, tenantId);
-          } else {
-            // card و transfer → BANK (1102)
-            cashAccountId = await AccountingService.getAccountId(tx, ACCOUNT_CODES.BANK, tenantId);
-          }
+        // F-055: Accounting entry MUST succeed — if it fails, the entire transaction
+        // rolls back so no incomplete financial state is committed.
+        // NOTE: createDoubleEntry() only supports 2-line entries (DR/CR).
+        // This route needs a 3-line entry for partial payments:
+        //   DR: Cash/Bank (amountPaid)
+        //   DR: Accounts Receivable (remaining)
+        //   CR: Sales Revenue (total)
+        const salesRevenueAccountId = await AccountingService.getAccountId(tx, ACCOUNT_CODES.SALES_REVENUE, tenantId);
+        const accountsReceivableAccountId = await AccountingService.getAccountId(tx, ACCOUNT_CODES.ACCOUNTS_RECEIVABLE, tenantId);
+        let cashAccountId: string;
+        if (data.paymentMethod === 'cash') {
+          cashAccountId = await AccountingService.getAccountId(tx, ACCOUNT_CODES.CASH, tenantId);
+        } else {
+          cashAccountId = await AccountingService.getAccountId(tx, ACCOUNT_CODES.BANK, tenantId);
+        }
+
+          // F-076: Cap cash debit to total to prevent imbalance on overpayment
+          const cashAmount = Math.min(data.amountPaid, total);
 
           const journalEntry = await tx.journalEntry.create({
             data: {
@@ -203,9 +227,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
             },
           });
 
-          if (data.amountPaid > 0) {
+          if (cashAmount > 0) {
             await tx.journalEntryLine.create({
-              data: { journalEntryId: journalEntry.id, accountId: cashAccountId, debit: data.amountPaid, credit: 0, tenantId },
+              data: { journalEntryId: journalEntry.id, accountId: cashAccountId, debit: cashAmount, credit: 0, tenantId },
             });
           }
 
@@ -219,12 +243,27 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
               data: { journalEntryId: journalEntry.id, accountId: accountsReceivableAccountId, debit: remaining, credit: 0, tenantId },
             });
           }
-        } catch (accountingError) {
-          logger.error('Accounting entry creation failed in complete-and-pay', accountingError);
-        }
 
         return { updatedWo, invoice };
       });
+
+          break;
+        } catch (e) {
+          lastError = e;
+          if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
+            if (attempt < MAX_RETRIES - 1) {
+              continue;
+            }
+            logger.error('Complete and Pay: invoice number retries exhausted', e);
+          }
+          throw e;
+        }
+      }
+
+      // Ensure result exists (retries succeeded)
+      if (!result) {
+        throw lastError ?? new Error('Failed to complete and pay after retries');
+      }
 
       const { ipAddress, userAgent } = getClientInfo(req);
       await logAudit({
@@ -247,7 +286,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     if (error instanceof z.ZodError) {
       return withSecurityHeaders(NextResponse.json({ success: false, errors: error.issues }, { status: 400 }));
     }
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    return withSecurityHeaders(NextResponse.json({ success: false, error: errorMessage }, { status: 500 }));
+    return withSecurityHeaders(NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 }));
   }
 }

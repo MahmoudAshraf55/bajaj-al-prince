@@ -67,23 +67,27 @@ export async function GET(request: NextRequest) {
     const ipHash = crypto.createHash('sha256').update(rawIp).digest('hex');
     const userAgent = request.headers.get('user-agent');
 
-    // 2. Insert unique visitor (ignores constraint violations automatically)
+    // 2. Upsert unique visitor — idempotent per (tenantId, ipHash) pair, so
+    // repeat visits never raise a unique-constraint error (keeps DB logs clean)
     try {
-      await prisma.uniqueVisitor.create({
-        data: {
+      await prisma.uniqueVisitor.upsert({
+        where: {
+          tenantId_ipHash: {
+            tenantId: getTenantId() ?? DEFAULT_TENANT_ID,
+            ipHash,
+          },
+        },
+        update: {},
+        create: {
           ipHash,
           userAgent,
           tenantId: getTenantId() ?? DEFAULT_TENANT_ID,
         },
       });
-      logger.info('New unique visitor logged', { ipHash: ipHash.slice(0, 10) });
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : String(err);
-      if (message.includes('Unique constraint') || message.includes('unique constraint') || message.includes('P2002')) {
-        // Unique constraint failed — visitor already exists, ignore silently
-      } else {
-        logger.warn('Failed to log unique visitor', { error: message });
-      }
+      // Only a real DB failure should surface here; race-condition duplicates
+      // are collapsed by the upsert's unique composite key.
+      logger.warn('Failed to log unique visitor', { error: err instanceof Error ? err.message : String(err) });
     }
 
     // 3. Count total unique visitors

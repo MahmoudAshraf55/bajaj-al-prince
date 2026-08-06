@@ -67,7 +67,8 @@ export type AuditAction =
   | 'payment'
   | 'import'
   | 'inventory_change'
-  | 'scan';
+  | 'scan'
+  | 'password_recovery';
 
 export interface AuditLogInput {
   userId?: string;

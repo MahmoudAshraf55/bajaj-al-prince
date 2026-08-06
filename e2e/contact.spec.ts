@@ -2,14 +2,14 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Contact Flow', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/#contact');
+    await page.goto('/#contact-info');
     // ✅ تحسين: انتظر الصفحة تحميل بشكل كامل
     await page.waitForLoadState('networkidle');
     await page.waitForTimeout(500);
   });
 
   test('contact section is visible on home page', async ({ page }) => {
-    const contactSection = page.locator('#contact');
+    const contactSection = page.locator('#contact-info').first();
     await expect(contactSection).toBeVisible({ timeout: 10000 });
     await contactSection.scrollIntoViewIfNeeded();
     await expect(contactSection.getByRole('heading', { name: /Contact/i }))
@@ -18,7 +18,7 @@ test.describe('Contact Flow', () => {
   });
 
   test('displays contact info cards', async ({ page }) => {
-    const contactSection = page.locator('#contact');
+    const contactSection = page.locator('#contact-info').first();
     await expect(contactSection).toBeVisible({ timeout: 10000 });
     await contactSection.scrollIntoViewIfNeeded();
     await expect(contactSection.getByText(/0122 137 0120/i))

@@ -13,7 +13,7 @@ export interface UpdatedWorkOrder {
     quantity: number;
     unitPrice: string | number | Prisma.Decimal;
     total: string | number | Prisma.Decimal;
-    product?: { name: string; costPrice: string | number | Prisma.Decimal | null } | null;
+    product?: { name: string; costPrice: string | number | Prisma.Decimal | null; lockInventory?: boolean } | null;
   }>;
   labourLines: Array<{ description: string; total: string | number | Prisma.Decimal }>;
   vehicle?: { customer?: { id: string; name: string } | null } | null;
@@ -31,12 +31,14 @@ export class WorkOrderService {
     const labourTotal = updatedWorkOrder.labourLines.reduce((sum: number, l) => sum + Number(l.total), 0);
     const totalCost = partsTotal + labourTotal;
 
-    // 1. Deduct stock
+    // 1. Deduct stock (skip lockInventory parts — e.g. labour-only items)
     for (const part of updatedWorkOrder.parts) {
-      await tx.product.update({
-        where: { id: part.productId },
-        data: { stock: { decrement: part.quantity } },
-      });
+      if (!part.product?.lockInventory) {
+        await tx.product.update({
+          where: { id: part.productId },
+          data: { stock: { decrement: part.quantity } },
+        });
+      }
       await tx.stockMovement.create({
         data: {
           productId: part.productId,
@@ -130,18 +132,25 @@ export class WorkOrderService {
 
         if (labourTotalAmount > 0) {
           const usedIds = new Set(updatedWorkOrder.parts.map((p) => p.productId));
-          let labourProductId: string | null | undefined;
-          if (updatedWorkOrder.parts.length > 0) {
-            labourProductId = (await tx.product.findFirst({
-              where: { tenantId, id: { notIn: Array.from(usedIds) }, isDeleted: false },
-              select: { id: true },
-            }))?.id;
-          }
+          let labourProductId = (await tx.product.findFirst({
+            where: { tenantId, isService: true, isDeleted: false },
+            select: { id: true },
+          }))?.id;
           if (!labourProductId) {
-            labourProductId = (await tx.product.findFirst({
-              where: { tenantId, isDeleted: false },
+            labourProductId = (await tx.product.create({
+              data: {
+                name: 'Labour',
+                barcode: `SVC-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+                isService: true,
+                price: 0,
+                costPrice: 0,
+                stock: 0,
+                category: 'Services',
+                tenantId,
+                isDeleted: false,
+              },
               select: { id: true },
-            }))?.id;
+            })).id;
           }
           if (labourProductId && !usedIds.has(labourProductId)) {
             itemMap.set(labourProductId, {

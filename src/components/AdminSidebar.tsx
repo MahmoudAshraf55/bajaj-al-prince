@@ -8,7 +8,7 @@ import {
   LayoutDashboard, Mail, Calendar, ShoppingCart, Package,
   Users, Car, List, Wrench, MessageCircle, ScanLine, Settings,
   LogOut, Menu, X, ClipboardList, PanelLeft, PanelRight, Truck, Building2,
-  Landmark, BookOpen, BarChart3, Store,
+  Landmark, BookOpen, BarChart3, Store, DollarSign,
 } from 'lucide-react';
 import Logo from '@/components/ui/Logo';
 import { useTranslation } from '@/components/useTranslation';
@@ -66,6 +66,7 @@ const sections: SidebarSection[] = [
       { href: '/admin/warehouse', icon: Package, labelKey: 'wh_title' },
       { href: '/admin/inventory-counts', icon: ClipboardList, labelKey: 'ic_title' },
       { href: '/admin/purchase-orders', icon: Package, labelKey: 'po_title' },
+      { href: '/admin/supplier-payments', icon: DollarSign, labelKey: 'sp_title' },
     ],
   },
   {

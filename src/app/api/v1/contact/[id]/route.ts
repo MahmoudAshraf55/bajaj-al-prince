@@ -12,7 +12,10 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   try {
     return await withRole(req, ['admin', 'staff'], async (payload) => {
       const { id } = await params;
-      const oldMessage = await prisma.contactMessage.findUnique({ where: { id } });
+      const oldMessage = await prisma.contactMessage.findFirst({ where: { id } });
+      if (!oldMessage) {
+        return withSecurityHeaders(NextResponse.json({ success: false, error: 'Message not found' }, { status: 404 }));
+      }
       await prisma.contactMessage.softDelete({ id });
       const { ipAddress, userAgent } = getClientInfo(req);
       await logAudit({

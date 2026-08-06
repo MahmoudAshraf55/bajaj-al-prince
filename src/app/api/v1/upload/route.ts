@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { withAuth } from '@/lib/auth';
+import { withRole } from '@/lib/auth';
 import { withSecurityHeaders } from '@/lib/security';
 
 const ALLOWED_MIME = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
@@ -7,7 +7,7 @@ const MAX_SIZE = 5 * 1024 * 1024;
 
 export async function POST(req: NextRequest) {
   try {
-    return await withAuth(req, async () => {
+    return await withRole(req, ['admin', 'staff'], async () => {
 
       const formData = await req.formData();
       const file = formData.get('file') as File | null;

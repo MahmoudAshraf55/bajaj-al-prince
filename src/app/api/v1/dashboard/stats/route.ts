@@ -60,7 +60,7 @@ export async function GET(req: NextRequest) {
       const transferSales = todayInvoices.filter((i) => i.paymentMethod === 'transfer').reduce((s, i) => s + Math.min(Number(i.paid), Number(i.total)), 0);
 
       const lowStockCount = products.filter((p) => p.stock <= p.lowStockThreshold && p.available).length;
-      const outOfStockCount = products.filter((p) => p.stock === 0).length;
+      const outOfStockCount = products.filter((p) => p.stock === 0 && p.available).length;
       const inventoryValue = products.reduce((s, p) => {
         const cost = Number(p.costPrice ?? 0);
         const unitValue = cost > 0 ? cost : Number(p.price ?? 0);

@@ -1,5 +1,7 @@
 'use client';
 
+import { computeTaxTotal } from '@/lib/order-totals';
+
 interface POSTotalsProps {
   subtotal: number;
   discountNum: number;
@@ -21,8 +23,14 @@ export interface POSTotalsResult {
   change: number;
 }
 
+export interface POSTotalsCartItem {
+  total: number;
+  taxRate?: number | null;
+  taxExempt?: boolean;
+}
+
 export function computePOSTotals(
-  cart: Array<{ total: number }>,
+  cart: Array<POSTotalsCartItem>,
   discount: number,
   discountType: 'amount' | 'percent',
   taxRate: number,
@@ -34,7 +42,14 @@ export function computePOSTotals(
     ? Math.min(subtotal * (discount || 0) / 100, subtotal)
     : Math.min(discount, subtotal);
   const afterDiscount = subtotal - discountNum;
-  const taxTotal = afterDiscount * (taxRate / 100);
+  // Per-product tax (exempt skipped, product rate, general-rate fallback) —
+  // matches the server /invoices computation. discount does not reduce the
+  // taxable base, matching the server.
+  const taxTotal = computeTaxTotal(cart.map((item) => ({
+    amount: item.total,
+    taxRate: item.taxRate,
+    taxExempt: item.taxExempt,
+  })));
   const total = afterDiscount + taxTotal;
 
   const splitTotal = splitPayments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);

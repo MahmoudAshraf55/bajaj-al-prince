@@ -35,7 +35,8 @@ export default function CustomersPage() {
   const [submitting, setSubmitting] = useState(false);
 
   const [form, setForm] = useState({ name: '', phone: '', email: '', address: '' });
-  const [formError, setFormError] = useState('');
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [serverError, setServerError] = useState('');
 
   const swrKey = useMemo(() => {
     const params = new URLSearchParams({ page: String(page), limit: '10' });
@@ -56,13 +57,26 @@ export default function CustomersPage() {
     setPage(1);
   };
 
+  const validateField = (field: string, value: string) => {
+    let error = '';
+    if (field === 'name' && !value.trim()) error = t('crm_name_phone_required');
+    if (field === 'phone' && !value.trim()) error = t('crm_name_phone_required');
+    setFormErrors((prev) => {
+      if (error) return { ...prev, [field]: error };
+      const next = { ...prev };
+      delete next[field];
+      return next;
+    });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setFormError('');
-    if (!form.name.trim() || !form.phone.trim()) {
-      setFormError(t('crm_name_phone_required'));
-      return;
-    }
+    setServerError('');
+    const errs: Record<string, string> = {};
+    if (!form.name.trim()) errs.name = t('crm_name_phone_required');
+    if (!form.phone.trim()) errs.phone = t('crm_name_phone_required');
+    setFormErrors(errs);
+    if (Object.keys(errs).length > 0) return;
     setSubmitting(true);
     try {
       const res = await fetch('/api/customers/', {
@@ -80,13 +94,14 @@ export default function CustomersPage() {
       if (json.success) {
         addToast('success', t('crm_customer_created'));
         setForm({ name: '', phone: '', email: '', address: '' });
+        setFormErrors({});
         setShowModal(false);
         mutate();
       } else {
-        setFormError(json.error || json.errors?.[0]?.message || t('crm_failed_create'));
+        setServerError(json.error || json.errors?.[0]?.message || t('crm_failed_create'));
       }
     } catch {
-      setFormError(t('crm_network_error'));
+      setServerError(t('crm_network_error'));
     } finally {
       setSubmitting(false);
     }
@@ -207,27 +222,37 @@ export default function CustomersPage() {
       </motion.div>
 
       {/* Add Customer Modal */}
-      <Modal isOpen={showModal} onClose={() => setShowModal(false)} title={t('crm_add_customer_modal')}>
+      <Modal isOpen={showModal} onClose={() => { setShowModal(false); setFormErrors({}); setServerError(''); }} title={t('crm_add_customer_modal')}>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="text-xs font-medium text-muted-foreground mb-1.5 block">{t('crm_full_name')}</label>
             <input
               required
               value={form.name}
-              onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-              className="w-full px-4 py-2.5 rounded-xl bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm"
+              onChange={(e) => {
+                setForm((f) => ({ ...f, name: e.target.value }));
+                if (formErrors.name) validateField('name', e.target.value);
+              }}
+              onBlur={() => validateField('name', form.name)}
+              className={`w-full px-4 py-2.5 rounded-xl bg-input border ${formErrors.name ? 'border-red-400' : 'border-border'} text-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm`}
               placeholder="John Doe"
             />
+            {formErrors.name && <p className="text-xs text-red-400 mt-1">{formErrors.name}</p>}
           </div>
           <div>
             <label className="text-xs font-medium text-muted-foreground mb-1.5 block">{t('crm_phone')}</label>
             <input
               required
               value={form.phone}
-              onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
-              className="w-full px-4 py-2.5 rounded-xl bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm"
+              onChange={(e) => {
+                setForm((f) => ({ ...f, phone: e.target.value }));
+                if (formErrors.phone) validateField('phone', e.target.value);
+              }}
+              onBlur={() => validateField('phone', form.phone)}
+              className={`w-full px-4 py-2.5 rounded-xl bg-input border ${formErrors.phone ? 'border-red-400' : 'border-border'} text-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm`}
               placeholder="+20 123 456 7890"
             />
+            {formErrors.phone && <p className="text-xs text-red-400 mt-1">{formErrors.phone}</p>}
           </div>
           <div>
             <label className="text-xs font-medium text-muted-foreground mb-1.5 block">{t('crm_email_label')}</label>
@@ -249,10 +274,10 @@ export default function CustomersPage() {
               placeholder="Street, City"
             />
           </div>
-          {formError && (
+          {serverError && (
             <div className="flex items-center gap-2 text-red-400 text-xs bg-red-400/10 border border-red-400/20 rounded-xl px-3 py-2">
               <AlertCircle className="w-3.5 h-3.5" />
-              {formError}
+              {serverError}
             </div>
           )}
           <button

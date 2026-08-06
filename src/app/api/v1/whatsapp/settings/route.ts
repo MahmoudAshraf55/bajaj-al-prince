@@ -14,10 +14,11 @@ const settingsUpdateSchema = z.object({
 });
 
 async function ensureDefaultSettings() {
-  const existing = await prisma.whatsAppSettings.findUnique({ where: { id: 'default' } });
+  const tenantId = getTenantId() ?? DEFAULT_TENANT_ID;
+  const existing = await prisma.whatsAppSettings.findUnique({ where: { tenantId_id: { tenantId, id: 'default' } } });
   if (!existing) {
     return prisma.whatsAppSettings.create({
-      data: { id: 'default', delayMin: 60, delayMax: 120, dailyCap: 50, batchSize: 20, tenantId: getTenantId() ?? DEFAULT_TENANT_ID },
+      data: { id: 'default', delayMin: 60, delayMax: 120, dailyCap: 50, batchSize: 20, tenantId },
     });
   }
   return existing;
@@ -51,7 +52,7 @@ export async function PATCH(req: NextRequest) {
       await ensureDefaultSettings();
 
       const updated = await prisma.whatsAppSettings.update({
-        where: { id: 'default' },
+        where: { tenantId_id: { tenantId: getTenantId() ?? DEFAULT_TENANT_ID, id: 'default' } },
         data,
       });
 

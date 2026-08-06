@@ -253,7 +253,7 @@ export default function CustomerReviews() {
                 <div>
                   <div className="flex items-center justify-between mb-4">
                     <StarRating rating={review.rating} />
-                    <span className="text-[10px] text-accent bg-accent/10 px-2.5 py-0.5 rounded-full border border-accent/20 font-semibold flex items-center gap-1">
+                    <span className="text-[11px] text-accent bg-accent/10 px-2.5 py-0.5 rounded-full border border-accent/20 font-semibold flex items-center gap-1">
                       <CheckCircle className="w-3 h-3 text-accent" />
                       {t('review_verified')}
                     </span>

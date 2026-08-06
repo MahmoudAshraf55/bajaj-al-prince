@@ -11,6 +11,7 @@ import { sendWhatsAppMessageViaService } from '@/lib/whatsapp-client';
 import { buildMessage } from '@/lib/whatsapp-templates';
 import { z } from 'zod';
 import { AccountingService } from '@/services/AccountingService';
+import { ACCOUNT_CODES } from '@/constants/accounting';
 
 import { WorkOrderService } from '@/services/WorkOrderService';
 const updateSchema = z.object({
@@ -34,8 +35,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         return withSecurityHeaders(NextResponse.json({ success: false, error: 'Work order not found' }, { status: 404 }));
       }
 
-      const isCompleting = data.status === 'completed' && existing.status !== 'completed';
-      const isCostUpdate = data.cost !== undefined && data.cost !== Number(existing.cost);
+        const isCompleting = data.status === 'completed' && existing.status !== 'completed';
+        const isCancelling = data.status === 'cancelled' && existing.status !== 'cancelled' && existing.status !== 'completed';
+        const isCostUpdate = data.cost !== undefined && data.cost !== Number(existing.cost);
       const tenantId = getTenantId() ?? DEFAULT_TENANT_ID;
 
       const workOrder = await prisma.$transaction(async (tx) => {
@@ -48,7 +50,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
           },
           include: {
             vehicle: { include: { customer: true } },
-            parts: { where: { isDeleted: false }, include: { product: { select: { id: true, name: true, costPrice: true } } } },
+            parts: { where: { isDeleted: false }, include: { product: { select: { id: true, name: true, costPrice: true, lockInventory: true } } } },
             labourLines: { where: { isDeleted: false } },
           },
         });
@@ -57,8 +59,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         if (isCostUpdate && data.cost != null) {
           const costDifference = Number(data.cost) - (Number(existing.cost) || 0);
           if (costDifference !== 0) {
-            const workOrderCostAccountId = await AccountingService.getAccountId(tx, '5201', tenantId); // RENT_EXPENSE (using as work order expense)
-            const cashAccountId = await AccountingService.getAccountId(tx, '1101', tenantId); // CASH
+            const workOrderCostAccountId = await AccountingService.getAccountId(tx, ACCOUNT_CODES.RENT_EXPENSE, tenantId); // RENT_EXPENSE (using as work order expense)
+            const cashAccountId = await AccountingService.getAccountId(tx, ACCOUNT_CODES.CASH, tenantId);
 
             const journalEntry = await tx.journalEntry.create({
               data: {
@@ -95,6 +97,21 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
           } catch (err) {
             logger.error('Work order completion side-effects failed, rolling back', err);
             throw err;
+          }
+        }
+
+        if (isCancelling) {
+          try {
+            // F-052: Stock is only deducted at completion time (complete-and-pay),
+            // NOT at add-time. Since cancellation can only happen before completion,
+            // stock was never deducted — so there is nothing to restore.
+            // No reversal journal entry is needed either (COGS was never recorded).
+            //
+            // If in the future stock deduction moves to add-time, this block must
+            // be updated to increment stock and reverse the COGS entry.
+            logger.info('Work order cancelled — no stock or accounting reversal needed (deferred model)', { workOrderId: id });
+          } catch (err) {
+            logger.error('Work order cancellation processing failed', err);
           }
         }
 

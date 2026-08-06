@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import Image from 'next/image';
 import { useTranslation } from '@/components/useTranslation';
 import { useToast } from '@/components/ToastContext';
@@ -20,7 +20,7 @@ interface Product {
   createdAt: string;
 }
 
-const CATEGORIES = ['Motorcycles', 'Spare Parts', 'Accessories'];
+const DEFAULT_CATEGORIES = ['Motorcycles', 'Spare Parts', 'Accessories', '3W', '2W', '4W', 'COM', '3W & 4w', '3W & 4W', 'oil'];
 
 export default function AdminMarket() {
   const { t, language } = useTranslation();
@@ -33,6 +33,7 @@ export default function AdminMarket() {
   const [saving, setSaving] = useState(false);
   const [aiBusy, setAiBusy] = useState<'image' | 'describe' | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const categories = useMemo(() => [...new Set([...DEFAULT_CATEGORIES, ...products.map((p) => p.category)])], [products]);
 
   const [form, setForm] = useState({
     name: '',
@@ -317,8 +318,8 @@ export default function AdminMarket() {
                 className="w-full px-4 py-2.5 rounded-xl bg-input border border-border text-sm focus:outline-none focus:ring-2 focus:ring-ring"
               >
                 <option value="">{t('admin_market_select_category')}</option>
-                {CATEGORIES.map((cat) => (
-                  <option key={cat} value={cat}>{t(`admin_market_cat_${cat.toLowerCase().replace(/\s+/g, '')}`)}</option>
+                {categories.map((cat) => (
+                  <option key={cat} value={cat}>{cat}</option>
                 ))}
               </select>
             </div>

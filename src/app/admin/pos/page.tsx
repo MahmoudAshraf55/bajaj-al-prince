@@ -114,7 +114,7 @@ export default function AdminPOS() {
                 );
               }
               if (product.stock < 1) return prev;
-              return [...prev, { productId: product.id, barcode: product.barcode, productName: product.name, unitPrice: product.price, quantity: 1, total: product.price }];
+              return [...prev, { productId: product.id, barcode: product.barcode, productName: product.name, unitPrice: product.price, quantity: 1, total: product.price, taxRate: product.taxRate, taxExempt: product.taxExempt }];
             });
           }
           window.history.replaceState({}, '', '/admin/pos');
@@ -170,7 +170,7 @@ export default function AdminPOS() {
         return prev.map((item) => item.productId === product.id ? { ...item, quantity: item.quantity + 1, total: (item.quantity + 1) * item.unitPrice } : item);
       }
       if (product.stock < 1) { addToast('error', `${t('pos_insufficient_stock')} ${product.name}`); return prev; }
-      return [...prev, { productId: product.id, barcode: product.barcode, productName: product.name, unitPrice: product.price, quantity: 1, total: product.price }];
+      return [...prev, { productId: product.id, barcode: product.barcode, productName: product.name, unitPrice: product.price, quantity: 1, total: product.price, taxRate: product.taxRate, taxExempt: product.taxExempt }];
     });
     setSearch('');
     searchRef.current?.focus();

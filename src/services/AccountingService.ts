@@ -301,7 +301,7 @@ export class AccountingService {
 
     const totalRevenue = revenue.reduce((sum, acc) => sum + acc.balance, 0);
     const totalExpenses = expenses.reduce((sum, acc) => sum + acc.balance, 0);
-    const grossProfit = totalRevenue - (expenses.find((e) => e.code === '5100')?.balance || 0); // COGS
+    const grossProfit = totalRevenue - (expenses.find((e) => e.code === ACCOUNT_CODES.COGS)?.balance || 0);
     const netProfit = totalRevenue - totalExpenses;
 
     return { revenue, expenses, totalRevenue, totalExpenses, grossProfit, netProfit };
@@ -321,7 +321,7 @@ export class AccountingService {
     const incomeStatement = await this.getIncomeStatement(tx, period.startDate, period.endDate);
 
     // Get account IDs
-    const retainedEarningsId = await this.getAccountId(tx, '3101', tenantId); // RETAINED_EARNINGS
+    const retainedEarningsId = await this.getAccountId(tx, ACCOUNT_CODES.RETAINED_EARNINGS, tenantId);
 
     // Create closing journal entry
     // Debit revenue accounts to zero them out

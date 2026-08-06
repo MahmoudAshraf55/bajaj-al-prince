@@ -18,6 +18,8 @@ export default function BookingPage() {
   });
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [errorMsg, setErrorMsg] = useState('');
+  const [bookingRef, setBookingRef] = useState('');
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [today, setToday] = useState('');
   const [maxYear, setMaxYear] = useState(2025);
   const [models, setModels] = useState<VehicleModel[]>([]);
@@ -47,10 +49,40 @@ export default function BookingPage() {
     return slots;
   };
 
+  const validateField = (field: string, value: string) => {
+    let error = '';
+    if (field === 'name' && !value.trim()) error = t('booking_required');
+    if (field === 'phone' && value.replace(/^\+20/, '').length < 10) error = t('booking_phone_invalid');
+    if (field === 'model' && !value) error = t('booking_required');
+    if (field === 'issue' && !value.trim()) error = t('booking_required');
+    if (field === 'date' && !value) error = t('booking_required');
+    if (field === 'time' && !value) error = t('booking_required');
+    setErrors((prev) => {
+      if (error) return { ...prev, [field]: error };
+      const next = { ...prev };
+      delete next[field];
+      return next;
+    });
+  };
+
+  const validate = () => {
+    const errs: Record<string, string> = {};
+    if (!form.name.trim()) errs.name = t('booking_required');
+    if (form.phone.replace(/^\+20/, '').length < 10) errs.phone = t('booking_phone_invalid');
+    if (!form.model) errs.model = t('booking_required');
+    if (!form.issue.trim()) errs.issue = t('booking_required');
+    if (!form.date) errs.date = t('booking_required');
+    if (!form.time) errs.time = t('booking_required');
+    setErrors(errs);
+    return Object.keys(errs).length === 0;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!validate()) return;
     setStatus('loading');
     setErrorMsg('');
+    setBookingRef('');
     try {
       const rawDigits = form.phone.replace(/^\+20/, '').replace(/\D/g, '');
       const normalizedPhone = '+20' + rawDigits.slice(0, 10);
@@ -75,6 +107,8 @@ export default function BookingPage() {
       });
       const data = await res.json();
       if (data?.success) {
+        const ref = 'BK-' + Date.now().toString(36).toUpperCase() + '-' + Math.random().toString(36).slice(2, 6).toUpperCase();
+        setBookingRef(ref);
         setStatus('success');
         setForm({
           name: '', email: '', phone: '+20', model: '', issue: '', date: '', time: '',
@@ -126,10 +160,18 @@ export default function BookingPage() {
                 <CheckCircle className="w-8 h-8 text-green-400" />
               </div>
               <h2 className="text-2xl font-bold mb-2">{t('booking_success_title')}</h2>
+              {bookingRef && (
+                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-border mb-4 font-mono text-sm">
+                  <span className="text-muted-foreground">{t('booking_ref') || 'Reference'}:</span>
+                  <span className="text-primary font-bold">{bookingRef}</span>
+                </div>
+              )}
               <p className="text-muted-foreground mb-6">{t('booking_success_desc')}</p>
               <button
                 onClick={() => {
                   setStatus('idle');
+                  setBookingRef('');
+                  setErrors({});
                   setForm({
                     name: '', email: '', phone: '+20', model: '', issue: '', date: '', time: '',
                     make: 'Bajaj', year: '', plateNumber: '', chassisNumber: '',
@@ -156,10 +198,13 @@ export default function BookingPage() {
                     onChange={(e) => {
                       const clean = e.target.value.replace(/[^\p{L}\s'-]/gu, '');
                       setForm({ ...form, name: clean });
+                      if (errors.name) validateField('name', clean);
                     }}
-                    className="w-full px-4 py-3 rounded-xl bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                    onBlur={() => validateField('name', form.name)}
+                    className={`w-full px-4 py-3 rounded-xl bg-input border ${errors.name ? 'border-red-400' : 'border-border'} text-foreground focus:outline-none focus:ring-2 focus:ring-ring`}
                     placeholder={t('booking_name_ph')}
                   />
+                  {errors.name && <p className="text-xs text-red-400 mt-1">{errors.name}</p>}
                 </div>
                 <div>
                   <label htmlFor="booking-phone" className="text-sm font-medium text-muted-foreground mb-2 flex items-center gap-2">
@@ -179,11 +224,14 @@ export default function BookingPage() {
                       onChange={(e) => {
                         const digits = e.target.value.replace(/\D/g, '').slice(0, 10);
                         setForm({ ...form, phone: '+20' + digits });
+                        if (errors.phone) validateField('phone', '+20' + digits);
                       }}
-                      className="w-full pl-12 pr-4 py-3 rounded-xl bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                      onBlur={() => validateField('phone', form.phone)}
+                      className={`w-full pl-12 pr-4 py-3 rounded-xl bg-input border ${errors.phone ? 'border-red-400' : 'border-border'} text-foreground focus:outline-none focus:ring-2 focus:ring-ring`}
                       placeholder="1234567890"
                     />
                   </div>
+                  {errors.phone && <p className="text-xs text-red-400 mt-1">{errors.phone}</p>}
                 </div>
               </div>
 
@@ -221,9 +269,11 @@ export default function BookingPage() {
                         setIsCustomModel(false);
                         const selectedModel = models.find(m => m.name === val);
                         setForm({ ...form, model: val, make: selectedModel?.manufacturer?.name || 'Bajaj' });
+                        if (errors.model) validateField('model', val);
                       }
                     }}
-                    className="w-full px-4 py-3 rounded-xl bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-ring appearance-none pr-10"
+                    onBlur={() => validateField('model', form.model)}
+                    className={`w-full px-4 py-3 rounded-xl bg-input border ${errors.model ? 'border-red-400' : 'border-border'} text-foreground focus:outline-none focus:ring-2 focus:ring-ring appearance-none pr-10`}
                   >
                     <option value="">{t('booking_select_model')}</option>
                     {Object.entries(
@@ -244,6 +294,7 @@ export default function BookingPage() {
                   </select>
                   <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
                 </div>
+                {errors.model && <p className="text-xs text-red-400 mt-1">{errors.model}</p>}
               </div>
 
               {/* Custom Model Input */}
@@ -339,10 +390,15 @@ export default function BookingPage() {
                   required
                   rows={3}
                   value={form.issue}
-                  onChange={(e) => setForm({ ...form, issue: e.target.value })}
-                  className="w-full px-4 py-3 rounded-xl bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none"
+                  onChange={(e) => {
+                    setForm({ ...form, issue: e.target.value });
+                    if (errors.issue) validateField('issue', e.target.value);
+                  }}
+                  onBlur={() => validateField('issue', form.issue)}
+                  className={`w-full px-4 py-3 rounded-xl bg-input border ${errors.issue ? 'border-red-400' : 'border-border'} text-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none`}
                   placeholder={t('booking_issue_ph')}
                 />
+                {errors.issue && <p className="text-xs text-red-400 mt-1">{errors.issue}</p>}
               </div>
 
               <div className="grid sm:grid-cols-2 gap-5">
@@ -356,9 +412,14 @@ export default function BookingPage() {
                     type="date"
                     min={today}
                     value={form.date}
-                    onChange={(e) => setForm({ ...form, date: e.target.value })}
-                    className="w-full px-4 py-3 rounded-xl bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                    onChange={(e) => {
+                      setForm({ ...form, date: e.target.value });
+                      if (errors.date) validateField('date', e.target.value);
+                    }}
+                    onBlur={() => validateField('date', form.date)}
+                    className={`w-full px-4 py-3 rounded-xl bg-input border ${errors.date ? 'border-red-400' : 'border-border'} text-foreground focus:outline-none focus:ring-2 focus:ring-ring`}
                   />
+                  {errors.date && <p className="text-xs text-red-400 mt-1">{errors.date}</p>}
                 </div>
                 <div>
                   <label htmlFor="booking-time" className="text-sm font-medium text-muted-foreground mb-2 flex items-center gap-2">
@@ -368,14 +429,19 @@ export default function BookingPage() {
                     id="booking-time"
                     required
                     value={form.time}
-                    onChange={(e) => setForm({ ...form, time: e.target.value })}
-                    className="w-full px-4 py-3 rounded-xl bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-ring appearance-none"
+                    onChange={(e) => {
+                      setForm({ ...form, time: e.target.value });
+                      if (errors.time) validateField('time', e.target.value);
+                    }}
+                    onBlur={() => validateField('time', form.time)}
+                    className={`w-full px-4 py-3 rounded-xl bg-input border ${errors.time ? 'border-red-400' : 'border-border'} text-foreground focus:outline-none focus:ring-2 focus:ring-ring appearance-none`}
                   >
                     <option value="">{t('booking_select_time')}</option>
                     {generateTimeSlots().map((slot) => (
                       <option key={slot.value} value={slot.value}>{slot.label}</option>
                     ))}
                   </select>
+                  {errors.time && <p className="text-xs text-red-400 mt-1">{errors.time}</p>}
                 </div>
               </div>
 
